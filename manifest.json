@@ -1,0 +1,30 @@
+{
+  "name": "Structa — Dashboard Financeiro",
+  "short_name": "Structa",
+  "description": "Dashboard financeiro pessoal da Structa Consultoria",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4ede4",
+  "theme_color": "#381c17",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
