@@ -2181,6 +2181,7 @@ try {
 
 let _sbUser = null;      // usuário logado
 let _sbRole = null;      // 'advisor' | 'client'
+let _sbSlug = null;      // slug do perfil do usuário logado (clientes)
 let _sbSaveTimer = null; // debounce do sync
 
 async function sbSendMagicLink() {
@@ -2214,37 +2215,49 @@ function sbHideAuthOverlay() {
 async function sbLoadData(user) {
   if(!_sb || !user) return;
   _sbUser = user;
-  // Carrega role do perfil
+  // Carrega role e slug do perfil
   const {data: prof} = await _sb
     .from('profiles')
-    .select('role')
+    .select('role,slug')
     .eq('id', user.id)
     .single();
-  // Email da consultora principal sempre tem acesso advisor garantido
   const ADVISOR_EMAILS = ['gestaojanainamachado@gmail.com'];
   _sbRole = prof?.role || (ADVISOR_EMAILS.includes(user.email) ? 'advisor' : null);
-  // Carrega dados do cliente
-  const {data, error} = await _sb
-    .from('client_data')
-    .select('data')
-    .eq('client_id', user.id)
-    .single();
-  if(data?.data && typeof data.data === 'object') {
-    // Merge Supabase data into fresh state (handles any new fields gracefully)
-    S = { ...freshState(), ...data.data };
+  _sbSlug = prof?.slug || null;
+  // Se cliente logado sem slug na URL → redireciona para seu dashboard
+  if(_sbRole === 'client' && _sbSlug && !_cid) {
+    location.href = location.pathname + '?c=' + _sbSlug;
+    return; // aguarda redirect
   }
-  // localStorage mirror for offline
+  // Slug a carregar: advisor usa _cid da URL; cliente usa seu próprio slug
+  const loadSlug = (_sbRole === 'advisor' && _cid) ? _cid
+                 : (_sbRole === 'client' && _sbSlug) ? _sbSlug
+                 : null;
+  if(loadSlug) {
+    const {data} = await _sb
+      .from('client_data')
+      .select('data')
+      .eq('slug', loadSlug)
+      .single();
+    if(data?.data && typeof data.data === 'object') {
+      S = { ...freshState(), ...data.data };
+    }
+  }
+  // localStorage mirror para acesso offline
   try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch(_) {}
 }
 
 async function sbSaveNow() {
   if(!_sb || !_sbUser) return;
+  // Determina slug de destino
+  const slug = (_sbRole === 'advisor' && _cid) ? _cid
+             : (_sbRole === 'client' && _sbSlug) ? _sbSlug
+             : null;
+  if(!slug) return;
   try {
-    await _sb.from('client_data').upsert({
-      client_id: _sbUser.id,
-      data: S,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'client_id' });
+    const payload = { slug, data: S, updated_at: new Date().toISOString() };
+    if(_sbRole === 'advisor') payload.advisor_id = _sbUser.id;
+    await _sb.from('client_data').upsert(payload, { onConflict: 'slug' });
   } catch(e) { console.warn('Supabase save error:', e); }
 }
 
