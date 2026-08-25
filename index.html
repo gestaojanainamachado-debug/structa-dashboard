@@ -4702,9 +4702,14 @@ async function sbSendInvite(slug){
 }
 function csOpen(slug){location.href=location.pathname+'?c='+slug;}
 function csOpenAdmin(slug){location.href=location.pathname+'?c='+slug+'&admin=1';}
-function csDelete(slug){
+async function csDelete(slug){
   if(!confirm('Excluir cliente "'+slug+'"? Dados serão apagados permanentemente.'))return;
   localStorage.removeItem('structa_v4_'+slug);
+  // Remove também do Supabase se advisor logado
+  if(_sb && _sbUser && _sbRole === 'advisor'){
+    await _sb.from('client_data').delete().eq('slug', slug);
+    await _sb.from('profiles').delete().eq('slug', slug).eq('advisor_id', _sbUser.id);
+  }
   renderClientScreen();
 }
 function csExport(slug){
