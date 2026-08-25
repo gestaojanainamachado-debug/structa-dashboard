@@ -786,27 +786,33 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <body>
 
 <!-- ── AUTH OVERLAY (magic link) ─────────────────────────────────────────── -->
-<div id="auth-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#f7f8fa;align-items:center;justify-content:center;">
-  <div style="max-width:380px;width:90%;padding:40px 32px;background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(0,0,0,.10);">
-    <svg viewBox="0 0 270 56" style="width:140px;margin-bottom:6px" xmlns="http://www.w3.org/2000/svg"><text x="0" y="44" font-family="'Inter','Helvetica Neue',sans-serif" font-size="48" font-weight="700" fill="#1a6b5a" letter-spacing="-2">Structa</text></svg>
-    <div style="font-size:13px;color:#888;margin-bottom:28px">Consultoria em Gestão</div>
+<div id="auth-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#f4ede4;align-items:center;justify-content:center;font-family:Inter,sans-serif;">
+  <div style="max-width:380px;width:90%;padding:44px 36px;background:#fff;border-radius:20px;box-shadow:0 8px 48px rgba(56,28,23,.12);">
+    <svg viewBox="0 0 270 56" style="width:148px;margin-bottom:4px" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
+      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
+      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
+      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
+    </svg>
+    <div style="font-size:12px;color:#a09080;letter-spacing:.04em;margin-bottom:32px">Dashboard Financeiro</div>
     <div id="auth-form-wrap">
-      <label style="font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:.05em">E-mail</label>
+      <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">E-mail</label>
       <input id="auth-email" type="email" placeholder="seu@email.com"
-        style="width:100%;padding:11px 14px;border:1.5px solid #e0e0e0;border-radius:10px;margin:6px 0 16px;font-size:14px;box-sizing:border-box;outline:none;transition:border .2s"
+        style="width:100%;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 16px;font-size:14px;box-sizing:border-box;outline:none;transition:border .2s;font-family:Inter,sans-serif"
+        onfocus="this.style.borderColor='#381c17'" onblur="this.style.borderColor='#c7c3db'"
         onkeydown="if(event.key==='Enter')sbSendMagicLink()">
       <button onclick="sbSendMagicLink()"
-        style="width:100%;padding:13px;background:#1a6b5a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s"
-        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-        Enviar link de acesso
+        style="width:100%;padding:13px;background:#381c17;color:#f4ede4;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;font-family:Inter,sans-serif;letter-spacing:.02em"
+        onmouseover="this.style.opacity='.86'" onmouseout="this.style.opacity='1'">
+        Acessar dashboard
       </button>
-      <div id="auth-msg" style="margin-top:12px;font-size:13px;text-align:center;color:#888;min-height:18px"></div>
+      <div id="auth-msg" style="margin-top:12px;font-size:13px;text-align:center;color:#a09080;min-height:18px"></div>
     </div>
     <div id="auth-sent-wrap" style="display:none;text-align:center;padding:8px 0">
-      <div style="font-size:44px;margin-bottom:12px">📬</div>
-      <div style="font-weight:700;font-size:16px;margin-bottom:8px;color:#1a6b5a">Link enviado!</div>
-      <div style="font-size:13px;color:#666;line-height:1.6">Verifique seu e-mail e clique no link para acessar o dashboard.</div>
-      <button onclick="document.getElementById('auth-sent-wrap').style.display='none';document.getElementById('auth-form-wrap').style.display='block'" style="margin-top:20px;font-size:12px;color:#888;background:none;border:none;cursor:pointer;text-decoration:underline">Usar outro e-mail</button>
+      <div style="width:56px;height:56px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px">📬</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:8px;color:#381c17;font-family:Inter,sans-serif">Link enviado!</div>
+      <div style="font-size:13px;color:#7a6a60;line-height:1.7">Verifique seu e-mail e clique no link para acessar o dashboard.</div>
+      <button onclick="document.getElementById('auth-sent-wrap').style.display='none';document.getElementById('auth-form-wrap').style.display='block'" style="margin-top:20px;font-size:12px;color:#a09080;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif">Usar outro e-mail</button>
     </div>
   </div>
 </div>
@@ -2953,16 +2959,19 @@ function bootApp(){
   if(_sbUser && _sbRole === null){
     document.getElementById('client-screen').classList.add('hidden');
     document.body.innerHTML = `
-      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f5f0eb;font-family:Inter,sans-serif;padding:32px;text-align:center">
-        <svg width="120" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:24px">
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f4ede4;font-family:Inter,sans-serif;padding:32px;text-align:center">
+        <svg width="148" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:32px">
           <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
           <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
           <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
           <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
         </svg>
-        <h2 style="color:#381c17;font-size:20px;margin:0 0 12px">Acesso em configuração</h2>
-        <p style="color:#666;max-width:340px;line-height:1.6;margin:0 0 24px">Seu cadastro foi confirmado. Assim que sua consultora ativar seu acesso, você poderá visualizar seu dashboard.</p>
-        <button onclick="if(_sb)_sb.auth.signOut().then(()=>{location.href='/'})" style="background:#381c17;color:#f5f0eb;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;font-size:14px">Sair</button>
+        <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:360px;box-shadow:0 4px 32px rgba(56,28,23,.08)">
+          <div style="width:48px;height:48px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px">⏳</div>
+          <h2 style="color:#381c17;font-size:18px;font-weight:700;margin:0 0 10px;letter-spacing:-.01em">Acesso em preparação</h2>
+          <p style="color:#7a6a60;max-width:300px;line-height:1.7;margin:0 auto 28px;font-size:14px">Cadastro confirmado. Sua consultora está estruturando seu dashboard — você receberá o acesso em breve.</p>
+          <button onclick="if(_sb)_sb.auth.signOut().then(()=>{location.href='/'})" style="background:#381c17;color:#f4ede4;border:none;padding:11px 28px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">Sair</button>
+        </div>
       </div>`;
     return;
   }
