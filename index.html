@@ -2256,6 +2256,20 @@ async function sbLoadData(user) {
   const ADVISOR_EMAILS = ['gestaojanainamachado@gmail.com'];
   _sbRole = prof?.role || (ADVISOR_EMAILS.includes(user.email) ? 'advisor' : null);
   _sbSlug = prof?.slug || null;
+  // Advisor: sync localStorage → Supabase em background (clientes que só existem localmente)
+  if(_sbRole === 'advisor'){
+    (async()=>{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(!k||!k.startsWith('structa_v4_'))continue;
+        const s=k.replace('structa_v4_','');
+        try{
+          const d=JSON.parse(localStorage.getItem(k)||'{}');
+          await _sb.from('client_data').upsert({slug:s,advisor_id:user.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true});
+        }catch(_){}
+      }
+    })();
+  }
   // Se cliente logado sem slug na URL → redireciona para seu dashboard
   if(_sbRole === 'client' && _sbSlug && !_cid) {
     location.href = location.pathname + '?c=' + _sbSlug;
@@ -4645,8 +4659,8 @@ async function renderClientScreen(){
   // Clientes do Supabase (somente se logada como advisor)
   let sbClients=[];
   if(_sb && _sbUser && _sbRole==='advisor'){
-    const {data}=await _sb.from('profiles').select('slug,email').eq('advisor_id',_sbUser.id).eq('role','client');
-    if(data) sbClients=data.filter(c=>c.slug);
+    const {data}=await _sb.from('client_data').select('slug,data').eq('advisor_id',_sbUser.id);
+    if(data) sbClients=data.map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' ')}));
   }
   // Merge: evita duplicatas por slug
   const localSlugs=new Set(localClients.map(c=>c.slug));
@@ -4696,6 +4710,11 @@ async function sbCreateWorkspace(sendEmail){
   if(!localStorage.getItem(key)){
     const s=freshState();s.name=name;if(email)s.inviteEmail=email;
     localStorage.setItem(key,JSON.stringify(s));
+  }
+  // 1b. Salvar no Supabase imediatamente
+  if(_sb && _sbUser && _sbRole==='advisor'){
+    const d=JSON.parse(localStorage.getItem(key)||'{}');
+    _sb.from('client_data').upsert({slug,advisor_id:_sbUser.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true}).catch(e=>console.warn('sb create client:',e));
   }
   // 2. Enviar convite se solicitado
   if(sendEmail&&email){
