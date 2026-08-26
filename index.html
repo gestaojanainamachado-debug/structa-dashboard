@@ -808,11 +808,21 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       </button>
       <div id="auth-msg" style="margin-top:12px;font-size:13px;text-align:center;color:#a09080;min-height:18px"></div>
     </div>
-    <div id="auth-sent-wrap" style="display:none;text-align:center;padding:8px 0">
-      <div style="width:56px;height:56px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px">📬</div>
-      <div style="font-weight:700;font-size:16px;margin-bottom:8px;color:#381c17;font-family:Inter,sans-serif">Link enviado!</div>
-      <div style="font-size:13px;color:#7a6a60;line-height:1.7">Verifique seu e-mail e clique no link para acessar o dashboard.</div>
-      <button onclick="document.getElementById('auth-sent-wrap').style.display='none';document.getElementById('auth-form-wrap').style.display='block'" style="margin-top:20px;font-size:12px;color:#a09080;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif">Usar outro e-mail</button>
+    <div id="auth-sent-wrap" style="display:none;padding:4px 0">
+      <div style="font-weight:700;font-size:16px;margin-bottom:6px;color:#381c17;font-family:Inter,sans-serif">Código enviado!</div>
+      <div style="font-size:13px;color:#7a6a60;line-height:1.6;margin-bottom:20px">Verifique seu e-mail e digite o código de 6 dígitos abaixo.</div>
+      <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">Código</label>
+      <input id="auth-otp" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
+        style="width:100%;padding:13px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 14px;font-size:22px;box-sizing:border-box;outline:none;letter-spacing:.3em;text-align:center;font-family:Inter,sans-serif;transition:border .2s"
+        onfocus="this.style.borderColor='#381c17'" onblur="this.style.borderColor='#c7c3db'"
+        onkeydown="if(event.key==='Enter')sbVerifyOtp()">
+      <button onclick="sbVerifyOtp()"
+        style="width:100%;padding:13px;background:#381c17;color:#f4ede4;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif;letter-spacing:.02em;transition:opacity .2s"
+        onmouseover="this.style.opacity='.86'" onmouseout="this.style.opacity='1'">
+        Entrar
+      </button>
+      <div id="auth-otp-msg" style="margin-top:10px;font-size:13px;text-align:center;color:#c0392b;min-height:18px"></div>
+      <button onclick="document.getElementById('auth-sent-wrap').style.display='none';document.getElementById('auth-form-wrap').style.display='block';document.getElementById('auth-otp').value=''" style="margin-top:12px;font-size:12px;color:#a09080;background:none;border:none;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif">Usar outro e-mail</button>
     </div>
   </div>
 </div>
@@ -2190,22 +2200,38 @@ let _sbRole = null;      // 'advisor' | 'client'
 let _sbSlug = null;      // slug do perfil do usuário logado (clientes)
 let _sbSaveTimer = null; // debounce do sync
 
+let _authEmail = '';
+
 async function sbSendMagicLink() {
   const email = (document.getElementById('auth-email')?.value||'').trim();
   const msg   = document.getElementById('auth-msg');
   if(!email || !email.includes('@')) { if(msg) msg.textContent = 'E-mail inválido.'; return; }
   if(!_sb) { if(msg) msg.textContent = 'Supabase não configurado.'; return; }
   if(msg) msg.textContent = 'Enviando…';
-  const {error} = await _sb.auth.signInWithOtp({
-    email,
-    options: { emailRedirectTo: location.origin + location.pathname }
-  });
+  const {error} = await _sb.auth.signInWithOtp({ email });
   if(error) {
     if(msg) msg.textContent = 'Erro: ' + error.message;
   } else {
+    _authEmail = email;
     document.getElementById('auth-form-wrap').style.display = 'none';
     document.getElementById('auth-sent-wrap').style.display = 'block';
+    setTimeout(() => document.getElementById('auth-otp')?.focus(), 100);
   }
+}
+
+async function sbVerifyOtp() {
+  const code = (document.getElementById('auth-otp')?.value||'').trim();
+  const msg  = document.getElementById('auth-otp-msg');
+  if(code.length !== 6) { if(msg) msg.textContent = 'Digite os 6 dígitos do código.'; return; }
+  if(msg) msg.textContent = '';
+  const btn = document.querySelector('#auth-sent-wrap button[onclick="sbVerifyOtp()"]');
+  if(btn) btn.textContent = 'Verificando…';
+  const {error} = await _sb.auth.verifyOtp({ email: _authEmail, token: code, type: 'email' });
+  if(error) {
+    if(msg) msg.textContent = 'Código inválido ou expirado. Tente novamente.';
+    if(btn) btn.textContent = 'Entrar';
+  }
+  // Se sucesso, o onAuthStateChange cuida do login automaticamente
 }
 
 function sbShowAuthOverlay() {
