@@ -810,10 +810,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
     <div id="auth-sent-wrap" style="display:none;padding:4px 0">
       <div style="font-weight:700;font-size:16px;margin-bottom:6px;color:#381c17;font-family:Inter,sans-serif">Código enviado!</div>
-      <div style="font-size:13px;color:#7a6a60;line-height:1.6;margin-bottom:20px">Verifique seu e-mail e digite o código de 6 dígitos abaixo.</div>
+      <div style="font-size:13px;color:#7a6a60;line-height:1.6;margin-bottom:20px">Verifique seu e-mail e digite o código de acesso abaixo.</div>
       <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">Código</label>
-      <input id="auth-otp" type="text" inputmode="numeric" maxlength="6" placeholder="000000"
-        style="width:100%;padding:13px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 14px;font-size:22px;box-sizing:border-box;outline:none;letter-spacing:.3em;text-align:center;font-family:Inter,sans-serif;transition:border .2s"
+      <input id="auth-otp" type="text" inputmode="numeric" maxlength="8" placeholder="00000000"
+        style="width:100%;padding:13px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 14px;font-size:20px;box-sizing:border-box;outline:none;letter-spacing:.2em;text-align:center;font-family:Inter,sans-serif;transition:border .2s"
         onfocus="this.style.borderColor='#381c17'" onblur="this.style.borderColor='#c7c3db'"
         onkeydown="if(event.key==='Enter')sbVerifyOtp()">
       <button onclick="sbVerifyOtp()"
@@ -2222,7 +2222,7 @@ async function sbSendMagicLink() {
 async function sbVerifyOtp() {
   const code = (document.getElementById('auth-otp')?.value||'').trim();
   const msg  = document.getElementById('auth-otp-msg');
-  if(code.length !== 6) { if(msg) msg.textContent = 'Digite os 6 dígitos do código.'; return; }
+  if(code.length < 6) { if(msg) msg.textContent = 'Digite o código completo.'; return; }
   if(msg) msg.textContent = '';
   const btn = document.querySelector('#auth-sent-wrap button[onclick="sbVerifyOtp()"]');
   if(btn) btn.textContent = 'Verificando…';
