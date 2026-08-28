@@ -837,6 +837,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   </svg>
   <div class="cs-title">Selecione o cliente</div>
   <div class="cs-sub">Cada cliente tem seus dados isolados e um link próprio.</div>
+  <button id="cs-logout-btn" style="display:none;background:transparent;border:1px solid rgba(56,28,23,.25);color:#381c17;font-family:inherit;font-size:11px;padding:4px 14px;border-radius:6px;cursor:pointer;margin-bottom:8px;opacity:.65" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.65" onclick="sbLogout()">Sair da conta</button>
   <div id="cs-list" class="cs-list"></div>
   <div class="cs-new">
     <input type="text" id="cs-new-name" placeholder="Nome do novo cliente…" onkeydown="if(event.key==='Enter')csCreate()">
@@ -3010,7 +3011,7 @@ function bootApp(){
           <div style="width:48px;height:48px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px">⏳</div>
           <h2 style="color:#381c17;font-size:18px;font-weight:700;margin:0 0 10px;letter-spacing:-.01em">Acesso em preparação</h2>
           <p style="color:#7a6a60;max-width:300px;line-height:1.7;margin:0 auto 28px;font-size:14px">Cadastro confirmado. Sua consultora está estruturando seu dashboard — você receberá o acesso em breve.</p>
-          <button onclick="if(_sb)_sb.auth.signOut().then(()=>{location.href='/'})" style="background:#381c17;color:#f4ede4;border:none;padding:11px 28px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">Sair</button>
+          <button onclick="(_sb?_sb.auth.signOut():Promise.resolve()).finally(()=>{location.href='/'})" style="background:#381c17;color:#f4ede4;border:none;padding:11px 28px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">Sair</button>
         </div>
       </div>`;
     return;
@@ -4641,9 +4642,11 @@ function csAllClients(){
   return clients.sort((a,b)=>a.name.localeCompare(b.name));
 }
 async function renderClientScreen(){
-  // Mostra seção de convite se a consultora está logada via Supabase
+  // Mostra seção de convite e botão de logout se a consultora está logada via Supabase
   if(_sbUser && _sbRole === 'advisor'){
     document.getElementById('sb-invite-section').style.display='block';
+    const logoutBtn=document.getElementById('cs-logout-btn');
+    if(logoutBtn){logoutBtn.style.display='inline-block';logoutBtn.textContent='Sair ('+(_sbUser.email||'conta')+')';}
     const nameInp=document.getElementById('inv-name');
     if(nameInp && !nameInp._slugListener){
       nameInp._slugListener=true;
@@ -4711,11 +4714,16 @@ async function sbCreateWorkspace(sendEmail){
     const s=freshState();s.name=name;if(email)s.inviteEmail=email;
     localStorage.setItem(key,JSON.stringify(s));
   }
-  // 1b. Salvar no Supabase imediatamente
-  if(_sb && _sbUser && _sbRole==='advisor'){
-    const d=JSON.parse(localStorage.getItem(key)||'{}');
-    _sb.from('client_data').upsert({slug,advisor_id:_sbUser.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true}).catch(e=>console.warn('sb create client:',e));
-  }
+  // 1b. Salvar no Supabase (fire-and-forget, nunca bloqueia o fluxo)
+  try{
+    if(_sb && _sbUser && _sbRole==='advisor'){
+      const d=JSON.parse(localStorage.getItem(key)||'{}');
+      Promise.resolve(_sb.from('client_data').upsert(
+        {slug,advisor_id:_sbUser.id,data:d,updated_at:new Date().toISOString()},
+        {onConflict:'slug',ignoreDuplicates:false}
+      )).catch(e=>console.warn('sb create client:',e));
+    }
+  }catch(e){console.warn('sb upsert setup:',e);}
   // 2. Enviar convite se solicitado
   if(sendEmail&&email){
     if(!_sb||!_sbUser){msg.style.color='#c0392b';msg.textContent='Workspace criado, mas Supabase não conectado.';setTimeout(()=>csOpenAdmin(slug),1500);return;}
