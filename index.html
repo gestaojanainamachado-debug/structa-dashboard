@@ -6506,11 +6506,13 @@ function convImportToDash(){
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value);
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
-    S.transactions.push({
+    const tx={
       id:Date.now()+'_'+count+'_'+Math.random().toString(36).substr(2,5),
       date:iso,dataPgto:iso,desc:cleanName,descOriginal:t.desc,
-      amount:amount,catId:cat,grp:grp,pgto:'outros',
-    });
+      amount:amount,catId:cat,grp:grp,pgto:(t.pgto&&t.pgto.trim())||'outros',
+    };
+    if(t.parcela)tx.parcela=t.parcela;
+    S.transactions.push(tx);
     count++;
   });
   save();recalc();renderTxList();renderAll();
@@ -7819,6 +7821,19 @@ function convParseCSVText(text){
   });
 }
 
+// Se a primeira linha for um cabeçalho com os nomes de coluna do próprio
+// conversor (data,historico,parcela,data_pgto,catId,grp,pgto,valor), mapeia
+// direto pelo nome em vez de tentar adivinhar pelo conteúdo.
+function guessColumnsByHeader(rows,maxCols){
+  if(!rows.length||!isLikelyHeader(rows[0]))return null;
+  const hdr=rows[0].map(h=>(h??'').toString().toLowerCase().trim().replace(/[^a-z_]/g,''));
+  if(!hdr.includes('catid')&&!hdr.includes('historico'))return null; // não é o formato do conversor
+  const map={data:'data',historico:'desc',valor:'valor',catid:'catid',parcela:'parcela',pgto:'pgto'};
+  const guesses=Array(maxCols).fill('ignorar');
+  hdr.forEach((h,c)=>{if(map[h])guesses[c]=map[h];});
+  return guesses;
+}
+
 function autoGuessColumns(rows,maxCols){
   const guesses=Array(maxCols).fill('ignorar');
   const sample=rows.slice(0,Math.min(8,rows.length));
@@ -7863,8 +7878,8 @@ function convShowMapper(rows,type){
   mapper.style.display='block';
   const maxCols=Math.max(...rows.slice(0,10).map(r=>(r||[]).length),1);
   const previewRows=rows.slice(0,6);
-  const guesses=autoGuessColumns(rows,maxCols);
-  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito']];
+  const guesses=guessColumnsByHeader(rows,maxCols)||autoGuessColumns(rows,maxCols);
+  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito'],['catid','Classificação'],['parcela','Parcela'],['pgto','Forma de Pagamento']];
   let tbl='<table style="border-collapse:collapse;font-size:11px;white-space:nowrap"><thead><tr>';
   for(let c=0;c<maxCols;c++){
     tbl+=`<th style="padding:4px 6px;background:var(--bg);border:1px solid var(--border);min-width:110px"><select id="conv-col-${c}" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;width:100%">`;
@@ -7888,12 +7903,13 @@ function convShowMapper(rows,type){
 
 function convApplyMapping(){
   const maxCols=Math.max(..._mapperRows.slice(0,10).map(r=>(r||[]).length),1);
-  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1;
+  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1,catCol=-1,parcCol=-1,pgtoCol=-1;
   for(let c=0;c<maxCols;c++){
     const sel=document.getElementById(`conv-col-${c}`);if(!sel)continue;
     switch(sel.value){
       case'data':dateCol=c;break;case'desc':descCol=c;break;case'valor':valCol=c;break;
       case'debito':debCol=c;break;case'credito':credCol=c;break;
+      case'catid':catCol=c;break;case'parcela':parcCol=c;break;case'pgto':pgtoCol=c;break;
     }
   }
   if(dateCol===-1||descCol===-1||(valCol===-1&&debCol===-1)){
@@ -7912,8 +7928,20 @@ function convApplyMapping(){
       const cred=Math.abs(convParseBR((row[credCol]??'').toString())??0);
       value=cred>0?cred:-deb;
     }
-    const cat=classifyTx(desc,value);
-    txns.push({date,desc,value,cat});
+    // Se a coluna de Classificação já traz um catId válido (ex.: reimportação
+    // de um CSV exportado por este conversor), usa direto — não reclassifica
+    // e não perde correções manuais já feitas.
+    const rawCat=catCol>=0?(row[catCol]??'').toString().trim():'';
+    let cat;
+    if(rawCat&&CAT[rawCat]){
+      cat=rawCat;
+      value=cat.startsWith('r_')?Math.abs(value):-Math.abs(value);
+    }else{
+      cat=classifyTx(desc,value);
+    }
+    const parcela=parcCol>=0?(row[parcCol]??'').toString().trim():'';
+    const pgto=pgtoCol>=0?(row[pgtoCol]??'').toString().trim():'';
+    txns.push({date,desc,value,cat,parcela,pgto});
   }
   if(!txns.length){alert('Nenhuma transação válida encontrada. Verifique o mapeamento de colunas.');return;}
   document.getElementById('conv-mapper').style.display='none';
@@ -8135,7 +8163,9 @@ function convExportCSV(){
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value).toFixed(2);
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
-    rows.push([t.date,cleanName,convExtractParcela(t.desc)||'','',cat,grp,'pix',amount]);
+    const parcela=(t.parcela!=null&&t.parcela!=='')?t.parcela:(convExtractParcela(t.desc)||'');
+    const pgto=(t.pgto&&t.pgto.trim())||'pix';
+    rows.push([t.date,cleanName,parcela,'',cat,grp,pgto,amount]);
   });
   const csv=rows.map(r=>r.map(convQCSV).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
