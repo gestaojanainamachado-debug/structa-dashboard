@@ -798,15 +798,28 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div id="auth-form-wrap">
       <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">E-mail</label>
       <input id="auth-email" type="email" placeholder="seu@email.com"
-        style="width:100%;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 16px;font-size:14px;box-sizing:border-box;outline:none;transition:border .2s;font-family:Inter,sans-serif"
+        style="width:100%;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 12px;font-size:14px;box-sizing:border-box;outline:none;transition:border .2s;font-family:Inter,sans-serif"
         onfocus="this.style.borderColor='#381c17'" onblur="this.style.borderColor='#c7c3db'"
-        onkeydown="if(event.key==='Enter')sbSendMagicLink()">
-      <button onclick="sbSendMagicLink()"
+        onkeydown="if(event.key==='Enter')sbSignIn()">
+      <div id="auth-pass-section" style="display:none">
+        <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">Senha</label>
+        <input id="auth-password" type="password" placeholder="••••••••"
+          style="width:100%;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 12px;font-size:14px;box-sizing:border-box;outline:none;transition:border .2s;font-family:Inter,sans-serif"
+          onfocus="this.style.borderColor='#381c17'" onblur="this.style.borderColor='#c7c3db'"
+          onkeydown="if(event.key==='Enter')sbSignIn()">
+      </div>
+      <button onclick="sbSignIn()"
         style="width:100%;padding:13px;background:#381c17;color:#f4ede4;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;font-family:Inter,sans-serif;letter-spacing:.02em"
         onmouseover="this.style.opacity='.86'" onmouseout="this.style.opacity='1'">
         Acessar dashboard
       </button>
       <div id="auth-msg" style="margin-top:12px;font-size:13px;text-align:center;color:#a09080;min-height:18px"></div>
+      <div style="text-align:center;margin-top:8px">
+        <button onclick="toggleAuthPass()" id="auth-pass-toggle"
+          style="background:none;border:none;font-size:12px;color:#a09080;cursor:pointer;font-family:Inter,sans-serif;text-decoration:underline">
+          Já tenho uma senha
+        </button>
+      </div>
     </div>
     <div id="auth-sent-wrap" style="display:none;padding:4px 0">
       <div style="font-weight:700;font-size:16px;margin-bottom:6px;color:#381c17;font-family:Inter,sans-serif">Código enviado!</div>
@@ -2203,15 +2216,46 @@ let _sbSaveTimer = null; // debounce do sync
 
 let _authEmail = '';
 
+function toggleAuthPass() {
+  const sec = document.getElementById('auth-pass-section');
+  const btn = document.getElementById('auth-pass-toggle');
+  if(!sec) return;
+  const show = sec.style.display === 'none';
+  sec.style.display = show ? 'block' : 'none';
+  if(btn) btn.textContent = show ? 'Entrar só com e-mail (código)' : 'Já tenho uma senha';
+  if(show) setTimeout(() => document.getElementById('auth-password')?.focus(), 50);
+}
+
+async function sbSignIn() {
+  const email    = (document.getElementById('auth-email')?.value||'').trim();
+  const password = (document.getElementById('auth-password')?.value||'');
+  const msg      = document.getElementById('auth-msg');
+  if(!email || !email.includes('@')) { if(msg) msg.textContent = 'E-mail inválido.'; return; }
+  if(!_sb) { if(msg) msg.textContent = 'Supabase não configurado.'; return; }
+  if(password) {
+    // Login com senha
+    if(msg) msg.textContent = 'Entrando…';
+    const {error} = await _sb.auth.signInWithPassword({ email, password });
+    if(error) {
+      if(msg) { msg.style.color='#c0392b'; msg.textContent = 'Senha incorreta ou conta não existe.'; }
+    } else {
+      if(msg) msg.textContent = '';
+    }
+    // Sucesso → onAuthStateChange cuida do resto
+  } else {
+    await sbSendMagicLink();
+  }
+}
+
 async function sbSendMagicLink() {
   const email = (document.getElementById('auth-email')?.value||'').trim();
   const msg   = document.getElementById('auth-msg');
   if(!email || !email.includes('@')) { if(msg) msg.textContent = 'E-mail inválido.'; return; }
   if(!_sb) { if(msg) msg.textContent = 'Supabase não configurado.'; return; }
-  if(msg) msg.textContent = 'Enviando…';
+  if(msg) { msg.style.color='#a09080'; msg.textContent = 'Enviando código…'; }
   const {error} = await _sb.auth.signInWithOtp({ email });
   if(error) {
-    if(msg) msg.textContent = 'Erro: ' + error.message;
+    if(msg) { msg.style.color='#c0392b'; msg.textContent = 'Erro: ' + error.message; }
   } else {
     _authEmail = email;
     document.getElementById('auth-form-wrap').style.display = 'none';
@@ -2257,6 +2301,21 @@ async function sbLoadData(user) {
   const ADVISOR_EMAILS = ['gestaojanainamachado@gmail.com'];
   _sbRole = prof?.role || (ADVISOR_EMAILS.includes(user.email) ? 'advisor' : null);
   _sbSlug = prof?.slug || null;
+  // Se cliente logou mas perfil não tem role: tentar ativar via pending_invites
+  if(!_sbRole && !ADVISOR_EMAILS.includes(user.email)) {
+    try {
+      const {data: inv} = await _sb.from('pending_invites')
+        .select('slug,advisor_id').eq('email', user.email).maybeSingle();
+      if(inv) {
+        await _sb.from('profiles').upsert(
+          {id: user.id, email: user.email, role: 'client', slug: inv.slug, advisor_id: inv.advisor_id},
+          {onConflict: 'id'}
+        );
+        _sbRole = 'client';
+        _sbSlug = inv.slug;
+      }
+    } catch(e) { console.warn('invite activation failed:', e); }
+  }
   // Advisor: sync localStorage → Supabase em background (clientes que só existem localmente)
   if(_sbRole === 'advisor'){
     (async()=>{
@@ -4870,33 +4929,66 @@ function exportData(){
 }
 
 // ── PERMISSÕES ────────────────────────────────────────────────────────────────
-// Abas que clientes só podem visualizar (não editar)
-// Clientes podem editar apenas: lancamentos e fluxopgto
-const LOCKED_TABS=['orcamento','diagnostico','projecao','objetivos','simulador','aposent','irpgbl','seguranca','dividas','investimentos','patrimonio'];
+// Tabs visíveis para clientes (as outras ficam ocultas)
+const CLIENT_TABS = ['orcamento','lancamentos','fluxopgto','objetivos'];
+// Tabs que o cliente vê mas não pode editar
+const CLIENT_READONLY = ['orcamento','objetivos'];
+
 function applyPermissions(){
   const sbClientMode = _sbUser && _sbRole === 'client';
-  // Advisor (role='advisor' ou acesso via ?admin=1): acesso total sem restrições
+  // Advisor: acesso total
   if(_isAdmin && !sbClientMode) return;
   if(_sbUser && _sbRole === 'advisor') return;
-  // Cliente: bloqueia todas as abas exceto lancamentos e fluxopgto
-  LOCKED_TABS.forEach(tab=>{
-    // Banner visível
-    const banner=document.getElementById('banner-'+tab);
-    if(banner)banner.style.display='flex';
-    // Desabilita inputs, selects, textareas e botões dentro do painel
-    const panel=document.getElementById('panel-'+tab);
-    if(!panel)return;
-    panel.querySelectorAll('input,select,textarea,button').forEach(el=>{
-      el.disabled=true;
-      el.style.pointerEvents='none';
-    });
-    panel.style.userSelect='none';
+  // Cliente: esconder tabs fora da lista e bloquear edição nas somente-leitura
+  document.querySelectorAll('#tab-bar .tab').forEach(t => {
+    const name = t.getAttribute('data-tab');
+    if(!CLIENT_TABS.includes(name)) t.style.display = 'none';
   });
-  // Oculta botão "+" e ações dentro das abas bloqueadas
-  ['obj-add-btn'].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display='none';});
-  // Bloqueia edição do nome do cliente no header
-  const nameInput=document.getElementById('clientName');
-  if(nameInput){nameInput.disabled=true;nameInput.style.pointerEvents='none';}
+  // Painéis somente-leitura para o cliente
+  CLIENT_READONLY.forEach(tab => {
+    const panel = document.getElementById('panel-' + tab);
+    if(!panel) return;
+    panel.querySelectorAll('input,select,textarea,button').forEach(el => {
+      el.disabled = true;
+      el.style.pointerEvents = 'none';
+    });
+    panel.style.userSelect = 'none';
+    // Mostrar banner informativo se existir
+    const banner = document.getElementById('banner-' + tab);
+    if(banner) banner.style.display = 'flex';
+  });
+  // Bloqueia edição do nome no header
+  const nameInput = document.getElementById('clientName');
+  if(nameInput) { nameInput.disabled = true; nameInput.style.pointerEvents = 'none'; }
+  // Oculta botão de adicionar objetivo
+  const objAdd = document.getElementById('obj-add-btn');
+  if(objAdd) objAdd.style.display = 'none';
+  // Mostrar botão "Criar senha" para o cliente criar/alterar senha
+  sbShowSetPasswordBtn();
+}
+
+function sbShowSetPasswordBtn() {
+  if(document.getElementById('sb-set-pass-btn')) return; // já existe
+  const hdr = document.querySelector('.hdr-right');
+  if(!hdr) return;
+  const btn = document.createElement('button');
+  btn.id = 'sb-set-pass-btn';
+  btn.textContent = '🔑 Criar senha';
+  btn.title = 'Criar ou alterar sua senha de acesso';
+  btn.style.cssText = 'margin-top:6px;display:block;background:transparent;border:1px solid rgba(56,28,23,.3);color:#381c17;font-family:inherit;font-size:10px;padding:3px 10px;border-radius:4px;cursor:pointer;opacity:.7;white-space:nowrap';
+  btn.onmouseover = () => btn.style.opacity = '1';
+  btn.onmouseout  = () => btn.style.opacity = '.7';
+  btn.onclick = sbSetPassword;
+  hdr.appendChild(btn);
+}
+
+async function sbSetPassword() {
+  const pwd = prompt('Crie uma senha para acessar o dashboard sem precisar de código:\n(mínimo 6 caracteres)');
+  if(!pwd) return;
+  if(pwd.length < 6) { alert('Senha muito curta. Use pelo menos 6 caracteres.'); return; }
+  const {error} = await _sb.auth.updateUser({ password: pwd });
+  if(error) { alert('Erro ao salvar senha: ' + error.message); }
+  else { alert('✓ Senha criada! Na próxima vez, use seu e-mail + senha para entrar.'); }
 }
 
 // ── RELATÓRIO ────────────────────────────────────────────────────────────────
