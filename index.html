@@ -1796,7 +1796,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <table style="width:100%;border-collapse:collapse">
           <thead>
             <tr>
-              <th style="background:var(--bg);color:var(--muted);padding:7px 10px;text-align:left;font-size:11px;font-weight:500;border-bottom:1px solid var(--border)">Estabelecimento</th>
+              <th style="background:var(--bg);color:var(--muted);padding:7px 10px;text-align:left;font-size:11px;font-weight:500;border-bottom:1px solid var(--border)">Trecho no extrato</th>
+              <th style="background:var(--bg);color:var(--muted);padding:7px 10px;text-align:left;font-size:11px;font-weight:500;border-bottom:1px solid var(--border)">Nome limpo</th>
               <th style="background:var(--bg);color:var(--muted);padding:7px 10px;text-align:left;font-size:11px;font-weight:500;border-bottom:1px solid var(--border)">Categoria</th>
               <th style="background:var(--bg);padding:7px 10px;border-bottom:1px solid var(--border);width:40px"></th>
             </tr>
@@ -2417,6 +2418,7 @@ function freshState(){
       pilaresStatus:[{s:'',n:''},{s:'',n:''},{s:'',n:''},{s:'',n:''}],
     },
     merchants:{},  // {normalizedKey: catId} — memória de estabelecimentos (persiste com o cliente)
+    merchantNames:{}, // {normalizedKey: nomeLimpo} — memória de nomes de estabelecimento corrigidos
   };
 }
 let S=freshState();
@@ -3133,6 +3135,7 @@ function bootApp(){
   if(!S.diagnostico.passos)S.diagnostico.passos=[];
   if(!S.monthlyBudgets)S.monthlyBudgets={};
   if(!S.merchants)S.merchants={};
+  if(!S.merchantNames)S.merchantNames={};
   seedMerchants();
   renderAll();buildCatSelect();buildPgtoSelect();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
@@ -6502,9 +6505,10 @@ function convImportToDash(){
     const cat=t.cat||'v_outras';
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value);
+    const cleanName=t.cleanName||cleanMerchantName(t.desc);
     S.transactions.push({
       id:Date.now()+'_'+count+'_'+Math.random().toString(36).substr(2,5),
-      date:iso,dataPgto:iso,desc:t.desc,
+      date:iso,dataPgto:iso,desc:cleanName,descOriginal:t.desc,
       amount:amount,catId:cat,grp:grp,pgto:'outros',
     });
     count++;
@@ -6589,6 +6593,42 @@ const MERCHANT_SEEDS={
   'coursera':'v_curso','udemy':'v_curso','alura':'v_curso',
 };
 
+// Nomes de exibição "limpos" para os mesmos estabelecimentos comuns acima.
+// Usado para corrigir nomes confusos vindos do extrato (ex.: "PAG*IFOOD8342" → "iFood").
+const MERCHANT_DISPLAY_SEEDS={
+  'carrefour':'Carrefour','extra supermercado':'Extra','assai':'Assaí',
+  'atacadao':'Atacadão','pao de acucar':'Pão de Açúcar','big supermercado':'Big',
+  'sams club':"Sam's Club",'makro':'Makro','dia supermercado':'Dia',
+  'hiperpan':'Hiperpan','rede super':'Rede Super','supernosso':'Super Nosso',
+  'drogasil':'Drogasil','droga raia':'Droga Raia','ultrafarma':'Ultrafarma',
+  'drogaria sao paulo':'Drogaria São Paulo','pacheco':'Pacheco','farmacias brasileira':'Farmácias Brasileira',
+  'nissei':'Nissei','panvel':'Panvel','farmacia popular':'Farmácia Popular',
+  'ifood':'iFood','rappi':'Rappi','uber eats':'Uber Eats',
+  'james delivery':'James Delivery','loggi':'Loggi',
+  'mcdonalds':"McDonald's",'burger king':'Burger King','subway':'Subway',
+  'giraffas':'Giraffas','bob s':"Bob's",'kfc':'KFC',
+  'popeyes':'Popeyes','outback':'Outback','chilis':"Chili's",
+  'petrobras posto':'Posto Petrobras','ipiranga posto':'Posto Ipiranga','shell posto':'Posto Shell',
+  'br distribuidora':'BR Distribuidora','ale combustiveis':'Ale Combustíveis',
+  'uber':'Uber','99 taxi':'99','yellow bike':'Yellow','tembici':'Tembici',
+  'gol linhas aereas':'Gol','latam airlines':'Latam','azul linhas aereas':'Azul',
+  'netflix':'Netflix','spotify':'Spotify','amazon prime':'Amazon Prime',
+  'disney plus':'Disney+','hbo max':'HBO Max','paramount plus':'Paramount+',
+  'globoplay':'Globoplay','telecine':'Telecine','deezer':'Deezer',
+  'google play':'Google Play','apple app store':'App Store','microsoft store':'Microsoft Store',
+  'renner':'Renner','riachuelo':'Riachuelo','c&a':'C&A',
+  'marisa':'Marisa','hering':'Hering','le biscuit':'Le Biscuit',
+  'americanas':'Americanas','shopee':'Shopee','magazine luiza':'Magazine Luiza',
+  'casas bahia':'Casas Bahia','submarino':'Submarino','leroy merlin':'Leroy Merlin',
+  'tok stok':'Tok&Stok','ikea':'Ikea',
+  'salao':'Salão de Beleza','barbearia':'Barbearia','studio':'Studio',
+  'petlove':'Petlove','cobasi':'Cobasi','petshop':'Petshop',
+  'petz':'Petz','agropecuaria':'Agropecuária',
+  'laboratorio':'Laboratório','clinica':'Clínica','consultorio':'Consultório',
+  'hospital':'Hospital','diagnosticos':'Diagnósticos',
+  'coursera':'Coursera','udemy':'Udemy','alura':'Alura',
+};
+
 // Popula S.merchants com seeds que ainda não foram sobrescritos pelo usuário
 function seedMerchants(){
   if(!S||!S.merchants)return;
@@ -6599,6 +6639,69 @@ function seedMerchants(){
     }
   }
   if(changed)save();
+}
+
+// ── Nomes de estabelecimento: limpeza + memória ──────────────────────────────
+let _learnedNames=null;
+function getLearnedNames(){
+  if(_learnedNames)return _learnedNames;
+  _learnedNames=(S&&S.merchantNames)?S.merchantNames:{};
+  return _learnedNames;
+}
+function rememberName(desc,name){
+  const k=learnKeyOf(desc);
+  if(!k||k.length<4||!name||!name.trim())return;
+  if(S&&S.merchantNames){
+    S.merchantNames[k]=name.trim();
+    save();
+    _learnedNames=null;
+  }
+}
+
+// Prefixos/ruídos comuns de extrato/fatura que atrapalham a leitura do nome
+const CONV_NOISE_PATTERNS=[
+  /^compra\s+(no\s+)?cart[aã]o(\s+(de\s+)?cr[eé]dito)?\s*/i,
+  /^compra\s+(com\s+)?d[eé]bito\s*/i,
+  /^pagamento\s+(de\s+)?fatura\s*/i,
+  /^pix\s+(enviado|recebido)\s*(para|de)?\s*/i,
+  /^transfer[eê]ncia\s+pix\s*(para|de)?\s*/i,
+  /^ted\s+(enviada|recebida)\s*(para|de)?\s*/i,
+  /^doc\s+(enviado|recebido)\s*(para|de)?\s*/i,
+  /^d[eé]bito\s+autom[aá]tico\s*/i,
+  /^compra\s*/i,
+];
+
+function convStripNoise(desc){
+  let d=(desc||'').trim();
+  d=d.replace(/\*{2,}[\d.*]+\*{2,}/g,' ');       // CPF/cartão mascarado (**123**)
+  d=d.replace(/^[A-Z0-9]{2,}\*/,'');              // "PAG*NOME" → "NOME"
+  for(const re of CONV_NOISE_PATTERNS){d=d.replace(re,'');}
+  d=d.replace(/\b\d{4,}\b/g,' ');                 // códigos de loja/documento longos
+  d=d.replace(/\s{2,}/g,' ').trim();
+  return d;
+}
+
+function convTitleCase(s){
+  const LOWER=new Set(['de','da','do','das','dos','e','a','o','em','com']);
+  return s.toLowerCase().split(' ').filter(Boolean).map((w,i)=>{
+    if(i>0&&LOWER.has(w))return w;
+    return w.charAt(0).toUpperCase()+w.slice(1);
+  }).join(' ');
+}
+
+// Nome "limpo" para exibição — não altera a classificação, só a legibilidade.
+// Ordem: 1) correção manual já memorizada  2) marca conhecida  3) limpeza genérica
+function cleanMerchantName(desc){
+  if(!desc)return'';
+  const lk=learnKeyOf(desc);
+  const learned=getLearnedNames();
+  if(learned[lk])return learned[lk];
+  const d=convNorm(desc);
+  for(const[seed,name] of Object.entries(MERCHANT_DISPLAY_SEEDS)){
+    if(d.includes(seed))return name;
+  }
+  const stripped=convStripNoise(desc);
+  return stripped?convTitleCase(stripped):desc.trim();
 }
 
 function getLearned(){
@@ -6623,35 +6726,50 @@ function rememberCat(desc,cat){
 
 // ── Funções de gestão da memória de estabelecimentos ─────────────────────────
 function deleteMerchant(k){
-  if(!S||!S.merchants)return;
-  delete S.merchants[k];
+  if(!S)return;
+  if(S.merchants)delete S.merchants[k];
+  if(S.merchantNames)delete S.merchantNames[k];
   // Remove também do legado
   try{const m=JSON.parse(localStorage.getItem(LEARN_KEY)||'{}');delete m[k];localStorage.setItem(LEARN_KEY,JSON.stringify(m));}catch(e){}
-  save();_learned=null;renderMerchantMemory();
+  save();_learned=null;_learnedNames=null;renderMerchantMemory();
 }
 function clearMerchantMemory(){
-  if(!confirm('Apagar toda a memória de estabelecimentos (incluindo seeds)? Isso não pode ser desfeito.'))return;
+  if(!confirm('Apagar toda a memória de estabelecimentos (categorias e nomes, incluindo seeds)? Isso não pode ser desfeito.'))return;
   if(S&&S.merchants)S.merchants={};
+  if(S&&S.merchantNames)S.merchantNames={};
   try{localStorage.removeItem(LEARN_KEY);}catch(e){}
-  save();_learned=null;renderMerchantMemory();
+  save();_learned=null;_learnedNames=null;renderMerchantMemory();
+}
+function merchNameEdit(k,val){
+  const name=(val||'').trim();
+  if(!S||!S.merchantNames)return;
+  if(name)S.merchantNames[k]=name;else delete S.merchantNames[k];
+  save();_learnedNames=null;
 }
 function renderMerchantMemory(){
   const el=document.getElementById('merch-mem-body');
   const cnt=document.getElementById('merch-mem-count');
   if(!el)return;
   const merchants=S&&S.merchants?S.merchants:{};
+  const names=S&&S.merchantNames?S.merchantNames:{};
   const q=(document.getElementById('merch-mem-search')||{}).value||'';
-  const entries=Object.entries(merchants).filter(([k,v])=>!q||k.includes(convNorm(q)));
-  entries.sort((a,b)=>a[0].localeCompare(b[0]));
-  if(cnt)cnt.textContent=`${Object.keys(merchants).length} estabelecimentos`;
+  const allKeys=new Set([...Object.keys(merchants),...Object.keys(names)]);
+  const entries=[...allKeys].filter(k=>!q||k.includes(convNorm(q)));
+  entries.sort((a,b)=>a.localeCompare(b));
+  if(cnt)cnt.textContent=`${entries.length} estabelecimentos`;
   if(!entries.length){
-    el.innerHTML=`<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px;font-size:12px">${q?'Nenhum resultado para a busca.':'Nenhum estabelecimento memorizado ainda.'}</td></tr>`;
+    el.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px;font-size:12px">${q?'Nenhum resultado para a busca.':'Nenhum estabelecimento memorizado ainda.'}</td></tr>`;
     return;
   }
-  el.innerHTML=entries.map(([k,catId])=>{
-    const catName=CAT[catId]||catId;
+  el.innerHTML=entries.map(k=>{
+    const catId=merchants[k];
+    const catName=catId?(CAT[catId]||catId):'—';
+    const name=names[k]||'';
     return`<tr style="border-bottom:1px solid var(--border)">
       <td style="padding:6px 10px;font-size:12px;color:var(--text)">${k}</td>
+      <td style="padding:6px 10px;font-size:12px">
+        <input type="text" value="${convEscHtml(name)}" placeholder="(automático)" onchange="merchNameEdit('${k.replace(/'/g,"\\'")}',this.value)" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:3px 6px;font:inherit;font-size:12px;color:var(--text);background:#fff">
+      </td>
       <td style="padding:6px 10px;font-size:12px;color:var(--muted)">${catName}</td>
       <td style="padding:6px 10px;text-align:right">
         <button onclick="deleteMerchant('${k.replace(/'/g,"\\'")}')" style="background:none;border:none;cursor:pointer;color:#e53935;font-size:13px;padding:2px 6px" title="Remover">✕</button>
@@ -7906,13 +8024,26 @@ function convRenderTable(txns){
     const isInc=t.value>0;
     const vc=isInc?'pos':'neg';
     const sign=isInc?'+':'';
-    return`<tr data-idx="${i}" data-neutral="${isNt}" data-income="${isInc}" data-desc="${convNorm(t.desc)}">
+    const clean=t.cleanName||cleanMerchantName(t.desc);
+    return`<tr data-idx="${i}" data-neutral="${isNt}" data-income="${isInc}" data-desc="${convNorm(t.desc)} ${convNorm(clean)}">
       <td class="date-col">${t.date}</td>
-      <td class="desc-col">${convEscHtml(t.desc)}</td>
+      <td class="desc-col">
+        <input type="text" class="conv-name-edit" value="${convEscHtml(clean)}" title="Original: ${convEscHtml(t.desc)}" onchange="convOnNameChange(this)" style="width:100%;border:1px solid transparent;background:transparent;font:inherit;color:inherit;padding:2px 4px;border-radius:4px" onfocus="this.style.borderColor='var(--border)';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'">
+      </td>
       <td class="val ${vc}">${sign}${convFmtBR(t.value)}</td>
       <td class="cat-col">${convCatHTML(t.cat)}</td>
     </tr>`;
   }).join('');
+}
+
+function convOnNameChange(inp){
+  const row=inp.closest('tr');
+  const idx=+row.dataset.idx;
+  const name=inp.value.trim();
+  if(!name){inp.value=_convTxns[idx].cleanName||cleanMerchantName(_convTxns[idx].desc);return;}
+  _convTxns[idx].cleanName=name;
+  rememberName(_convTxns[idx].desc,name);
+  row.dataset.desc=`${convNorm(_convTxns[idx].desc)} ${convNorm(name)}`;
 }
 
 function convEscHtml(s){
@@ -8003,7 +8134,8 @@ function convExportCSV(){
     const cat=t.cat||'v_outras';
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value).toFixed(2);
-    rows.push([t.date,t.desc,convExtractParcela(t.desc)||'','',cat,grp,'pix',amount]);
+    const cleanName=t.cleanName||cleanMerchantName(t.desc);
+    rows.push([t.date,cleanName,convExtractParcela(t.desc)||'','',cat,grp,'pix',amount]);
   });
   const csv=rows.map(r=>r.map(convQCSV).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
