@@ -2428,6 +2428,7 @@ function freshState(){
     },
     merchants:{},  // {normalizedKey: catId} — memória de estabelecimentos (persiste com o cliente)
     merchantNames:{}, // {normalizedKey: nomeLimpo} — memória de nomes de estabelecimento corrigidos
+    calcInputs:{}, // {inputId: valor} — campos das calculadoras (IR/PGBL, Aposentadoria, Simulador), por cliente
   };
 }
 let S=freshState();
@@ -3145,6 +3146,7 @@ function bootApp(){
   if(!S.monthlyBudgets)S.monthlyBudgets={};
   if(!S.merchants)S.merchants={};
   if(!S.merchantNames)S.merchantNames={};
+  if(!S.calcInputs)S.calcInputs={};
   seedMerchants();
   renderAll();buildCatSelect();buildPgtoSelect();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
@@ -3155,6 +3157,8 @@ function bootApp(){
   if(irC)irC.value=S.irPago?.carneLeao||0;
   if(irO)irO.value=S.irPago?.outros||0;
   const si=document.getElementById('saldo-inicial');if(si)si.value=S.saldoInicial||'';
+  // Restaura e passa a salvar os campos das calculadoras (IR/PGBL, Aposentadoria, Simulador)
+  initCalcPanelsPersistence();
   // Aplicar permissões
   applyPermissions();
 }
@@ -4185,6 +4189,50 @@ function save(){
     _sbSaveTimer=setTimeout(sbSaveNow,3000);
   }
 }
+// ── Persistência genérica dos campos das "calculadoras" (IR/PGBL,
+// Aposentadoria, Simulador) — cada cliente guarda os próprios valores, que
+// ficam salvos até serem alterados (nunca somem ao trocar de aba/cliente).
+function bindCalcPersistence(panelId){
+  const panel=document.getElementById(panelId);
+  if(!panel||panel._calcBound)return;
+  panel._calcBound=true;
+  panel.addEventListener('input',e=>{
+    const el=e.target;
+    if(!el||!el.id||(el.tagName!=='INPUT'&&el.tagName!=='SELECT'&&el.tagName!=='TEXTAREA'))return;
+    if(!S.calcInputs)S.calcInputs={};
+    S.calcInputs[el.id]=(el.type==='checkbox'||el.type==='radio')?el.checked:el.value;
+    save();
+  });
+  panel.addEventListener('change',e=>{
+    const el=e.target;
+    if(!el||!el.id||el.tagName!=='SELECT')return;
+    if(!S.calcInputs)S.calcInputs={};
+    S.calcInputs[el.id]=el.value;
+    save();
+  });
+}
+function restoreCalcFields(panelId){
+  const panel=document.getElementById(panelId);
+  if(!panel||!S.calcInputs)return;
+  panel.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
+    const v=S.calcInputs[el.id];
+    if(v===undefined)return;
+    if(el.type==='checkbox'||el.type==='radio')el.checked=!!v;
+    else el.value=v;
+  });
+}
+function initCalcPanelsPersistence(){
+  ['panel-irpgbl','panel-aposent','panel-simulador'].forEach(bindCalcPersistence);
+  restoreCalcFields('panel-irpgbl');
+  restoreCalcFields('panel-aposent');
+  restoreCalcFields('panel-simulador');
+  // Recalcula tudo com os valores restaurados para os quadros/tabelas já
+  // aparecerem preenchidos, sem esperar o usuário digitar algo.
+  try{irCalc();}catch(e){}
+  try{aposCalc();}catch(e){}
+  try{simCalc();}catch(e){}
+}
+
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
   localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
