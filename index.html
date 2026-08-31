@@ -1946,6 +1946,7 @@ const DEFS={
     {id:'ct_mat',     lbl:'Material / Insumos',                  grpNome:'Custos Profissionais'},
     {id:'ct_cursos',  lbl:'Cursos / Eventos da Área',            grpNome:'Custos Profissionais'},
     {id:'ct_inv_emp', lbl:'Investimentos na Empresa',            grpNome:'Custos Profissionais'},
+    {id:'ct_taxas',   lbl:'Taxas/Anuidades',                     grpNome:'Custos Profissionais'},
     {id:'ct_outros',  lbl:'Outros Profissional',                 grpNome:'Custos Profissionais'},
   ],
   fixas:[
@@ -2032,6 +2033,7 @@ const DEFS={
     {id:'v_irpf',     lbl:'Impostos PF',                       grpNome:'Taxas e Impostos'},
     {id:'v_cartorio', lbl:'Taxas Cartorárias',                grpNome:'Taxas e Impostos'},
     {id:'v_outras',   lbl:'Outros Impostos/Taxas',             grpNome:'Taxas e Impostos'},
+    {id:'v_outrasdesp',lbl:'Outras Despesas',                  grpNome:'Outros'},
   ],
   inv:[
     {id:'i_corr', lbl:'Corretora (Geral)'},
@@ -2051,7 +2053,7 @@ const DEFS={
     {id:'n_reimb',   lbl:'Estorno / Reembolso'},
   ],
 };
-const GRP_ORDER=['Moradia','Alimentação Básica','Saúde','Bem-Estar e Esporte','Transporte','Pets','Educação','Filhos e Família','Lazer','Compras','Cuidados Pessoais','Assinaturas','Presentes','Serviços','Seguros','Taxas e Impostos','Dívidas'];
+const GRP_ORDER=['Moradia','Alimentação Básica','Saúde','Bem-Estar e Esporte','Transporte','Pets','Educação','Filhos e Família','Lazer','Compras','Cuidados Pessoais','Assinaturas','Presentes','Serviços','Seguros','Taxas e Impostos','Dívidas','Outros'];
 const KW={
   // CT — Custo de Trabalho / Profissional
   ct_alug:    ['aluguel consultorio','aluguel clinica','aluguel sala'],
@@ -6462,6 +6464,25 @@ function buildCAT(){
 }
 const CAT=buildCAT();
 
+// CAT_LABEL_MAP: nome da categoria (normalizado) → catId. Permite que uma
+// coluna "Categoria" de uma planilha já classificada manualmente (com o
+// nome por extenso, ex.: "Transferência Entre Contas") seja reconhecida
+// mesmo sem usar o id interno (ex.: "n_transf").
+function buildCatLabelMap(){
+  const m={};
+  Object.entries(CAT).forEach(([id,lbl])=>{m[convNorm(lbl).trim()]=id;});
+  return m;
+}
+const CAT_LABEL_MAP=buildCatLabelMap();
+// Resolve um texto de categoria (id interno OU nome por extenso) para um catId válido.
+function convResolveCat(rawCat){
+  if(!rawCat)return null;
+  const s=rawCat.toString().trim();
+  if(!s)return null;
+  if(CAT[s])return s;
+  return CAT_LABEL_MAP[convNorm(s).trim()]||null;
+}
+
 // ── convCatHTML: gera <select> de categoria ──────────────────────────────────
 function convCatHTML(selected){
   const byNome={};
@@ -7970,13 +7991,17 @@ function convApplyMapping(){
       const cred=Math.abs(convParseBR((row[credCol]??'').toString())??0);
       value=cred>0?cred:-deb;
     }
-    // Se a coluna de Classificação já traz um catId válido (ex.: reimportação
-    // de um CSV exportado por este conversor), usa direto — não reclassifica
-    // e não perde correções manuais já feitas.
+    // Se a coluna de Classificação já traz uma categoria reconhecível — seja
+    // o id interno (ex.: reimportação de um CSV exportado por este
+    // conversor) ou o nome por extenso (ex.: uma planilha já reclassificada
+    // manualmente, como "Transferência Entre Contas" ou "Pagamento Fatura
+    // Cartão") — usa direto. Não reclassifica e não perde a classificação
+    // (inclusive as neutras, que não entram em receita nem despesa) já feita.
     const rawCat=catCol>=0?(row[catCol]??'').toString().trim():'';
+    const resolvedCat=convResolveCat(rawCat);
     let cat;
-    if(rawCat&&CAT[rawCat]){
-      cat=rawCat;
+    if(resolvedCat){
+      cat=resolvedCat;
       value=cat.startsWith('r_')?Math.abs(value):-Math.abs(value);
     }else{
       cat=classifyTx(desc,value);
