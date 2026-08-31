@@ -1115,14 +1115,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <button onclick="changeMonth(1)">›</button>
     </div>
     <div class="sp"></div>
-    <button class="btn btn-o btn-sm" onclick="openModal('conta')">🏦 Nova conta</button>
     <button class="btn btn-o btn-sm" onclick="openModal('card')">💳 Novo cartão</button>
     <button class="btn btn-o btn-sm" onclick="openModal('pgto')">＋ Entrada / Saída</button>
-  </div>
-
-  <!-- Contas bancárias bar -->
-  <div class="cards-bar" id="contas-bar" style="margin-bottom:6px">
-    <div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma conta bancária cadastrada.</div>
   </div>
 
   <!-- Cards bar -->
@@ -1236,8 +1230,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="ir-sec" style="margin-bottom:0">
         <div class="ir-sec-title">Projeção PGBL vs VGBL (longo prazo)</div>
         <div class="pgbl-inputs-row">
-          <div class="ir-fld" style="margin:0"><label>Retorno (% a.a.)</label><input type="number" id="pv-ret" placeholder="10" min="0" step="0.1" oninput="irCalc()"></div>
           <div class="ir-fld" style="margin:0"><label>Prazo (anos)</label><input type="number" id="pv-prazo" placeholder="20" min="1" max="50" oninput="irCalc()"></div>
+          <div class="ir-fld" style="margin:0"><label>Retorno (% a.a.)</label><input type="number" id="pv-ret" placeholder="10" min="0" step="0.1" oninput="irCalc()"></div>
           <div class="ir-fld" style="margin:0"><label>Alíquota resgate</label>
             <select id="pv-aliq" onchange="irCalc()">
               <option value="0.275">27,5% — progressiva</option>
@@ -1844,20 +1838,6 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
 
     <!-- ADD CARD -->
-    <!-- NOVA CONTA BANCÁRIA -->
-    <div id="m-conta" style="display:none">
-      <div class="m-title">Cadastrar Conta Bancária</div>
-      <div class="m-sub">Identifique de qual conta saem e entram os recursos.</div>
-      <div class="card-form-grid">
-        <div class="fld"><label>Nome da conta</label><input type="text" id="conta-nome" placeholder="Ex: Itaú Corrente, Bradesco..."></div>
-        <div class="fld"><label>Cor de identificação</label><input type="color" id="conta-cor" value="#b5763a" style="height:36px;width:100%;border-radius:5px;border:1px solid var(--border);cursor:pointer"></div>
-      </div>
-      <div class="m-foot">
-        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-p" onclick="saveContaBancaria()">Salvar conta</button>
-      </div>
-    </div>
-
     <div id="m-card" style="display:none">
       <div class="m-title">Cadastrar Cartão de Crédito</div>
       <div class="m-sub">Os lançamentos desse cartão aparecerão no Fluxo de Pgto na data de vencimento da fatura.</div>
@@ -1908,7 +1888,6 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div class="fld"><label>Data Pgto (vencimento)</label><input type="date" id="etx-datapgto"></div>
         <div class="fld"><label>Parcela (ex: 2/6)</label><input type="text" id="etx-parcela" placeholder="ex: 2/6 ou vazio"></div>
         <div class="fld"><label>Valor (R$)</label><input type="number" id="etx-valor" min="0" step="0.01" placeholder="0,00"></div>
-        <div class="fld"><label>Conta / Cartão</label><select id="etx-conta"></select></div>
         <div class="fld"><label>Grupo</label><select id="etx-cat-grp" onchange="filterCatSub('etx-cat-grp','etx-cat')"></select></div>
         <div class="fld"><label>Subcategoria</label><select id="etx-cat"></select></div>
         <div class="fld full"><label>Descrição</label><input type="text" id="etx-desc" maxlength="80"></div>
@@ -2424,9 +2403,8 @@ function freshState(){
       inv:   DEFS.inv.map(c=>({...c,orc:0,real:0})),
       neutro:DEFS.neutro.map(c=>({...c})),
     },
-    transactions:[], // {id,date,desc,catId,grp,pgto,cartaoId,contaId,amount}
+    transactions:[], // {id,date,desc,catId,grp,pgto,cartaoId,amount}
     cartoes:[],      // {id,nome,fechaDia,vencDia}
-    contas:[],       // {id,nome,cor} — contas bancárias
     pgtoEntries:[],  // {id,desc,dia,tipo,valor,recorrente}
     goals:[],        // {id,nome,icone,meta,acumulado,dataInicio,dataFim,aporte,taxa}
     irPago:{fonte:0,carneLeao:0,outros:0},
@@ -2680,18 +2658,12 @@ function renderSeguranca(){
   const meses=S.seguros.reservaMeses||6;
   const ra=S.seguros.reservaAtual||0;
   let gastosMes=0;
-  ['ct','fixas','var'].forEach(g=>{(S.cats[g]||[]).forEach(c=>{gastosMes+=c.orc||0;});});
+  ['fixas','var'].forEach(g=>{(S.cats[g]||[]).forEach(c=>{gastosMes+=c.orc||0;});});
   const rendaMes=S.rendaOrc||0;
   const metaVida=gastosMes*meses;
   const metaSal=rendaMes*meses;
   function segKpiCard(lbl,meta,atual){
-    if(meta===0){
-      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rad-sm);padding:12px 14px">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">${lbl}</div>
-        <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px">Configure o orçamento mensal para calcular esta meta.</div>
-      </div>`;
-    }
-    const pct=Math.min(100,atual/meta*100);
+    const pct=meta>0?Math.min(100,atual/meta*100):(atual>0?100:0);
     const cls=pct>=100?'ok':pct>=50?'warn':'bad';
     const gap=meta-atual;
     return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rad-sm);padding:12px 14px">
@@ -3131,7 +3103,6 @@ function bootApp(){
   document.getElementById('hDate').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
   if(!S.transactions)S.transactions=[];
   if(!S.cartoes)S.cartoes=[];
-  if(!S.contas)S.contas=[];
   if(!S.pgtoEntries)S.pgtoEntries=[];
   if(!S.saldoInicial)S.saldoInicial=0;
   if(!S.goals)S.goals=[];
@@ -3166,7 +3137,7 @@ function bootApp(){
   if(!S.merchants)S.merchants={};
   if(!S.merchantNames)S.merchantNames={};
   seedMerchants();
-  renderAll();buildCatSelect();buildPgtoSelect();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();renderContasBar();
+  renderAll();buildCatSelect();buildPgtoSelect();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
   renderSeguranca();renderDividas();renderInvestimentos();renderPatrimonio();renderPerfil();renderPassos();
   // Pre-populate IR pago fields
@@ -3324,82 +3295,32 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
   if(prev) sc.value=prev;
 }
 const PGTO_LBLS={
-  'pix':    'PIX / Transferência',
-  'cdeb':   'Cartão de Débito',
-  'din':    'Dinheiro',
-  'dep':    'Depósito',
-  'saque':  'Saque',
-  'debito': 'Débito/PIX', // legado
-  'credito':'Cartão de Crédito', // legado import
-  'ted':    'TED',
-  'doc':    'DOC',
-  'boleto': 'Boleto',
+  'pix':   'PIX / Transferência',
+  'cdeb':  'Cartão de Débito',
+  'din':   'Dinheiro',
+  'dep':   'Depósito',
+  'saque': 'Saque',
+  'debito':'Débito/PIX', // legado
 };
-function getContaById(id){
-  return (S.contas||[]).find(c=>c.id===id) || S.cartoes.find(c=>c.id===id);
-}
 function getPgtoLbl(tx){
-  const srcId = tx.contaId || tx.pgto;
-  // Contas bancárias
-  const conta=(S.contas||[]).find(c=>c.id===srcId);
-  if(conta) return '🏦 '+conta.nome;
-  // Cartões de crédito
-  const card=S.cartoes.find(c=>c.id===srcId||(tx.cartaoId&&c.id===tx.cartaoId));
-  if(card) return '💳 '+card.nome;
   if(tx.pgto&&PGTO_LBLS[tx.pgto]) return PGTO_LBLS[tx.pgto];
+  if(tx.cartaoId) return S.cartoes.find(c=>c.id===tx.cartaoId)?.nome||'Cartão de Crédito';
   return tx.meioPgto||tx.pgto||'—';
 }
 function isCartaoCredito(pgtoVal){
   return S.cartoes.some(c=>c.id===pgtoVal);
 }
-function isContaBancaria(pgtoVal){
-  return (S.contas||[]).some(c=>c.id===pgtoVal);
-}
 function buildPgtoSelect(){
   const s=document.getElementById('tx-pgto');const p=s.value;
-  const contasHtml=(S.contas||[]).length
-    ?`<optgroup label="Contas Bancárias">${(S.contas||[]).map(c=>`<option value="${c.id}" style="color:${c.cor}">🏦 ${c.nome}</option>`).join('')}</optgroup>`:'';
-  const cardsHtml=S.cartoes.length
-    ?`<optgroup label="Cartões de Crédito">${S.cartoes.map(c=>`<option value="${c.id}">💳 ${c.nome}</option>`).join('')}</optgroup>`:'';
-  s.innerHTML=`${contasHtml}${cardsHtml}
-  <optgroup label="Outros">
+  s.innerHTML=`<optgroup label="Formas de Pagamento">
     <option value="pix">⚡ PIX / Transferência</option>
     <option value="cdeb">💳 Cartão de Débito</option>
     <option value="din">💵 Dinheiro</option>
     <option value="dep">🏦 Depósito</option>
     <option value="saque">💸 Saque</option>
-  </optgroup>`;
+  </optgroup>
+  ${S.cartoes.length?`<optgroup label="Cartões de Crédito">${S.cartoes.map(c=>`<option value="${c.id}">💳 ${c.nome}</option>`).join('')}</optgroup>`:''}`;
   if(p)s.value=p;
-}
-// ── CONTAS BANCÁRIAS ──────────────────────────────────────────────────────────
-function saveContaBancaria(){
-  const nome=document.getElementById('conta-nome').value.trim();
-  const cor=document.getElementById('conta-cor').value||'#b5763a';
-  if(!nome){alert('Nome da conta é obrigatório.');return;}
-  if(!S.contas)S.contas=[];
-  S.contas.push({id:'conta_'+Date.now(),nome,cor});
-  buildPgtoSelect();renderContasBar();save();closeModal();
-}
-function delContaBancaria(id){
-  S.contas=(S.contas||[]).filter(c=>c.id!==id);
-  S.transactions.forEach(t=>{if(t.contaId===id)t.contaId=null;});
-  buildPgtoSelect();renderContasBar();save();
-}
-function renderContasBar(){
-  const bar=document.getElementById('contas-bar');
-  if(!bar)return;
-  if(!(S.contas||[]).length){
-    bar.innerHTML='<div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma conta bancária cadastrada.</div>';return;
-  }
-  bar.innerHTML='';
-  S.contas.forEach(conta=>{
-    const chip=document.createElement('div');chip.className='card-chip';
-    chip.style.borderLeft=`4px solid ${conta.cor}`;
-    chip.innerHTML=`<span style="font-size:16px">🏦</span>
-      <div><div class="chip-name">${esc(conta.nome)}</div></div>
-      <button class="chip-del" onclick="delContaBancaria('${conta.id}')" title="Remover">×</button>`;
-    bar.appendChild(chip);
-  });
 }
 
 // ── TRANSACTIONS ─────────────────────────────────────────────────────────────
@@ -3412,11 +3333,9 @@ function addTx(){
   const pgtoSel=document.getElementById('tx-pgto');
   const pgto=pgtoSel.value;
   const isCard=isCartaoCredito(pgto);
-  const isConta=isContaBancaria(pgto);
   const amount=parseFloat(document.getElementById('tx-val').value)||0;
   if(!date||!desc||!catId||amount<=0){alert('Preencha todos os campos.');return;}
-  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,
-    cartaoId:isCard?pgto:null,contaId:isConta?pgto:null,amount});
+  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,cartaoId:isCard?pgto:null,amount});
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-val').value='';
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
@@ -3442,13 +3361,6 @@ function openTxEdit(id){
   document.getElementById('etx-parcela').value=tx.parcela||'';
   document.getElementById('etx-valor').value=tx.amount||'';
   document.getElementById('etx-desc').value=tx.desc||'';
-  // Populate conta/cartão select
-  const etxConta=document.getElementById('etx-conta');
-  const currentSrc=tx.contaId||tx.cartaoId||tx.pgto||'';
-  let etxContaHtml='<option value="">— nenhuma —</option>';
-  if((S.contas||[]).length) etxContaHtml+=`<optgroup label="Contas Bancárias">${(S.contas||[]).map(c=>`<option value="${c.id}"${currentSrc===c.id?' selected':''}>🏦 ${c.nome}</option>`).join('')}</optgroup>`;
-  if(S.cartoes.length) etxContaHtml+=`<optgroup label="Cartões">${S.cartoes.map(c=>`<option value="${c.id}"${currentSrc===c.id?' selected':''}>💳 ${c.nome}</option>`).join('')}</optgroup>`;
-  etxConta.innerHTML=etxContaHtml;
   // Build cascading cat selects
   const esg=document.getElementById('etx-cat-grp');
   let ghml='<option value="">-- Grupo --</option>';
@@ -3486,11 +3398,6 @@ function saveTxEdit(){
   tx.desc=document.getElementById('etx-desc').value.trim()||tx.desc;
   const cv=document.getElementById('etx-cat').value;
   if(cv&&cv!=='|'){const[catId,grp]=cv.split('|');tx.catId=catId;tx.grp=grp;tx.isRec=grp==='receita';}
-  const contaSel=document.getElementById('etx-conta').value;
-  if(contaSel){
-    if(isContaBancaria(contaSel)){tx.contaId=contaSel;tx.cartaoId=null;tx.pgto=contaSel;}
-    else if(isCartaoCredito(contaSel)){tx.cartaoId=contaSel;tx.contaId=null;tx.pgto=contaSel;}
-  }
   closeModal();
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
@@ -3601,18 +3508,14 @@ function renderTxList(){
     const bClass=tx.grp==='receita'?'b-rec':tx.grp==='inv'?'b-inv':tx.grp==='neutro'?'b-card':'b-dep';
     const amtClass=tx.grp==='receita'?'pos r':'bad r';
     const prefix=tx.grp==='receita'?'+':'-';
-    // Date display: show purchase date + arrow + payment date when they differ (credit card case)
-    const hasDiff=tx.dataPgto&&tx.date&&tx.date!==tx.dataPgto;
-    const fmtD=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'—';
-    const dsCompra=fmtD(tx.date);
-    const dsPgto=hasDiff?fmtD(tx.dataPgto):'';
-    const dateCell=hasDiff
-      ?`<span title="Compra: ${dsCompra} · Pgto: ${dsPgto}" style="display:flex;flex-direction:column;gap:1px"><span>${dsCompra}</span><span style="font-size:10px;color:var(--muted)">pgto ${dsPgto}</span></span>`
-      :`${fmtD(tx.dataPgto||tx.date)}`;
+    // Show dataPgto (effective) date; show purchase date as tooltip if different
+    const effDate=tx.dataPgto||tx.date;
+    const ds=effDate?new Date(effDate+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'—';
+    const dtTitle=tx.dataPgto&&tx.date!==tx.dataPgto?` title="Compra: ${new Date(tx.date+'T00:00:00').toLocaleDateString('pt-BR')}"`:''  ;
     const parcBadge=tx.parcela?`<span class="badge-parc">${tx.parcela}</span>`:'';
     body.innerHTML+=`<tr>
       <td class="td-chk" style="padding:0 0 0 10px;width:36px"><input type="checkbox" data-id="${tx.id}" onchange="txToggleRow(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--primary)"></td>
-      <td class="td-date">${dateCell}</td>
+      <td class="td-date"${dtTitle}>${ds}</td>
       <td class="td-desc">${tx.desc}${parcBadge}</td>
       <td class="td-cat"><span class="badge ${bClass}">${catLbl}</span></td>
       <td class="td-pgto" style="font-size:11px;color:var(--muted)">${pgtoLbl}</td>
@@ -4196,7 +4099,6 @@ function openModal(type,goalId){
   activeModal=type;
   document.getElementById('m-csv').style.display=type==='csv'?'block':'none';
   document.getElementById('m-card').style.display=type==='card'?'block':'none';
-  document.getElementById('m-conta').style.display=type==='conta'?'block':'none';
   document.getElementById('m-pgto').style.display=type==='pgto'?'block':'none';
   document.getElementById('m-goal').style.display=type==='goal'?'block':'none';
   document.getElementById('m-edit-tx').style.display=type==='edit-tx'?'block':'none';
