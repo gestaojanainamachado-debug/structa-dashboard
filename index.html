@@ -1751,6 +1751,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="conv-hide-neutral" checked onchange="convApplyFilters()"> Ocultar neutros</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="conv-hide-income" onchange="convApplyFilters()"> Ocultar receitas</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:5px" title="Aplica essa data de vencimento a todos os lançamentos visíveis na tabela">
+        Venc. fatura (todos): <input type="date" id="conv-venc-global" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px">
+        <button class="btn btn-o" style="padding:3px 10px;font-size:12px" onclick="convApplyVencAll()">Aplicar</button>
+      </label>
       <label style="margin-left:auto;font-size:13px;display:flex;align-items:center;gap:5px">
         Buscar: <input type="text" id="conv-search" placeholder="descrição…" oninput="convApplyFilters()" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px;width:140px">
       </label>
@@ -1763,6 +1767,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500">Descrição</th>
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:right;font-weight:500;white-space:nowrap">Valor</th>
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500;width:200px">Categoria</th>
+            <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap" title="Data de vencimento da fatura — define em qual mês o lançamento aparece no orçamento">Venc. Fatura</th>
           </tr>
         </thead>
         <tbody id="conv-tbody"></tbody>
@@ -6506,9 +6511,10 @@ function convImportToDash(){
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value);
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
+    const dataPgto=(t.dataPgto&&/^\d{4}-\d{2}-\d{2}$/.test(t.dataPgto))?t.dataPgto:iso;
     const tx={
       id:Date.now()+'_'+count+'_'+Math.random().toString(36).substr(2,5),
-      date:iso,dataPgto:iso,desc:cleanName,descOriginal:t.desc,
+      date:iso,dataPgto:dataPgto,desc:cleanName,descOriginal:t.desc,
       amount:amount,catId:cat,grp:grp,pgto:(t.pgto&&t.pgto.trim())||'outros',
     };
     if(t.parcela)tx.parcela=t.parcela;
@@ -7821,16 +7827,38 @@ function convParseCSVText(text){
   });
 }
 
-// Se a primeira linha for um cabeçalho com os nomes de coluna do próprio
-// conversor (data,historico,parcela,data_pgto,catId,grp,pgto,valor), mapeia
-// direto pelo nome em vez de tentar adivinhar pelo conteúdo.
+// Reconhece colunas pelo NOME do cabeçalho (em vez de adivinhar pelo
+// conteúdo). Cobre tanto o formato interno do conversor
+// (data,historico,parcela,data_pgto,catId,grp,pgto,valor) quanto planilhas
+// já organizadas manualmente, com cabeçalhos como "DATA DA COMPRA",
+// "DATA PGTO", "FORMA DE PGTO", "CATEGORIA" etc.
 function guessColumnsByHeader(rows,maxCols){
   if(!rows.length||!isLikelyHeader(rows[0]))return null;
-  const hdr=rows[0].map(h=>(h??'').toString().toLowerCase().trim().replace(/[^a-z_]/g,''));
-  if(!hdr.includes('catid')&&!hdr.includes('historico'))return null; // não é o formato do conversor
-  const map={data:'data',historico:'desc',valor:'valor',catid:'catid',parcela:'parcela',pgto:'pgto'};
+  const hdr=rows[0].map(h=>convNorm((h??'').toString()).trim());
+  const avail=hdr.slice(); // colunas ainda não atribuídas a um papel
+  const claim=(...kws)=>{
+    const i=avail.findIndex(h=>h&&kws.some(k=>h.includes(k)));
+    if(i>=0)avail[i]=''; // marca como usada para não ser reaproveitada por outro papel
+    return i;
+  };
+  // Ordem importa: dos mais específicos para os mais genéricos, para que
+  // "DATA PGTO" seja capturado antes de "PGTO" cair no papel genérico.
+  const dataPgtoIdx=claim('data_pgto','data pgto','data de pagamento','data do pagamento','vencimento','data fatura','data da fatura');
+  const dataIdx=claim('data da compra','data compra','data');
+  const descIdx=claim('historico','descricao','desc');
+  const valorIdx=claim('valor');
+  const parcIdx=claim('parcela');
+  const catIdx=claim('catid','cat_id','categoria');
+  const pgtoIdx=claim('forma de pgto','forma de pagamento','meio de pagamento','meio de pgto','pgto');
+  if(dataIdx<0||descIdx<0)return null; // cabeçalho não reconhecido — cai no palpite por conteúdo
   const guesses=Array(maxCols).fill('ignorar');
-  hdr.forEach((h,c)=>{if(map[h])guesses[c]=map[h];});
+  guesses[dataIdx]='data';
+  guesses[descIdx]='desc';
+  if(valorIdx>=0)guesses[valorIdx]='valor';
+  if(parcIdx>=0)guesses[parcIdx]='parcela';
+  if(catIdx>=0)guesses[catIdx]='catid';
+  if(pgtoIdx>=0)guesses[pgtoIdx]='pgto';
+  if(dataPgtoIdx>=0)guesses[dataPgtoIdx]='datapgto';
   return guesses;
 }
 
@@ -7879,7 +7907,7 @@ function convShowMapper(rows,type){
   const maxCols=Math.max(...rows.slice(0,10).map(r=>(r||[]).length),1);
   const previewRows=rows.slice(0,6);
   const guesses=guessColumnsByHeader(rows,maxCols)||autoGuessColumns(rows,maxCols);
-  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito'],['catid','Classificação'],['parcela','Parcela'],['pgto','Forma de Pagamento']];
+  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito'],['catid','Classificação'],['parcela','Parcela'],['pgto','Forma de Pagamento'],['datapgto','Data de Pagamento (fatura)']];
   let tbl='<table style="border-collapse:collapse;font-size:11px;white-space:nowrap"><thead><tr>';
   for(let c=0;c<maxCols;c++){
     tbl+=`<th style="padding:4px 6px;background:var(--bg);border:1px solid var(--border);min-width:110px"><select id="conv-col-${c}" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;width:100%">`;
@@ -7903,13 +7931,14 @@ function convShowMapper(rows,type){
 
 function convApplyMapping(){
   const maxCols=Math.max(..._mapperRows.slice(0,10).map(r=>(r||[]).length),1);
-  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1,catCol=-1,parcCol=-1,pgtoCol=-1;
+  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1,catCol=-1,parcCol=-1,pgtoCol=-1,dataPgtoCol=-1;
   for(let c=0;c<maxCols;c++){
     const sel=document.getElementById(`conv-col-${c}`);if(!sel)continue;
     switch(sel.value){
       case'data':dateCol=c;break;case'desc':descCol=c;break;case'valor':valCol=c;break;
       case'debito':debCol=c;break;case'credito':credCol=c;break;
       case'catid':catCol=c;break;case'parcela':parcCol=c;break;case'pgto':pgtoCol=c;break;
+      case'datapgto':dataPgtoCol=c;break;
     }
   }
   if(dateCol===-1||descCol===-1||(valCol===-1&&debCol===-1)){
@@ -7941,7 +7970,8 @@ function convApplyMapping(){
     }
     const parcela=parcCol>=0?(row[parcCol]??'').toString().trim():'';
     const pgto=pgtoCol>=0?(row[pgtoCol]??'').toString().trim():'';
-    txns.push({date,desc,value,cat,parcela,pgto});
+    const dataPgto=dataPgtoCol>=0?(convParseDate((row[dataPgtoCol]??'').toString())||''):'';
+    txns.push({date,desc,value,cat,parcela,pgto,dataPgto});
   }
   if(!txns.length){alert('Nenhuma transação válida encontrada. Verifique o mapeamento de colunas.');return;}
   document.getElementById('conv-mapper').style.display='none';
@@ -8053,6 +8083,7 @@ function convRenderTable(txns){
     const vc=isInc?'pos':'neg';
     const sign=isInc?'+':'';
     const clean=t.cleanName||cleanMerchantName(t.desc);
+    const venc=t.dataPgto||convDateToISO(t.date)||'';
     return`<tr data-idx="${i}" data-neutral="${isNt}" data-income="${isInc}" data-desc="${convNorm(t.desc)} ${convNorm(clean)}">
       <td class="date-col">${t.date}</td>
       <td class="desc-col">
@@ -8060,8 +8091,36 @@ function convRenderTable(txns){
       </td>
       <td class="val ${vc}">${sign}${convFmtBR(t.value)}</td>
       <td class="cat-col">${convCatHTML(t.cat)}</td>
+      <td class="venc-col"><input type="date" class="conv-venc-edit" value="${venc}" onchange="convOnVencChange(this)" title="Data de vencimento da fatura — define em qual mês aparece no orçamento" style="border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit"></td>
     </tr>`;
   }).join('');
+}
+
+// Converte "DD/MM/AAAA" (formato usado em t.date) para "AAAA-MM-DD" (formato do <input type=date>)
+function convDateToISO(d){
+  if(!d)return'';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  const m=(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m)return'';
+  let y=m[3];if(y.length===2)y='20'+y;
+  return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+
+function convOnVencChange(inp){
+  const row=inp.closest('tr');
+  const idx=+row.dataset.idx;
+  _convTxns[idx].dataPgto=inp.value||'';
+}
+
+function convApplyVencAll(){
+  const v=document.getElementById('conv-venc-global')?.value;
+  if(!v)return;
+  document.querySelectorAll('#conv-tbody tr:not(.hidden-row)').forEach(row=>{
+    const idx=+row.dataset.idx;
+    _convTxns[idx].dataPgto=v;
+    const inp=row.querySelector('.conv-venc-edit');
+    if(inp)inp.value=v;
+  });
 }
 
 function convOnNameChange(inp){
@@ -8165,7 +8224,8 @@ function convExportCSV(){
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
     const parcela=(t.parcela!=null&&t.parcela!=='')?t.parcela:(convExtractParcela(t.desc)||'');
     const pgto=(t.pgto&&t.pgto.trim())||'pix';
-    rows.push([t.date,cleanName,parcela,'',cat,grp,pgto,amount]);
+    const dataPgto=(t.dataPgto&&/^\d{4}-\d{2}-\d{2}$/.test(t.dataPgto))?t.dataPgto:'';
+    rows.push([t.date,cleanName,parcela,dataPgto,cat,grp,pgto,amount]);
   });
   const csv=rows.map(r=>r.map(convQCSV).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
