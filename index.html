@@ -890,6 +890,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
     <button class="abar-btn" onclick="exportData()">⬇ Exportar JSON</button>
+    <button class="abar-btn danger" onclick="clearAllTransactions()" title="Apaga só os lançamentos de todos os meses — mantém orçamento, metas, diagnóstico etc.">🗑 Limpar Lançamentos</button>
     <button class="abar-btn danger" onclick="clearData()">🗑 Limpar dados</button>
     <button class="abar-btn" onclick="location.href=location.pathname">↩ Trocar cliente</button>
     <button class="abar-btn" onclick="sbLogout()" title="Sair da conta Supabase">🔓 Sair</button>
@@ -1983,6 +1984,7 @@ const DEFS={
     {id:'f_seg_vida', lbl:'Seguro de Vida',                grpNome:'Seguros'},
     {id:'f_seg_rc',   lbl:'Seguro de Resp. Civil',         grpNome:'Seguros'},
     {id:'f_seg_ap',   lbl:'Seguro de Itens Pessoais',       grpNome:'Seguros'},
+    {id:'f_seg_viag', lbl:'Seguro de Viagem',               grpNome:'Seguros'},
     {id:'f_tarifa',   lbl:'Tarifas Bancárias',             grpNome:'Taxas e Impostos'},
     {id:'f_conselho', lbl:'Anuidade Conselho (CRM/OAB)',   grpNome:'Taxas e Impostos'},
     {id:'f_div',      lbl:'Empréstimo Pessoal',            grpNome:'Dívidas'},
@@ -4186,6 +4188,18 @@ function save(){
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
   localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
+}
+
+// Apaga só os lançamentos (todos os meses de uma vez) — mantém orçamento,
+// metas, diagnóstico e todo o resto do cliente intactos. Útil para reimportar
+// um extrato do zero sem perder o resto do trabalho já feito.
+function clearAllTransactions(){
+  const n=(S.transactions||[]).length;
+  if(!n){alert('Não há lançamentos para apagar.');return;}
+  if(!confirm(`Apagar todos os ${n} lançamentos de "${_rawCid}" (todos os meses)? Orçamento, metas e o restante dos dados do cliente NÃO serão afetados. Esta ação não pode ser desfeita.`))return;
+  S.transactions=[];
+  save();
+  recalc();renderTxList();renderFluxoPgto();renderAll();renderOrcMonth();
 }
 
 // ── CSV REVIEW (LANÇAMENTOS) ──────────────────────────────────────────────────
