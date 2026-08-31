@@ -3724,7 +3724,7 @@ function recalc(){
   const orcRenda=getOrcRendaOrc();
   const rendaReal=hasTx&&txRenda>0?txRenda:S.rendaReal;
   const slO=Math.max(orcRenda-tDo,0),slR=Math.max(rendaReal-tDr,0);
-  const rR=rendaReal||1;
+  const rR=rendaReal||1; // usado só para % de investimento sobre a renda (só faz sentido havendo renda real)
 
   // tx indicators
   const ri=document.getElementById('renda-tx-ind');if(ri)ri.textContent=txRenda>0?' ●':'';
@@ -3759,19 +3759,35 @@ function recalc(){
   setText('kpi-renda',fmt(rendaReal));setText('kpi-renda-o',fmt(orcRenda));
   setText('kpi-comp',fmt(tDr));setText('kpi-comp-o',fmt(tDo));
   const cp=document.getElementById('kpi-comp-p');
-  if(cp){cp.textContent=pct(tDr,rR);cp.className='delta '+(tDr/rR>.9?'bad':tDr/rR>.75?'warn':'ok');}
+  // % comprometido = comparativo orçado x realizado (quanto do orçamento já foi gasto),
+  // e não % sobre a renda — evita % absurdo quando ainda não há renda lançada no mês
+  if(cp){
+    const compR=tDo>0?tDr/tDo:0;
+    cp.textContent=tDo>0?pct(tDr,tDo):'—';
+    cp.className='delta '+(compR>.9?'bad':compR>.75?'warn':'ok');
+  }
   setText('kpi-saldo',fmt(slR));setText('kpi-saldo-o',fmt(slO));
-  const ki=document.getElementById('kpi-inv'),ip=tIr/rR;
-  if(ki){ki.textContent=pct(tIr,rR);ki.className='kpi-val '+(ip>=.15?'ok':ip>=.08?'warn':'bad');}
+  const ki=document.getElementById('kpi-inv');
+  if(ki){
+    if(rendaReal>0){
+      const ip=tIr/rendaReal;
+      ki.textContent=pct(tIr,rendaReal);
+      ki.className='kpi-val '+(ip>=.15?'ok':ip>=.08?'warn':'bad');
+    }else{
+      ki.textContent='—';ki.className='kpi-val';
+    }
+  }
   setText('kpi-inv-o',pct(tIo,orcRenda||1));
 
-  // Legend
-  setText('lct-p',pct(tCr,rR));setText('lct-v',' — '+fmt(tCr));
-  setText('lf-p',pct(tFr,rR));setText('lf-v',' — '+fmt(tFr));
-  setText('lv-p',pct(tVr,rR));setText('lv-v',' — '+fmt(tVr));
-  setText('li-p',pct(tIr,rR));setText('li-v',' — '+fmt(tIr));
-  setText('ls-p',pct(slR,rR));setText('ls-v',' — '+fmt(slR));
-  setText('donut-c',pct(tDr,rR));
+  // Legend — % de cada grupo dentro do total realizado no mês (distribuição do donut)
+  const pieTotal=tCr+tFr+tVr+tIr+slR;
+  setText('lct-p',pct(tCr,pieTotal||1));setText('lct-v',' — '+fmt(tCr));
+  setText('lf-p',pct(tFr,pieTotal||1));setText('lf-v',' — '+fmt(tFr));
+  setText('lv-p',pct(tVr,pieTotal||1));setText('lv-v',' — '+fmt(tVr));
+  setText('li-p',pct(tIr,pieTotal||1));setText('li-v',' — '+fmt(tIr));
+  setText('ls-p',pct(slR,pieTotal||1));setText('ls-v',' — '+fmt(slR));
+  // Centro do donut: % do orçamento total já comprometido (orçado x realizado)
+  setText('donut-c',tDo>0?pct(tDr,tDo):'—');
 
   updateDonut([tCr,tFr,tVr,tIr,slR]);
   updateBar([tCo,tFo,tVo,tIo],[tCr,tFr,tVr,tIr]);
