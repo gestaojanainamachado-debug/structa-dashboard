@@ -2084,15 +2084,15 @@ const KW={
   f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa'],
   f_luz:      ['copel ','cemig ','enel ','light ','celpe ','coelba ','ampla ','energisa ','cpfl','equatorial','neoenergia'],
   f_gas:      ['comgas','liquigas','copagaz','supergasbras','ultragaz'],
-  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net'],
-  f_cel:      ['tim movel','claro movel','vivo movel','oi movel'],
+  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo'],
+  f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
   f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude'],
   f_med_cont: ['medicamento cont','tratamento cont','farmacia cont'],
   // FIXAS — 4. Bem-Estar e Esporte
   f_terapia:  ['psicolog','psicoterapi','terapia '],
-  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech'],
+  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech','totalpass','wellhub'],
   f_personal: ['personal trainer','alta personal'],
   // FIXAS — 5. Transporte
   f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine'],
@@ -2134,12 +2134,13 @@ const KW={
   // VAR — 2. Alimentacao Basica
   v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','compras casa'],
   v_esporte:  ['corrida de rua','trilha ','futebol ','beach tennis','padel ','voleib ','futsal','squash','esporte fim de semana'],
-  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue'],
+  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar'],
   v_feira:    ['feira ','quitanda','mercearia','cafeteria '],
   // VAR — 2b. Restaurante do dia a dia
-  v_restaurdia: ['restaurante','padaria','pao '],
+  // "foods" (plural) em vez de "food" pra não capturar "pet food" (ração de pet, categoria própria)
+  v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita'],
   // VAR — 3. Saude
-  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma'],
+  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6'],
   v_consulta: ['consulta medica','clinica medica','odontolog','dentista '],
   v_exame:    ['exame laborat','laboratorio ','clinica exame'],
   // VAR — 4. Bem-Estar e Esporte
@@ -2148,9 +2149,9 @@ const KW={
   v_massagem: ['massagem ','spa ','tratamento estetico'],
   // VAR — 5. Transporte e Mobilidade
   v_comb:     ['posto ','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto'],
-  v_taxi:     ['uber ','uber*','dl*uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
+  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
   v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar'],
-  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo'],
+  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw '],
   v_lavagem:  ['lava rapido','lava jato','lavagem '],
   // VAR — 6. Pets
   v_pet_racao: ['racao ','alimentacao pet','pet food'],
@@ -2164,14 +2165,14 @@ const KW={
   v_filhos_comp:  ['roupa filho','brinquedo','fraldas','roupa bebe','free baby','puket','alphabeto'],
   v_mesada:       ['mesada '],
   // VAR — 9. Lazer e Gastronomia
-  v_restaur:  ['burguer','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe'],
+  v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen'],
   v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados'],
   v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis '],
-  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque '],
+  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque ','zigpay'],
   v_festas:   ['buffet ','decoracao festa','festa '],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
   // VAR — 10. Cuidados Pessoais e Estetica
-  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa'],
+  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis '],
   v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
   v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial'],
