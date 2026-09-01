@@ -2198,11 +2198,11 @@ const KW={
   i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao','aplicacao rdb','resgate rdb'],
   i_imovel:   ['construcao imovel','compra imovel','terreno '],
   // NEUTRO
-  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial'],
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
   n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
-  n_reimb:    ['estorno de compra','pix devolvido','estorno pix','anuidade - bonif'],
+  n_reimb:    ['estorno de compra','pix devolvido','estorno pix','anuidade - bonif','anuidade por uso','desc anuidade'],
   // RECEITAS
   r_consul:   ['consulta particular','honorarios consulta','atendimento medico','deposito de vendas'],
   r_plantao:  ['plantao ','honorarios plantao','producao medica'],
@@ -7089,6 +7089,7 @@ const BANK_NAMES={
   inter_fatura:   'Banco Inter – Fatura Cartão',
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
+  sicoob_fatura:  'Sicoob – Fatura Cartão',
   coop_extrato:   'Cooperativa – Extrato Conta Corrente',
   cef_app:        'Caixa – Extrato por Período (App)',
   prox_fatura:    'Cartão – Demonstrativo Próxima Fatura',
@@ -7118,6 +7119,10 @@ function detectBank(lines){
      &&(t.includes('fatura')||t.includes('estabelecimento')))return'itau_fatura';
   if(t.includes('itaú')||t.includes('itau'))return'itau_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
+  // Fatura de cartão Sicoob (Sicoobcard) — precisa vir antes do extrato SISBR,
+  // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
+  // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
+  if(t.includes('sicoob')&&(t.includes('fatura')||t.includes('mastercard')||t.includes('sicoobcard')))return'sicoob_fatura';
   if(t.includes('sicoob')||t.includes('sisbr')||t.includes('coop.:'))return'sicoob_sisbr';
   if(t.includes('coop:')||t.includes('cooperativa de cr'))return'coop_extrato';
   // Banco Inter: "Despesas da fatura" + colunas "Data Movimentação Beneficiário"
@@ -7775,6 +7780,98 @@ function parseSicoobSisbr(lines){
   return txns;
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: SICOOB — Fatura de Cartão (Sicoobcard, ex.: Mastercard Black Merith Pro)
+// Layout em colunas por posição X (não por regex de linha inteira): cada página
+// tem uma tabela "DATA DESCRIÇÃO CIDADE VALOR EM R$" que pode aparecer sozinha
+// (à direita) ou duplicada lado a lado (esquerda+direita) pra caber mais linhas.
+// Algumas compras parceladas quebram em 2-3 sub-linhas bem próximas (nome do
+// estabelecimento numa linha, DD MES CIDADE VALOR na linha seguinte, parcela
+// "NN/NN" às vezes numa terceira) — são remontadas via buffer por coluna.
+// Valores sem sinal = compra (despesa); valores com "-" no PDF = estorno,
+// desconto de anuidade ou pagamento da fatura anterior (entram como receita/neutro).
+// ═══════════════════════════════════════════════════════════════════════════════
+const SICOOB_FATURA_MESES={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+const SICOOB_FATURA_HEADER_DENY=/^total de |^saldo anterior|^walter c m e silva|^fatura anterior|^pagamento[s]? recebido/i;
+function sicoobFaturaJoinBucket(items){
+  if(!items.length)return'';
+  items=items.slice().sort((a,b)=>a.x-b.x);
+  let text='';
+  for(let i=0;i<items.length;i++){
+    if(i===0){text=items[i].text;continue;}
+    const prev=items[i-1];
+    const gap=items[i].x-(prev.x+prev.w);
+    const th=Math.max(1.2,Math.min(prev.fsz,items[i].fsz)*0.17);
+    text+=(gap>th?' ':'')+items[i].text;
+  }
+  return text.replace(/\s+/g,' ').trim();
+}
+function parseSicoobFatura(lines,allText){
+  let vencMonth=null,vencYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*\s+\d{1,2}\s+([a-zçã]{3})/i);
+  if(vm){
+    const ym=(allText||'').match(/venciment\w*\s+\d{1,2}\s+[a-zçã]{3}\s+(\d{4})/i);
+    vencMonth=SICOOB_FATURA_MESES[convNorm(vm[1]).slice(0,3)];
+    if(ym)vencYear=parseInt(ym[1]);
+  }
+  function resolveDate(day,mesAbbr){
+    const mnum=SICOOB_FATURA_MESES[convNorm(mesAbbr).slice(0,3)];
+    if(!mnum)return null;
+    let year=vencYear;
+    if(vencMonth&&mnum>vencMonth)year=vencYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const SIDES=[
+    {name:'left', min:0,   max:280, date:[10,50],  desc:[50,120], cidade:[120,205],valor:[205,280]},
+    {name:'right',min:280, max:620, date:[280,325],desc:[325,430],cidade:[430,490],valor:[490,620]},
+  ];
+  const txns=[];
+  const pending={left:null,right:null},pendingY={left:null,right:null};
+  const byPage={};
+  lines.forEach(l=>{(byPage[l.page]=byPage[l.page]||[]).push(l);});
+  Object.keys(byPage).map(Number).sort((a,b)=>a-b).forEach(pg=>{
+    const plines=byPage[pg].slice().sort((a,b)=>b.y-a.y);
+    for(const line of plines){
+      if(!line.items||!line.items.length)continue;
+      for(const side of SIDES){
+        const items=line.items.filter(it=>it.x>=side.min&&it.x<side.max);
+        if(!items.length)continue;
+        const bucket=range=>items.filter(it=>it.x>=range[0]&&it.x<range[1]);
+        const dateStr=sicoobFaturaJoinBucket(bucket(side.date));
+        const descStr=sicoobFaturaJoinBucket(bucket(side.desc));
+        const cidadeStr=sicoobFaturaJoinBucket(bucket(side.cidade));
+        const valorStr=sicoobFaturaJoinBucket(bucket(side.valor));
+        const dm=dateStr.match(/^(\d{1,2})\s+([A-Za-zÀ-ú]{3})/);
+        const vm2=valorStr.match(/(-?R\$\s?[\d.]+,\d{2})/);
+        if(!dm&&!vm2){
+          if(descStr&&!/^\d{1,2}\/\d{1,2}$/.test(descStr)&&!SICOOB_FATURA_HEADER_DENY.test(descStr)){
+            pending[side.name]=descStr;pendingY[side.name]=line.y;
+          }else if(!/^\d{1,2}\/\d{1,2}$/.test(descStr)){
+            pending[side.name]=null;
+          }
+          continue;
+        }
+        if(dm&&vm2){
+          const iso=resolveDate(dm[1],dm[2]);
+          if(!iso)continue;
+          let desc=descStr;
+          if(!desc&&pending[side.name]&&(pendingY[side.name]-line.y)<10)desc=pending[side.name];
+          pending[side.name]=null;
+          if(!desc)desc='Compra Sicoob';
+          const amt=convParseBR(vm2[1]);
+          if(amt===null)continue;
+          const value=amt<0?Math.abs(amt):-amt;
+          const desc2=cidadeStr?`${desc.trim()} - ${cidadeStr.replace(/^\d{1,2}\/\d{1,2}\s*/,'').trim()}`:desc.trim();
+          txns.push({date:iso,desc:desc2||desc.trim(),value,cat:classifyTx(desc2||desc.trim(),value)});
+        }else{
+          pending[side.name]=null;
+        }
+      }
+    }
+  });
+  return txns;
+}
+
 function parseCoopExtrato(lines){
   const txns=[];
   const valRe=/^(\d{2}\/\d{2}\/\d{4})\s+(-\s*)?R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s+-?\s*R\$/;
@@ -8263,6 +8360,7 @@ async function convProcessPDF(file){
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
+      case'sicoob_fatura':   txns=parseSicoobFatura(lines,allText);break;
       case'coop_extrato':    txns=parseCoopExtrato(lines);break;
       case'cef_app':         txns=parseCefApp(lines);break;
       case'prox_fatura':     txns=parseProxFatura(lines,allText);break;
