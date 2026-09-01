@@ -2185,7 +2185,7 @@ const KW={
   i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao'],
   i_imovel:   ['construcao imovel','compra imovel','terreno '],
   // NEUTRO
-  n_fatcc:    ['pagamento fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial'],
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
   n_resgate:  ['resgate aplic','resgate contamax','resgate rdb','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
@@ -7431,6 +7431,74 @@ function parseSantanderExtrato(lines,allText){
   return txns;
 }
 
+// ── Santander Fatura (cartão de crédito) ────────────────────────────────────
+// Layout em 2 colunas lado a lado ("Compra Data Descrição Parcela R$ US$"
+// repetido) — o pdf.js junta as duas colunas na mesma linha de texto. Usa a
+// posição X de cada item para separar coluna esquerda/direita antes de
+// aplicar o regex de lançamento. Valor positivo na fatura = compra (despesa);
+// valor já negativo na fatura = estorno/pagamento (crédito).
+function parseSantanderFatura(lines,allText){
+  const txns=[];
+  let year=new Date().getFullYear();
+  const ym=(allText||'').match(/venciment\w*\D*?(\d{2})\/(\d{2})\/(\d{4})/i)||(allText||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(ym)year=parseInt(ym[3]);
+
+  const COL_X=290; // fronteira entre coluna esquerda e direita da tabela de compras
+  const entryRe=/^\d?\s*(\d{2})\/(\d{2})\s+(.+?)(?:\s+(\d{2})\/(\d{2}))?\s+(-?[\d.]+,\d{2})(?:\s+-?[\d.]+,\d{2})?$/;
+  const iofRe=/^IOF DESPESA NO EXTERIOR\s+([\d.]+,\d{2})$/i;
+
+  function joinItems(items){
+    let text='';
+    for(let i=0;i<items.length;i++){
+      if(i===0){text=items[i].text;continue;}
+      const prev=items[i-1];
+      const gap=items[i].x-(prev.x+prev.w);
+      const th=Math.max(1.2,Math.min(prev.fsz,items[i].fsz)*0.17);
+      text+=(gap>th?' ':'')+items[i].text;
+    }
+    return text.replace(/\s+/g,' ').trim();
+  }
+
+  function tryEntry(text){
+    if(!text)return null;
+    const m=text.match(entryRe);
+    if(!m)return null;
+    const[,day,month,rawDesc,pDay,pMonth,amtStr]=m;
+    let desc=rawDesc.trim();
+    if(!desc||desc.length<2)return null;
+    if(shouldSkip(desc))return null;
+    if(/pagamento recebido|pagamento efetuado|valor total/i.test(desc))return null;
+    const amt=convParseBR(amtStr);
+    if(amt===null)return null;
+    const value=amt>0?-amt:Math.abs(amt);
+    const date=`${day}/${month}/${year}`;
+    const tx={date,desc,value,cat:classifyTx(desc,value)};
+    if(pDay&&pMonth)tx.parcela=`${parseInt(pDay,10)}/${parseInt(pMonth,10)}`;
+    return tx;
+  }
+
+  const lastDate={left:null,right:null};
+  for(const line of lines){
+    if(!line.items||!line.items.length)continue;
+    const left=line.items.filter(it=>it.x<COL_X);
+    const right=line.items.filter(it=>it.x>=COL_X);
+    [['left',left],['right',right]].forEach(([side,items])=>{
+      const text=joinItems(items);
+      const t=tryEntry(text);
+      if(t){txns.push(t);lastDate[side]=t.date;return;}
+      const iofM=text.match(iofRe);
+      if(iofM&&lastDate[side]){
+        const amt=convParseBR(iofM[1]);
+        if(amt!==null){
+          const desc='IOF Despesa no Exterior';
+          txns.push({date:lastDate[side],desc,value:-Math.abs(amt),cat:classifyTx(desc,-Math.abs(amt))});
+        }
+      }
+    });
+  }
+  return txns;
+}
+
 // ── Generic Fallback ─────────────────────────────────────────────────────────
 function parseGenerico(lines){
   const txns=[];
@@ -8122,6 +8190,7 @@ async function convProcessPDF(file){
       case'itau_extrato':    txns=parseItauExtrato(lines);break;
       case'itau_fatura':     txns=parseItauFatura(lines);break;
       case'santander_extrato':txns=parseSantanderExtrato(lines,allText);break;
+      case'santander_fatura': txns=parseSantanderFatura(lines,allText);break;
       case'bb_extrato':      txns=parseBBExtrato(lines);break;
       case'visa_fatura':     txns=parseUnicredFatura(lines,allText);break;
       case'inter_fatura':    txns=parseInterFatura(lines);break;
