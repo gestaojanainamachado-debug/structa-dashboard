@@ -172,10 +172,13 @@ tr:last-child td{border-bottom:none}
 .fld-date{width:128px}.fld-desc{flex:1;min-width:140px}.fld-cat{min-width:160px;flex:1}.fld-pgto{min-width:140px}.fld-val{width:115px}
 
 /* TX TOTALS */
-.tx-total-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.tx-total-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .tx-total{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:12px 16px;text-align:center}
 .tx-total .lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
 .tx-total .val{font-size:18px;font-weight:700}
+.tx-total-sub{font-size:10.5px;color:var(--muted);margin-top:4px}
+.tx-total-sub .delta{font-weight:600}
+.tx-total-sub .ok{color:var(--ok)}.tx-total-sub .warn{color:var(--warn)}.tx-total-sub .bad{color:var(--bad)}
 
 /* FLUXO DE PGTO */
 .fluxo-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -253,7 +256,6 @@ canvas{max-width:100%}
   .fld-val{width:calc(50% - 4px)}
   .form-row .btn{width:calc(50% - 4px)}
   .tx-total-bar{grid-template-columns:1fr 1fr;gap:8px}
-  .tx-total-bar .tx-total:last-child{grid-column:1/-1}
   .timeline-row,.tl-header{grid-template-columns:36px 1fr auto 88px}
   .tl-header span:last-child,.timeline-row .tl-saldo{display:none}
   .tl-day{font-size:16px}
@@ -1047,9 +1049,14 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 
   <!-- Totais do mês -->
   <div class="tx-total-bar">
-    <div class="tx-total"><div class="lbl">Receitas</div><div class="val pos" id="tx-tot-rec">R$ 0</div></div>
-    <div class="tx-total"><div class="lbl">Despesas</div><div class="val bad" id="tx-tot-dep">R$ 0</div></div>
-    <div class="tx-total"><div class="lbl">Saldo do mês</div><div class="val" id="tx-tot-sal">R$ 0</div></div>
+    <div class="tx-total"><div class="lbl">Receitas</div><div class="val pos" id="tx-tot-rec">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-rec-o">R$ 0</span> · <span class="delta" id="tx-tot-rec-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Despesas</div><div class="val bad" id="tx-tot-dep">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-dep-o">R$ 0</span> · <span class="delta" id="tx-tot-dep-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Investimento</div><div class="val" id="tx-tot-inv">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-inv-o">R$ 0</span> · <span class="delta" id="tx-tot-inv-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Saldo do mês</div><div class="val" id="tx-tot-sal">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-sal-o">R$ 0</span></div></div>
   </div>
 
   <!-- Barra de busca e filtros -->
@@ -1941,6 +1948,7 @@ const DEFS={
     {id:'ct_assin',   lbl:'Assinaturas / Sistemas de Trabalho', grpNome:'Custos Profissionais'},
     {id:'ct_cont',    lbl:'Contador',                            grpNome:'Custos Profissionais'},
     {id:'ct_imp',     lbl:'Impostos (IRPJ / CSLL / Simples)',    grpNome:'Custos Profissionais'},
+    {id:'ct_iss',     lbl:'Impostos ISS',                        grpNome:'Custos Profissionais'},
     {id:'ct_alug',    lbl:'Aluguel do Consultório',              grpNome:'Custos Profissionais'},
     {id:'ct_sal',     lbl:'Funcionários / Encargos',             grpNome:'Custos Profissionais'},
     {id:'ct_mkt',     lbl:'Marketing',                           grpNome:'Custos Profissionais'},
@@ -2060,13 +2068,14 @@ const KW={
   // CT — Custo de Trabalho / Profissional
   ct_alug:    ['aluguel consultorio','aluguel clinica','aluguel sala'],
   ct_sal:     ['folha pgto','folha de pagamento','pagamento salario','pgto salario','pro-labore','prolabore'],
-  ct_mat:     ['material medico','insumo clinica','descartavel clinica','lacutanee'],
+  ct_mat:     ['material medico','insumo clinica','descartavel clinica','lacutanee','4bio medicamentos','4bio '],
   ct_cursos:  ['congresso medico','curso medico','evento clinica'],
   ct_inv_emp: ['investimento empresa','reforma clinica'],
   ct_assin:   ['prontuario','software medico','sistema clinica','totvs','aps ','suporte ti clinica','assinatura clinica','plataforma clinica'],
   ct_mkt:     ['marketing clinica','google ads','facebook ads','meta ads','publicidade clinica','facebk'],
   ct_cont:    ['honorario contab','contador clinica','contabilidade clinica'],
   ct_imp:     ['simples nacional','das ','irpj','cofins','csll','contribuicao mensal'],
+  ct_iss:     ['pm juiz de fora','pref mun juiz de for','pref municipal juiz de fora','issqn','iss retido'],
   ct_outros:  [],
   // FIXAS — 1. Moradia
   f_alug:     ['aluguel residencial','aluguel casa','aluguel apto','aluguel imovel','locacao resid'],
@@ -2093,7 +2102,7 @@ const KW={
   f_pet_plano: ['plano pet','saude pet','seguro pet'],
   f_pet_creche:['creche pet','hotel pet','hotelzinho pet'],
   // FIXAS — 7. Educacao
-  f_facul:    ['faculdade','universidade','mensalidade curso','pos-graduacao','mba '],
+  f_facul:    ['faculdade','universidade','mensalidade curso','pos-graduacao','mba ','plural mantenedora'],
   f_curso_l:  ['curso longa','curso extenso'],
   // FIXAS — 8. Filhos e Familia
   f_escola:   ['mensalidade escol','escola ','colegio '],
@@ -2181,15 +2190,17 @@ const KW={
   i_prev:     ['previdencia','pgbl ','vgbl ','brasilprev','quanta prev','mens quanta prev','integr parc capital'],
   i_aporte:   ['aporte programado','aplicacao programada'],
   i_reserva:  ['aplicacao emergencia','reserva emergencia'],
-  i_rf:       ['aplicacao pos','pos-fixado','aplicacao contamax','aplicacao rdb','cdb ','lci ','lca ','tesouro direto','poupanca'],
+  i_rf:       ['aplicacao pos','pos-fixado','aplicacao contamax','cdb ','lci ','lca ','tesouro direto','poupanca'],
   i_acoes:    ['acoes ','fii ','fundos imobil','b3 '],
   i_fundo:    ['fundo de invest','fundo multimerc'],
-  i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao'],
+  // Aplicação/Resgate de RDB juntos em Corretora (Geral) pra o saldo líquido do mês
+  // (aplicação menos resgate) refletir o valor exato investido — ver txSignedAmount()
+  i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao','aplicacao rdb','resgate rdb'],
   i_imovel:   ['construcao imovel','compra imovel','terreno '],
   // NEUTRO
   n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
-  n_resgate:  ['resgate aplic','resgate contamax','resgate rdb','resgate investimento'],
+  n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
   n_reimb:    ['estorno de compra','pix devolvido','estorno pix','anuidade - bonif'],
   // RECEITAS
@@ -2448,8 +2459,8 @@ function orcMonthKey(y,m){
   return `${y}-${String(m+1).padStart(2,'0')}`;
 }
 function _getMB(key){if(!S.monthlyBudgets)S.monthlyBudgets={};return S.monthlyBudgets[key]||{};}
-function getOrcVal(catId){
-  const mb=_getMB(orcMonthKey());
+function getOrcVal(catId,y,m){
+  const mb=_getMB(orcMonthKey(y,m));
   if(mb.cats&&mb.cats[catId]!==undefined)return mb.cats[catId];
   // fallback: global cat.orc
   for(const g of['ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
@@ -2463,8 +2474,8 @@ function setOrcVal(catId,val){
   S.monthlyBudgets[key].cats[catId]=val;
   recalc();save();
 }
-function getOrcRendaOrc(){
-  const mb=_getMB(orcMonthKey());
+function getOrcRendaOrc(y,m){
+  const mb=_getMB(orcMonthKey(y,m));
   return mb.rendaOrc!==undefined?mb.rendaOrc:S.rendaOrc||0;
 }
 function setOrcRendaOrc(val){
@@ -2474,7 +2485,7 @@ function setOrcRendaOrc(val){
   S.monthlyBudgets[key].rendaOrc=val;
   recalc();save();
 }
-function sumOrc(cats){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id)||0),0);}
+function sumOrc(cats,y,m){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id,y,m)||0),0);}
 
 function orcPrevMonth(){
   orcViewMonth--;if(orcViewMonth<0){orcViewMonth=11;orcViewYear--;}
@@ -3512,12 +3523,14 @@ function renderTxList(){
   if(allChkHdr)allChkHdr.checked=false;
 
   if(count===0){empty.style.display='block';table.style.display='none';
-    setText('tx-tot-rec',fmt(0));setText('tx-tot-dep',fmt(0));setText('tx-tot-sal',fmt(0));
-    txUpdateBulkBar();return;}
+    setText('tx-tot-rec',fmt(0));setText('tx-tot-dep',fmt(0));setText('tx-tot-inv',fmt(0));setText('tx-tot-sal',fmt(0));
+    txUpdateBulkBar();txUpdatePlanComparison(0,0,0,0);return;}
   empty.style.display='none';table.style.display='';
-  body.innerHTML='';let totRec=0,totDep=0;
+  body.innerHTML='';let totRec=0,totDep=0,totInv=0;
   filtered.forEach(tx=>{
-    if(tx.grp==='receita')totRec+=tx.amount;else if(tx.grp!=='neutro')totDep+=tx.amount;
+    if(tx.grp==='receita')totRec+=tx.amount;
+    else if(tx.grp==='inv')totInv+=txSignedAmount(tx);
+    else if(tx.grp!=='neutro')totDep+=tx.amount;
     const catLbl=getCatLbl(tx.catId,tx.grp);
     const pgtoLbl=getPgtoLbl(tx);
     const bClass=tx.grp==='receita'?'b-rec':tx.grp==='inv'?'b-inv':tx.grp==='neutro'?'b-card':'b-dep';
@@ -3539,10 +3552,42 @@ function renderTxList(){
     </tr>`;
   });
   txUpdateBulkBar();
-  const saldo=totRec-totDep;
-  setText('tx-tot-rec',fmt(totRec));setText('tx-tot-dep',fmt(totDep));
+  const saldo=totRec-totDep-totInv;
+  setText('tx-tot-rec',fmt(totRec));setText('tx-tot-dep',fmt(totDep));setText('tx-tot-inv',fmt(totInv));
   const se=document.getElementById('tx-tot-sal');
   if(se){se.textContent=fmt(Math.abs(saldo));se.className='val '+(saldo>=0?'pos':'neg');}
+  txUpdatePlanComparison(totRec,totDep,totInv,saldo);
+}
+// Compara Realizado (do mês em exibição na aba Lançamentos) x Planejado no Orçamento para o mesmo mês
+function txUpdatePlanComparison(totRec,totDep,totInv,saldo){
+  const tCo=sumOrc(S.cats.ct||[],txViewYear,txViewMonth);
+  const tFo=sumOrc(S.cats.fixas||[],txViewYear,txViewMonth);
+  const tVo=sumOrc(S.cats.var||[],txViewYear,txViewMonth);
+  const tIo=sumOrc(S.cats.inv||[],txViewYear,txViewMonth);
+  const orcRenda=getOrcRendaOrc(txViewYear,txViewMonth);
+  const orcDep=tCo+tFo+tVo;
+  const orcSaldo=orcRenda-orcDep-tIo;
+
+  setText('tx-tot-rec-o',fmt(orcRenda));
+  setDeltaPill('tx-tot-rec-p',totRec-orcRenda,true,orcRenda);
+
+  setText('tx-tot-dep-o',fmt(orcDep));
+  setDeltaPill('tx-tot-dep-p',orcDep-totDep,true,orcDep); // gastou menos que o planejado = bom
+
+  setText('tx-tot-inv-o',fmt(tIo));
+  setDeltaPill('tx-tot-inv-p',totInv-tIo,true,tIo);
+
+  setText('tx-tot-sal-o',fmt(orcSaldo));
+}
+// Mostra a diferença Real x Planejado como pílula colorida (✓ cumpriu / ✗ não cumpriu)
+function setDeltaPill(id,delta,higherIsGood,base){
+  const el=document.getElementById(id);if(!el)return;
+  if(!base){el.textContent='—';el.className='delta';return;}
+  const pctDelta=delta/base;
+  const good=higherIsGood?delta>=0:delta<=0;
+  const sign=delta>=0?'+':'−';
+  el.textContent=(good?'✓ ':'✗ ')+sign+fmt(Math.abs(delta));
+  el.className='delta '+(good?'ok':Math.abs(pctDelta)<=.1?'warn':'bad');
 }
 function getCatLbl(catId,grp){
   if(grp==='receita'){return DEFS.receita.find(c=>c.id===catId)?.lbl||'Receita';}
@@ -3695,6 +3740,13 @@ function renderFluxoPgto(){
 }
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
+// Resgates de RDB/aplicação lançados em "Corretora (Geral)" (i_corr) entram como valor NEGATIVO
+// dentro da própria categoria, pra a aplicação menos o resgate no mês resultar no valor líquido
+// realmente investido (em vez de somar os dois como se fossem despesas separadas).
+function txSignedAmount(t){
+  if(t.catId==='i_corr'&&/resgat/i.test(t.desc||''))return-Math.abs(t.amount);
+  return t.amount;
+}
 function getTxMap(yr,mo){
   yr=yr!==undefined?yr:txViewYear; mo=mo!==undefined?mo:txViewMonth;
   const m={};
@@ -3702,7 +3754,7 @@ function getTxMap(yr,mo){
     const effDate=t.dataPgto||t.date;if(!effDate)return;
     const d=new Date(effDate+'T00:00:00');
     if(d.getFullYear()!==yr||d.getMonth()!==mo)return;
-    if(t.grp!=='receita'&&t.grp!=='neutro')m[t.catId]=(m[t.catId]||0)+t.amount;
+    if(t.grp!=='receita'&&t.grp!=='neutro')m[t.catId]=(m[t.catId]||0)+txSignedAmount(t);
   });
   return m;
 }
@@ -6887,11 +6939,23 @@ function renderMerchantMemory(){
   }).join('');
 }
 
+// Se o nome do próprio cliente (dono da conta) aparece na descrição do lançamento,
+// é transferência entre contas dele mesmo (ex.: PIX entre conta PF e PJ), nunca receita/despesa real.
+// Exige todas as palavras relevantes do nome (>=3 letras) presentes, pra evitar falso positivo com nome comum.
+function clientNameMatches(d){
+  const raw=(S.name||'').trim();
+  if(!raw)return false;
+  const words=convNorm(raw).split(/\s+/).filter(w=>w.length>=3);
+  if(words.length<2)return false;
+  return words.every(w=>d.includes(w));
+}
 function classifyTx(desc,value){
   const d=convNorm(desc);
   // 1º: classificações já corrigidas anteriormente (aprendizado)
   const lk=learnKeyOf(desc),learned=getLearned();
   if(learned[lk]&&CAT[learned[lk]])return learned[lk];
+  // 2º: nome do próprio cliente na descrição = transferência entre contas
+  if(clientNameMatches(d))return 'n_transf';
   // Neutral first
   for(const cat of NEUTRAL_CATS){
     if(KW[cat]&&KW[cat].some(k=>d.includes(convNorm(k))))return cat;
