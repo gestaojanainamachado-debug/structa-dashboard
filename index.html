@@ -2084,7 +2084,7 @@ const KW={
   f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa'],
   f_luz:      ['copel ','cemig ','enel ','light ','celpe ','coelba ','ampla ','energisa ','cpfl','equatorial','neoenergia'],
   f_gas:      ['comgas','liquigas','copagaz','supergasbras','ultragaz'],
-  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo'],
+  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo','vero sa'],
   f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
@@ -2092,10 +2092,10 @@ const KW={
   f_med_cont: ['medicamento cont','tratamento cont','farmacia cont'],
   // FIXAS — 4. Bem-Estar e Esporte
   f_terapia:  ['psicolog','psicoterapi','terapia '],
-  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech','totalpass','wellhub'],
+  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech','totalpass','wellhub','move 4 you','move4you'],
   f_personal: ['personal trainer','alta personal'],
   // FIXAS — 5. Transporte
-  f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine'],
+  f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine','yelumseg'],
   f_ipva_p:   ['ipva prov','provisao ipva'],
   f_estac_m:  ['garagem mensal','estacionamento mensal','aluguel garagem'],
   // FIXAS — 6. Pets
@@ -2113,12 +2113,12 @@ const KW={
   f_app:      ['canva ','chatgpt','openai','claude.ai','anthropic','melimais','meli+'],
   f_clube:    ['clube benefit','clube de beneficio'],
   // FIXAS — 14. Servicos de Terceiros
-  f_terccons: ['consultoria ','honorario cons'],
+  f_terccons: ['consultoria ','honorario cons','salu gestao estrategica'],
   f_contab:   ['contabilidade ','escritorio contab'],
   // FIXAS — 15. Seguros
   f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg'],
   f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida'],
-  f_seg_rc:   ['responsabilidade civil','resp civil'],
+  f_seg_rc:   ['responsabilidade civil','resp civil','fairfax'],
   f_seg_ap:   ['seguro perda','seguro roubo','perda ou roubo','seguro aparelho'],
   // FIXAS — 16. Taxas e Tarifas
   f_tarifa:   ['tarifa bancaria','anuidade cartao','anuidade - parc','anuidade ','manutencao conta','mensalidade pacote'],
@@ -2127,18 +2127,19 @@ const KW={
   f_div:      ['parcela pessoal','financiamento pessoal','emprestimo pessoal'],
   f_fin_im:   ['financiamento imovel','financiamento casa','financiamento apto','parcela imovel','prestacao hab','debito prestacao hab'],
   f_fin_ve:   ['financiamento veiculo','financiamento carro','parcela veiculo'],
-  f_cons:     ['parcela cons','consorci ','consorcio '],
+  f_cons:     ['parcela cons','consorci ','consorcio ','porto consorcio'],
   f_reneg:    ['renegociacao'],
   // VAR — 1. Moradia
   v_habmanut: ['material de construcao','reforma ','manutencao resid','pintura casa','telhas'],
   // VAR — 2. Alimentacao Basica
-  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','compras casa'],
+  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','mercadolivre','compras casa','ambientallis'],
   v_esporte:  ['corrida de rua','trilha ','futebol ','beach tennis','padel ','voleib ','futsal','squash','esporte fim de semana'],
-  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar'],
-  v_feira:    ['feira ','quitanda','mercearia','cafeteria '],
+  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar','organizacoes pais','santo antonio convenie','bahamas m'],
+  // "cafeteria " tirado daqui (ia pra Feira/Açougue) — cafeteria é lazer/restaurante, não feira
+  v_feira:    ['feira ','quitanda','mercearia','panificadora'],
   // VAR — 2b. Restaurante do dia a dia
   // "foods" (plural) em vez de "food" pra não capturar "pet food" (ração de pet, categoria própria)
-  v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita'],
+  v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita','2m conveniencia','bold snacks'],
   // VAR — 3. Saude
   v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6'],
   v_consulta: ['consulta medica','clinica medica','odontolog','dentista '],
@@ -2148,10 +2149,10 @@ const KW={
   v_fisio:    ['fisioterapia','fisioterapeuta'],
   v_massagem: ['massagem ','spa ','tratamento estetico'],
   // VAR — 5. Transporte e Mobilidade
-  v_comb:     ['posto ','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto'],
+  v_comb:     ['posto ','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece'],
   v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
-  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar'],
-  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw '],
+  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes'],
+  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw ','nagai automoveis'],
   v_lavagem:  ['lava rapido','lava jato','lavagem '],
   // VAR — 6. Pets
   v_pet_racao: ['racao ','alimentacao pet','pet food'],
@@ -2165,9 +2166,9 @@ const KW={
   v_filhos_comp:  ['roupa filho','brinquedo','fraldas','roupa bebe','free baby','puket','alphabeto'],
   v_mesada:       ['mesada '],
   // VAR — 9. Lazer e Gastronomia
-  v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen'],
+  v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen','mana poke','matilda servicos','cafeteria teatro centr','planet ','brasador','barcelos gelateria','cacau show'],
   v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados'],
-  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis '],
+  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser'],
   v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque ','zigpay'],
   v_festas:   ['buffet ','decoracao festa','festa '],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
@@ -2175,7 +2176,7 @@ const KW={
   v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis '],
   v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
-  v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial'],
+  v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial','loccitane',"l'occitane",'artesanip'],
   // VAR — 12. Presentes e Eventos
   v_pres:     ['presente ','gift '],
   v_doacao:   ['doacao','dizimo','oferta ','contribuicao social'],
@@ -2199,7 +2200,9 @@ const KW={
   i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao','aplicacao rdb','resgate rdb'],
   i_imovel:   ['construcao imovel','compra imovel','terreno '],
   // NEUTRO
-  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario'],
+  // "pagamento de boleto efetuado" sozinho é genérico demais (também aparece em boleto de
+  // imposto tipo ISS) — aqui só entra combinado com o nome do banco emissor do cartão.
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
   n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
@@ -2214,7 +2217,7 @@ const KW={
   r_alug_im:  ['aluguel recebido','locacao recebida'],
   r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup'],
   r_resgate:  ['resgate aplic','resgate investimento','resgate cdb'],
-  r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod'],
+  r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod','fernandes melo oftalmologia'],
   r_pix:      ['cred recebimento pix','recebimento pix','pix recebido'],
   r_emp:      ['emprestimo recebido','credito pessoal'],
 };
@@ -7086,6 +7089,7 @@ const BANK_NAMES={
   santander_extrato:'Santander – Extrato Conta Corrente',
   santander_fatura:'Santander – Fatura Cartão',
   bb_extrato:     'Banco do Brasil – Extrato Conta Corrente',
+  bb_fatura:      'Banco do Brasil – Fatura Ourocard',
   visa_fatura:    'Fatura Cartão Visa',
   inter_fatura:   'Banco Inter – Fatura Cartão',
   infinitepay:    'InfinitePay – Extrato',
@@ -7109,6 +7113,9 @@ function detectBank(lines){
     if(t.includes('fatura'))return'santander_fatura';
     return'santander_extrato';
   }
+  // Fatura de cartão BB (Ourocard) — precisa vir antes do extrato, senão "ouvidoria bb"
+  // (rodapé padrão de toda fatura BB) cai no parser de extrato de conta corrente.
+  if(t.includes('ourocard')&&(t.includes('fatura')||t.includes('lançamentos nesta fatura')||t.includes('lancamentos nesta fatura')))return'bb_fatura';
   if(t.includes('banco do brasil')||t.includes('dt. balancete')
      ||t.includes('rende facil')||t.includes('rende fácil')
      ||t.includes('ouvidoria bb'))return'bb_extrato';
@@ -7641,6 +7648,52 @@ function parseBBExtrato(lines){
       }
       last=null; // apenas uma linha de complemento por transação
     }
+  }
+  return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: BANCO DO BRASIL — Fatura Ourocard
+// Layout simples de uma coluna só: "DD/MM DESCRIÇÃO ... UF R$ VALOR" numa única
+// linha por lançamento (sem quebra de coluna como Sicoob/Santander). O PDF agrupa
+// os lançamentos por categoria de gasto (headers tipo "Saúde", "Restaurantes",
+// "Compras parceladas" etc.) e por portador do cartão adicional — ambos são só
+// texto solto, sem data/valor, então são ignorados naturalmente pelo regex.
+// Valor sem sinal = compra (despesa); "R$ -X" (sinal depois do R$, formato BB) =
+// pagamento/crédito (entra como receita/neutro).
+// ═══════════════════════════════════════════════════════════════════════════════
+const BB_FATURA_TX_RE=/^(\d{2})\/(\d{2})\s+(.+?)\s+([A-Za-zÀ-ú]{2})\s+(R\$\s?-?[\d.]+,\d{2})$/;
+const BB_FATURA_CARDHOLDER_RE=/^(.+?)\s+\(Cart[ãa]o\s+(\d+)\)$/i;
+const BB_FATURA_SKIP_RE=/^(saldo fatura anterior|subtotal|total da fatura)/i;
+function parseBBFatura(lines,allText){
+  let ancMonth=null,ancYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*[\s\S]{0,20}?(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(vm){ancMonth=parseInt(vm[2]);ancYear=parseInt(vm[3]);}
+  function resolveDate(day,month){
+    const mnum=parseInt(month,10);
+    let year=ancYear;
+    if(ancMonth&&mnum>ancMonth)year=ancYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const txns=[];
+  let cardholder='';
+  for(const line of lines){
+    const text=(line.text||'').trim();
+    if(!text)continue;
+    const ch=text.match(BB_FATURA_CARDHOLDER_RE);
+    if(ch){cardholder=ch[1].trim();continue;}
+    if(BB_FATURA_SKIP_RE.test(text))continue;
+    const m=text.match(BB_FATURA_TX_RE);
+    if(!m)continue;
+    const[,day,month,rawDesc,,amtStr]=m;
+    let desc=rawDesc.trim();
+    if(!desc)continue;
+    const amt=convParseBR(amtStr);
+    if(amt===null)continue;
+    const iso=resolveDate(day,month);
+    const value=amt<0?Math.abs(amt):-amt;
+    const fullDesc=cardholder?`${desc} (${cardholder})`:desc;
+    txns.push({date:iso,desc:fullDesc,value,cat:classifyTx(fullDesc,value)});
   }
   return txns;
 }
@@ -8356,6 +8409,7 @@ async function convProcessPDF(file){
       case'santander_extrato':txns=parseSantanderExtrato(lines,allText);break;
       case'santander_fatura': txns=parseSantanderFatura(lines,allText);break;
       case'bb_extrato':      txns=parseBBExtrato(lines);break;
+      case'bb_fatura':       txns=parseBBFatura(lines,allText);break;
       case'visa_fatura':     txns=parseUnicredFatura(lines,allText);break;
       case'inter_fatura':    txns=parseInterFatura(lines);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
