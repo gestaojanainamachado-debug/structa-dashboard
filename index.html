@@ -2083,10 +2083,10 @@ const KW={
   f_alug:     ['aluguel residencial','aluguel casa','aluguel apto','aluguel imovel','locacao resid'],
   f_cond:     ['condominio','cond. resid'],
   f_iptu_p:   ['iptu prov','provisao iptu'],
-  f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa'],
+  f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa','casama'],
   f_luz:      ['copel ','cemig ','enel ','light ','celpe ','coelba ','ampla ','energisa ','cpfl','equatorial','neoenergia'],
   f_gas:      ['comgas','liquigas','copagaz','supergasbras','ultragaz'],
-  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo','vero sa'],
+  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo','vero sa','vero','bmb *vero'],
   f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
@@ -2119,7 +2119,7 @@ const KW={
   f_contab:   ['contabilidade ','escritorio contab'],
   // FIXAS — 15. Seguros
   f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg','bbseguros'],
-  f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida'],
+  f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida','azos segu','azos '],
   f_seg_rc:   ['responsabilidade civil','resp civil','fairfax'],
   f_seg_ap:   ['seguro perda','seguro roubo','perda ou roubo','seguro aparelho'],
   // FIXAS — 16. Taxas e Tarifas
@@ -2143,7 +2143,7 @@ const KW={
   // "foods" (plural) em vez de "food" pra não capturar "pet food" (ração de pet, categoria própria)
   v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita','2m conveniencia','bold snacks'],
   // VAR — 3. Saude
-  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6'],
+  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6','rdsaude'],
   v_consulta: ['consulta medica','clinica medica','odontolog','dentista '],
   v_exame:    ['exame laborat','laboratorio ','clinica exame'],
   // VAR — 4. Bem-Estar e Esporte
@@ -2152,7 +2152,9 @@ const KW={
   v_massagem: ['massagem ','spa ','tratamento estetico'],
   v_supl:     ['shapejardimno','suplement'],
   // VAR — 5. Transporte e Mobilidade
-  v_comb:     ['posto ','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes'],
+  // "posto " (com espaço) tirado daqui — colidia com "imposto " (ex.: "Imposto de Renda")
+  // e jogava pagamento de imposto pra Combustível. Nomes de postos ficam com marca/termo explícito.
+  v_comb:     ['posto de gas','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes'],
   v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
   v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes','park'],
   v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw ','nagai automoveis'],
@@ -2173,10 +2175,10 @@ const KW={
   v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados'],
   v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser'],
   v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque ','zigpay'],
-  v_festas:   ['buffet ','decoracao festa','festa '],
+  v_festas:   ['buffet ','decoracao festa','festa ','ticketmais'],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
   // VAR — 10. Cuidados Pessoais e Estetica
-  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to'],
+  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie'],
   v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
   v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial','loccitane',"l'occitane",'artesanip'],
@@ -2205,7 +2207,7 @@ const KW={
   // NEUTRO
   // "pagamento de boleto efetuado" sozinho é genérico demais (também aparece em boleto de
   // imposto tipo ISS) — aqui só entra combinado com o nome do banco emissor do cartão.
-  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a'],
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a','pag fatura'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
   n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
@@ -2218,7 +2220,7 @@ const KW={
   r_docenc:   ['palestra ','honorarios aula','curso ministrado'],
   r_prolabore:['pro-labore pj','prolabore pj'],
   r_alug_im:  ['aluguel recebido','locacao recebida'],
-  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup'],
+  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup','rendimento','rend'],
   r_resgate:  ['resgate aplic','resgate investimento','resgate cdb'],
   r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod','fernandes melo oftalmologia'],
   r_pix:      ['cred recebimento pix','recebimento pix','pix recebido'],
