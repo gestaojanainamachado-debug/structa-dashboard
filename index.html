@@ -7133,7 +7133,7 @@ function detectBank(lines){
   // Fatura de cartão Sicoob (Sicoobcard) — precisa vir antes do extrato SISBR,
   // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
   // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
-  if(t.includes('sicoob')&&(t.includes('fatura')||t.includes('mastercard')||t.includes('sicoobcard')))return'sicoob_fatura';
+  if(t.includes('sicoob')&&t.includes('fatura'))return'sicoob_fatura';
   if(t.includes('sicoob')||t.includes('sisbr')||t.includes('coop.:'))return'sicoob_sisbr';
   if(t.includes('coop:')||t.includes('cooperativa de cr'))return'coop_extrato';
   // Banco Inter: "Despesas da fatura" + colunas "Data Movimentação Beneficiário"
