@@ -103,7 +103,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .col-hdr span{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right}
 .col-hdr span:first-child{text-align:left;color:var(--primary)}
 .parent-grp{margin-bottom:10px}
-.parent-grp-hdr{font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
+.parent-grp-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:baseline;font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
+.parent-grp-hdr .grp-sum{font-size:11px;font-weight:700;text-align:right;color:var(--muted);letter-spacing:0}
+.parent-grp-hdr .grp-sum.real{color:var(--primary)}
 .subtype-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 1px;font-weight:500}
 .despesas-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);background:rgba(56,28,23,.07);padding:5px 10px;border-radius:5px;margin:8px 0 4px}
 .cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
@@ -773,9 +775,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   .pat-row{grid-template-columns:80px 1fr 90px 24px!important}
   .pat-ativos-hdr{grid-template-columns:80px 1fr 90px 24px!important}
   /* Orçamento — remove coluna variação, ajusta grid */
-  .col-hdr,.cat-row,.tot-row,.renda-row{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
+  .col-hdr,.cat-row,.tot-row,.renda-row,.parent-grp-hdr{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
   .cat-row .var-cell,.tot-row .var-cell,.renda-row .var-cell{display:none!important}
   .col-hdr>*:nth-child(4){display:none!important}
+  .parent-grp-hdr>*:nth-child(4){display:none!important}
   .cat-grid{min-width:0!important}
   /* Diagnóstico — garantir que cards não transbordem */
   .diag-kpis{grid-template-columns:1fr 1fr!important}
@@ -2087,7 +2090,7 @@ const KW={
   f_luz:      ['copel ','cemig ','enel ','light ','celpe ','coelba ','ampla ','energisa ','cpfl','equatorial','neoenergia'],
   f_gas:      ['comgas','liquigas','copagaz','supergasbras','ultragaz'],
   f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo','vero sa','vero','bmb *vero'],
-  f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos'],
+  f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos','telefonia','tim*tim'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
   f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude'],
@@ -2111,7 +2114,7 @@ const KW={
   f_baba:     ['baba ','babysitter'],
   f_fesporte: ['esporte filho','escolinha ','natacao ','futebol ','judo ','ballet '],
   // FIXAS — 11. Assinaturas e Servicos
-  f_assin:    ['netflix','spotify','amazon prime','prime video','disney+','disney plus','hbo max','max.com','apple tv','apple.com/bill','apple','globoplay','deezer','youtube premium','youtubepremium','paramount+','crunchyroll','star+','google one','icloud','dropbox'],
+  f_assin:    ['netflix','spotify','amazon prime','amazonprime','prime video','disney+','disney plus','hbo max','max.com','apple tv','apple.com/bill','apple','globoplay','deezer','youtube premium','youtubepremium','paramount+','crunchyroll','star+','google one','icloud','dropbox'],
   f_app:      ['canva ','chatgpt','openai','claude.ai','anthropic','melimais','meli+'],
   f_clube:    ['clube benefit','clube de beneficio'],
   // FIXAS — 14. Servicos de Terceiros
@@ -2123,7 +2126,7 @@ const KW={
   f_seg_rc:   ['responsabilidade civil','resp civil','fairfax'],
   f_seg_ap:   ['seguro perda','seguro roubo','perda ou roubo','seguro aparelho'],
   // FIXAS — 16. Taxas e Tarifas
-  f_tarifa:   ['tarifa bancaria','anuidade cartao','anuidade - parc','anuidade ','manutencao conta','mensalidade pacote'],
+  f_tarifa:   ['tarifa bancaria','anuidade cartao','anuidade - parc','anuidade ','manutencao conta','mensalidade pacote','tarifa ted','tarifa pix'],
   f_conselho: ['anuidade crm','anuidade oab','crm anual','oab anual','conselho prof'],
   // FIXAS — 17. Dividas
   f_div:      ['parcela pessoal','financiamento pessoal','emprestimo pessoal'],
@@ -2134,7 +2137,7 @@ const KW={
   // VAR — 1. Moradia
   v_habmanut: ['material de construcao','reforma ','manutencao resid','pintura casa','telhas'],
   // VAR — 2. Alimentacao Basica
-  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','mercadolivre','compras casa','ambientallis','amazon'],
+  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','mercadolivre','compras casa','ambientallis','amazon','pontofriocom'],
   v_esporte:  ['corrida de rua','trilha ','futebol ','beach tennis','padel ','voleib ','futsal','squash','esporte fim de semana'],
   v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar','organizacoes pais','santo antonio convenie','bahamas','l a martins','hortfrutleia','sr a granel'],
   // "cafeteria " tirado daqui (ia pra Feira/Açougue) — cafeteria é lazer/restaurante, não feira
@@ -2143,7 +2146,7 @@ const KW={
   // "foods" (plural) em vez de "food" pra não capturar "pet food" (ração de pet, categoria própria)
   v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita','2m conveniencia','bold snacks'],
   // VAR — 3. Saude
-  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6','rdsaude'],
+  v_farm:     ['farmacia','drogaria','droga','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6','rdsaude','rd saude'],
   v_consulta: ['consulta medica','clinica medica','odontolog','dentista '],
   v_exame:    ['exame laborat','laboratorio ','clinica exame'],
   // VAR — 4. Bem-Estar e Esporte
@@ -2151,18 +2154,26 @@ const KW={
   v_fisio:    ['fisioterapia','fisioterapeuta'],
   v_massagem: ['massagem ','spa ','tratamento estetico'],
   v_supl:     ['shapejardimno','suplement'],
+  // v_deliv precisa vir antes de v_taxi e de v_restaur: prefixos de plataforma de
+  // entrega ("IFD*", "Uber Eats") têm que ganhar de palavras genéricas de
+  // corrida/comida ("uber ", " burger", "cafe") — senão "Uber Eats" vira corrida
+  // de Uber em vez de Delivery, e "IFD*Home Burger" vira Restaurante.
+  v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados','delivery'],
   // VAR — 5. Transporte e Mobilidade
-  // "posto " (com espaço) tirado daqui — colidia com "imposto " (ex.: "Imposto de Renda")
-  // e jogava pagamento de imposto pra Combustível. Nomes de postos ficam com marca/termo explícito.
-  v_comb:     ['posto de gas','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes'],
-  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
-  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes','park'],
+  // "posto" como palavra inteira (via #, ver kwHit) — não colide com "imposto" porque
+  // exige limite de palavra antes do "p" (dentro de "imposto" não há esse limite).
+  v_comb:     ['posto de gas','#posto','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes','visa posto norte sul'],
+  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','dl*99','dl *99','pg*99','pg *99','*99 ride','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
+  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes','park','guardauto','unicred tag'],
   v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw ','nagai automoveis'],
   v_lavagem:  ['lava rapido','lava jato','lavagem '],
   // VAR — 6. Pets
-  v_pet_racao: ['racao ','alimentacao pet','pet food'],
+  // pet_banho e pet_vet vêm antes de pet_racao porque este último ganhou a regra
+  // genérica "#pet" (qualquer descrição com a palavra "pet") — precisa ser a
+  // última opção do grupo Pets, senão rouba "Pet Shop"/"Medicamento Pet" etc.
   v_pet_banho: ['pet shop','petshop','petz ','cobasi','petlove','banho e tosa','banho pet','tosa '],
   v_pet_vet:   ['veterinari','veterinario','consulta vet','medicamento pet'],
+  v_pet_racao: ['racao ','alimentacao pet','pet food','#pet'],
   // VAR — 7. Educacao
   v_curso:    ['curso online','alura ','coursera','udemy','hotmart','kiwify','eduzz','duolingo','goldincision'],
   v_livro:    ['livro ','livraria','saraiva','amazon kindle','kindle'],
@@ -2172,8 +2183,7 @@ const KW={
   v_mesada:       ['mesada '],
   // VAR — 9. Lazer e Gastronomia
   v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen','mana poke','matilda servicos','cafeteria teatro centr','planet ','brasador','barcelos gelateria','cacau show','calebito','tim tim'],
-  v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados'],
-  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser'],
+  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser','localiza'],
   v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque ','zigpay'],
   v_festas:   ['buffet ','decoracao festa','festa ','ticketmais'],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
@@ -2181,7 +2191,9 @@ const KW={
   v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie'],
   v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
-  v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial','loccitane',"l'occitane",'artesanip'],
+  // "natura" precisa ser palavra inteira (#natura) — como substring simples colidia
+  // com "assiNATURA" (ex.: "Assinatura Clube") e classificava errado como cosmético.
+  v_cosmet:   ['o boticario','boticario','#natura','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial','loccitane',"l'occitane",'artesanip'],
   // VAR — 12. Presentes e Eventos
   v_pres:     ['presente ','gift '],
   v_doacao:   ['doacao','dizimo','oferta ','contribuicao social'],
@@ -2207,7 +2219,7 @@ const KW={
   // NEUTRO
   // "pagamento de boleto efetuado" sozinho é genérico demais (também aparece em boleto de
   // imposto tipo ISS) — aqui só entra combinado com o nome do banco emissor do cartão.
-  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a','pag fatura'],
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a','pag fatura','pagamento de boleto cartoes','pagamento de boleto cartões','pagto. por deb em c/c','pagto por deb em c/c'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
   n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
@@ -3192,6 +3204,7 @@ function renderAll(){
   document.getElementById('rendaReal').value=S.rendaReal||'';
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
 }
+function grpSumId(grp,nome){return 'grpsum-'+grp+'-'+(nome||'').replace(/[^a-z0-9]/gi,'_').toLowerCase();}
 function renderDespesas(){
   const el=document.getElementById('grp-despesas');
   if(!el)return;
@@ -3208,8 +3221,16 @@ function renderDespesas(){
     const done=new Set();
     [...GRP_ORDER,...Object.keys(byNome)].forEach(nome=>{
       if(done.has(nome)||!byNome[nome])return;done.add(nome);
+      let orcSum=0,realSum=0;
+      byNome[nome].forEach(cat=>{
+        orcSum+=getOrcVal(cat.id)||0;
+        const ft=txMap[cat.id]!==undefined;
+        realSum+=ft?(txMap[cat.id]||0):(cat.real||0);
+      });
       const wrap=document.createElement('div');wrap.className='parent-grp';
-      const hdr=document.createElement('div');hdr.className='parent-grp-hdr';hdr.textContent='📁 '+nome;
+      const hdr=document.createElement('div');hdr.className='parent-grp-hdr';
+      const sid=grpSumId(grp,nome);
+      hdr.innerHTML=`<span>📁 ${esc(nome)}</span><span class="grp-sum orc" id="${sid}-o">${fmt(orcSum)}</span><span class="grp-sum real" id="${sid}-r">${fmt(realSum)}</span><span></span><span></span>`;
       wrap.appendChild(hdr);
       byNome[nome].forEach(cat=>{
         const ft=txMap[cat.id]!==undefined;
@@ -3811,6 +3832,23 @@ function recalc(){
     setVar('var-'+c.id,(txMap[c.id]!==undefined?txMap[c.id]:c.real||0)-getOrcVal(c.id),true);
   });
   setVar('var-renda',rendaReal-orcRenda,true);
+
+  // Subtotais por classe (Moradia, Saúde, etc.) dentro de Fixo/Variável
+  function updateGrpSums(grp,cats){
+    const byNome={};
+    (cats||[]).forEach(c=>{const n=c.grpNome||'Outros';if(!byNome[n])byNome[n]=[];byNome[n].push(c);});
+    Object.keys(byNome).forEach(nome=>{
+      let o=0,r=0;
+      byNome[nome].forEach(c=>{
+        o+=getOrcVal(c.id)||0;
+        r+=txMap[c.id]!==undefined?(txMap[c.id]||0):(c.real||0);
+      });
+      const sid=grpSumId(grp,nome);
+      setText(sid+'-o',fmt(o));setText(sid+'-r',fmt(r));
+    });
+  }
+  updateGrpSums('fixas',S.cats.fixas);
+  updateGrpSums('var',S.cats.var);
 
   // Group totals
   setText('tct-o',fmt(tCo));setText('tct-r',fmt(tCr));
@@ -6958,6 +6996,16 @@ function clientNameMatches(d){
   if(words.length<2)return false;
   return words.every(w=>d.includes(w));
 }
+// Casa a keyword contra a descrição já normalizada. Prefixo "#" = palavra inteira
+// (limites de palavra via regex), pra evitar que um radical curto vire substring
+// de outra palavra sem relação (ex.: "#posto" não deve casar dentro de "imposto").
+function kwHit(k,d){
+  if(k.length>1&&k[0]==='#'){
+    const w=convNorm(k.slice(1));
+    return new RegExp('(^|[^a-z0-9])'+w+'($|[^a-z0-9])').test(d);
+  }
+  return d.includes(convNorm(k));
+}
 function classifyTx(desc,value){
   const d=convNorm(desc);
   // 1º: classificações já corrigidas anteriormente (aprendizado)
@@ -6967,12 +7015,12 @@ function classifyTx(desc,value){
   if(clientNameMatches(d))return 'n_transf';
   // Neutral first
   for(const cat of NEUTRAL_CATS){
-    if(KW[cat]&&KW[cat].some(k=>d.includes(convNorm(k))))return cat;
+    if(KW[cat]&&KW[cat].some(k=>kwHit(k,d)))return cat;
   }
   // Income if positive
   if(value>0){
     for(const cat of INCOME_CATS){
-      if(KW[cat]&&KW[cat].some(k=>d.includes(convNorm(k))))return cat;
+      if(KW[cat]&&KW[cat].some(k=>kwHit(k,d)))return cat;
     }
   }
   // All KW (skip income cats for non-positive values)
@@ -6982,7 +7030,7 @@ function classifyTx(desc,value){
   for(const[cat,kws]of Object.entries(KW)){
     if(value<=0&&INCOME_CATS.includes(cat))continue;
     if(receb&&!INCOME_CATS.includes(cat))continue;
-    if(kws.some(k=>d.includes(convNorm(k))))return cat;
+    if(kws.some(k=>kwHit(k,d)))return cat;
   }
   return value>0?'r_out':'v_outrasdesp';
 }
@@ -7100,6 +7148,7 @@ const BANK_NAMES={
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
   sicoob_fatura:  'Sicoob – Fatura Cartão',
+  bradesco_fatura:'Bradesco – Fatura Cartão',
   coop_extrato:   'Cooperativa – Extrato Conta Corrente',
   cef_app:        'Caixa – Extrato por Período (App)',
   prox_fatura:    'Cartão – Demonstrativo Próxima Fatura',
@@ -7136,6 +7185,7 @@ function detectBank(lines){
   // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
   // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
   if(t.includes('sicoob')&&t.includes('fatura'))return'sicoob_fatura';
+  if(t.includes('bradesco')&&t.includes('fatura mensal'))return'bradesco_fatura';
   if(t.includes('sicoob')||t.includes('sisbr')||t.includes('coop.:'))return'sicoob_sisbr';
   if(t.includes('coop:')||t.includes('cooperativa de cr'))return'coop_extrato';
   // Banco Inter: "Despesas da fatura" + colunas "Data Movimentação Beneficiário"
@@ -7701,6 +7751,90 @@ function parseBBFatura(lines,allText){
     txns.push({date:iso,desc:fullDesc,value,cat:classifyTx(fullDesc,value)});
   }
   return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: BRADESCO — FATURA MENSAL (Lançamentos: Data | Histórico | Cidade | R$)
+// Colunas por posição X (painel de Limites/Taxas fica à direita, x>=360, ignorado).
+// Linha de troca de titular: "NOME ... Cartão NNNN XXXX XXXX NNNN" (cartão adicional).
+// Descrição/cidade às vezes quebram em 2 linhas (ex.: "...MARINBR06/1" + "0" na
+// linha seguinte, sem data nem valor) — junta como continuação sem espaço.
+// ═══════════════════════════════════════════════════════════════════════════════
+// O pdf.js às vezes junta o valor e o sinal de crédito num só item com espaço
+// no meio (ex.: "7.089,94 -"), diferente do padrão sem espaço de outras faturas.
+const BRADESCO_MONEY_RE=/^([\d.]+,\d{2})\s*-?$/;
+const BRADESCO_DATE_RE=/^(\d{2})\/(\d{2})$/;
+const BRADESCO_CARDHOLDER_RE=/cart[ãa]o\s+\d{3,4}/i;
+function parseBradescoFatura(lines,allText){
+  let vencMonth=null,vencYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*[\s\S]{0,20}?(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(vm){vencMonth=parseInt(vm[2]);vencYear=parseInt(vm[3]);}
+  function resolveDate(day,month){
+    const mnum=parseInt(month,10);
+    let year=vencYear;
+    if(vencMonth&&mnum>vencMonth)year=vencYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const txns=[];
+  const byPage={};
+  lines.forEach(l=>{(byPage[l.page]=byPage[l.page]||[]).push(l);});
+  const pages=Object.keys(byPage).map(Number).sort((a,b)=>a-b);
+  let cardholder='';
+  let pending=null;
+  for(const pg of pages){
+    const plines=byPage[pg].slice().sort((a,b)=>b.y-a.y);
+    for(const line of plines){
+      if(!line.items||!line.items.length)continue;
+      const items=line.items.filter(it=>it.x<360).slice().sort((a,b)=>a.x-b.x);
+      if(!items.length)continue;
+      const joined=items.map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+
+      if(BRADESCO_CARDHOLDER_RE.test(joined)){
+        const nm=joined.split(/cart[ãa]o/i)[0].trim();
+        // Ignora o cabeçalho "Número do Cartão XXXX..." — não é nome de titular
+        if(nm&&!/^n[uú]mero\b/i.test(nm))cardholder=nm;
+        pending=null;
+        continue;
+      }
+
+      const dm=items[0].text.match(BRADESCO_DATE_RE);
+      if(dm){
+        let moneyIdx=-1;
+        for(let i=items.length-1;i>=1;i--){
+          if(BRADESCO_MONEY_RE.test(items[i].text)){moneyIdx=i;break;}
+        }
+        if(moneyIdx===-1){pending=null;continue;}
+        const moneyText=items[moneyIdx].text;
+        const amt=convParseBR(moneyText.replace(/\s*-$/,''));
+        if(amt===null){pending=null;continue;}
+        const isCredit=/-$/.test(moneyText.trim());
+        const value=isCredit?Math.abs(amt):-Math.abs(amt);
+        const descItems=items.slice(1,moneyIdx).filter(it=>it.x<180);
+        let desc=descItems.map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+        if(!desc)desc='Compra Bradesco';
+        const iso=resolveDate(dm[1],dm[2]);
+        const txn={date:iso,desc,cardholder,value};
+        txns.push(txn);
+        pending=txn;
+        continue;
+      }
+
+      // Fim da tabela de lançamentos ("Total para NOME"/"Total da fatura...") —
+      // zera o buffer pra não grudar rodapé/central de atendimento na última compra.
+      if(/^total\b/i.test(joined)){pending=null;continue;}
+
+      // Continuação (quebra de linha no meio de um token de histórico/cidade) —
+      // só fragmentos curtos (ex.: "0", "4", "S" de um número/cidade cortado no
+      // fim da linha); qualquer coisa maior é texto de outra seção e é ignorado.
+      if(pending&&joined.length<=4&&!items.some(it=>BRADESCO_MONEY_RE.test(it.text))){
+        pending.desc+=joined;
+      }
+    }
+  }
+  return txns.map(t=>{
+    const fullDesc=t.cardholder?`${t.desc} (${t.cardholder})`:t.desc;
+    return{date:t.date,desc:fullDesc,value:t.value,cat:classifyTx(fullDesc,t.value)};
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -8421,6 +8555,7 @@ async function convProcessPDF(file){
       case'infinitepay':     txns=parseInfinitePay(lines);break;
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
       case'sicoob_fatura':   txns=parseSicoobFatura(lines,allText);break;
+      case'bradesco_fatura': txns=parseBradescoFatura(lines,allText);break;
       case'coop_extrato':    txns=parseCoopExtrato(lines);break;
       case'cef_app':         txns=parseCefApp(lines);break;
       case'prox_fatura':     txns=parseProxFatura(lines,allText);break;
