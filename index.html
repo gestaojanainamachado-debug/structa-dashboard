@@ -2139,7 +2139,7 @@ const KW={
   // VAR — 2. Alimentacao Basica
   v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','mercadolivre','compras casa','ambientallis','amazon','pontofriocom'],
   v_esporte:  ['corrida de rua','trilha ','futebol ','beach tennis','padel ','voleib ','futsal','squash','esporte fim de semana'],
-  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar','organizacoes pais','santo antonio convenie','bahamas','l a martins','hortfrutleia','sr a granel'],
+  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar','organizacoes pais','santo antonio convenie','bahamas','l a martins','hortfrutleia','sr a granel','mercado'],
   // "cafeteria " tirado daqui (ia pra Feira/Açougue) — cafeteria é lazer/restaurante, não feira
   v_feira:    ['feira ','quitanda','mercearia','panificadora','casa kenedy','barraca'],
   // VAR — 2b. Restaurante do dia a dia
@@ -2163,7 +2163,7 @@ const KW={
   // "posto" como palavra inteira (via #, ver kwHit) — não colide com "imposto" porque
   // exige limite de palavra antes do "p" (dentro de "imposto" não há esse limite).
   v_comb:     ['posto de gas','#posto','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes','visa posto norte sul'],
-  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','dl*99','dl *99','pg*99','pg *99','*99 ride','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
+  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','dl*99','dl *99','pg*99','pg *99','*99 ride','#99','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
   v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes','park','guardauto','unicred tag'],
   v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw ','nagai automoveis'],
   v_lavagem:  ['lava rapido','lava jato','lavagem '],
@@ -2183,12 +2183,14 @@ const KW={
   v_mesada:       ['mesada '],
   // VAR — 9. Lazer e Gastronomia
   v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen','mana poke','matilda servicos','cafeteria teatro centr','planet ','brasador','barcelos gelateria','cacau show','calebito','tim tim'],
-  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser','localiza'],
-  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque ','zigpay'],
+  // v_viagem vem antes de v_passeio: "#parque" (pedido explícito da cliente) precisa
+  // ganhar do "parque " de v_passeio (que era usado pra parque de diversões/lazer).
+  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser','localiza','#parque'],
+  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','zigpay'],
   v_festas:   ['buffet ','decoracao festa','festa ','ticketmais'],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
   // VAR — 10. Cuidados Pessoais e Estetica
-  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','optica','otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie'],
+  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','#optica','#otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie','chilli beans','malha'],
   v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
   // "natura" precisa ser palavra inteira (#natura) — como substring simples colidia
@@ -7167,6 +7169,11 @@ function detectBank(lines){
     if(t.includes('fatura'))return'santander_fatura';
     return'santander_extrato';
   }
+  // Extrato PF do Internet Banking Santander que não imprime a palavra "santander"
+  // em lugar nenhum — identificado pelo conjunto de colunas específico
+  // "Docto / Situação / Crédito (R$) / Débito (R$)", exclusivo desse layout.
+  if(lines.some(l=>/docto/i.test(l.text)&&/situa[çc][ãa]o/i.test(l.text)
+     &&/cr[ée]dito\s*\(r\$\)/i.test(l.text)&&/d[ée]bito\s*\(r\$\)/i.test(l.text)))return'santander_extrato';
   // Fatura de cartão BB (Ourocard) — precisa vir antes do extrato, senão "ouvidoria bb"
   // (rodapé padrão de toda fatura BB) cai no parser de extrato de conta corrente.
   if(t.includes('ourocard')&&(t.includes('fatura')||t.includes('lançamentos nesta fatura')||t.includes('lancamentos nesta fatura')))return'bb_fatura';
@@ -7507,7 +7514,126 @@ function parseSantanderNum(s){
   return neg?-n:n;
 }
 
+// Despacha pro sub-parser certo de acordo com o layout do PDF — o Santander usa pelo
+// menos 3 formatos de extrato bem diferentes entre si (clássico com "MOVIMENTAÇÃO",
+// PF novo do internet banking com colunas Crédito/Débito separadas, e "Santander
+// Empresas" PJ com descrição quebrada em 3 linhas ao redor da linha da data).
 function parseSantanderExtrato(lines,allText){
+  if(lines.some(l=>/^movimenta[çc][ãa]o$/i.test(l.text))){
+    return parseSantanderExtratoClassico(lines,allText);
+  }
+  if(lines.some(l=>/docto/i.test(l.text)&&/situa[çc][ãa]o/i.test(l.text)
+     &&/cr[ée]dito\s*\(r\$\)/i.test(l.text)&&/d[ée]bito\s*\(r\$\)/i.test(l.text))){
+    return parseSantanderExtratoPF2(lines);
+  }
+  return parseSantanderExtratoPJ2(lines);
+}
+
+// ── Santander PF — internet banking, colunas "Docto Situação Crédito(R$) Débito(R$) Saldo(R$)" ──
+// Uma linha por lançamento; Crédito já vem positivo e Débito já vem negativo no
+// próprio PDF — a coluna Saldo é sempre ignorada. Usa skip próprio (não o SKIP
+// global) porque aqui "IOF ADICIONAL"/"JUROS ..." são encargos de verdade
+// (lançamentos de rotativo/limite), não texto de rodapé — o SKIP genérico
+// derrubaria essas transações.
+const SANT_PF2_SKIP=[
+  /^data\s+descri[çc][ãa]o/i,/^saldo anterior/i,/^saldo de conta/i,
+  /^saldo bloque/i,/^provis[ãa]o de encargos/i,/^seguro do limite/i,
+  /^saldo dispon[ií]vel/i,/^limite da conta/i,/^saldo em conta/i,
+  /^juros calculados/i,/^juros acumulados/i,/^iof acumulados/i,
+  /^data para d[eé]bito/i,/^[uú]ltimo movimento/i,/^dias utilizados/i,
+  /^central de atendimento/i,/^capitais e/i,/^demais localidades/i,
+  /^pessoas com defici/i,/^sac\b/i,/^ouvidoria/i,/^extrato de conta corrente/i,
+  /^per[ií]odo:/i,/^ag[eê]ncia e conta/i,/dispon[ií]vel das/i,/^internet banking/i,
+];
+function santPF2Skip(t){return!t||t.length<3||SANT_PF2_SKIP.some(r=>r.test(t.trim()));}
+function parseSantanderExtratoPF2(lines){
+  const txns=[];
+  const dateRe=/^(\d{2}\/\d{2}\/\d{4})\s+(.*)/;
+  for(const line of lines){
+    const text=line.text;
+    if(santPF2Skip(text))continue;
+    const m=text.match(dateRe);
+    if(!m)continue;
+    const date=m[1],rest=m[2].trim();
+    if(santPF2Skip(rest))continue;
+    const nums=extractNums(rest);
+    if(nums.length<2)continue; // precisa de Valor + Saldo; "saldo anterior" (1 nº) fica de fora
+    const val=convParseBR(nums[nums.length-2]);
+    if(val===null)continue;
+    let desc=rest;
+    nums.forEach(n=>{desc=desc.replace(n,'');});
+    desc=desc.replace(/\s{2,}/g,' ').replace(/[-\s]+$/,'').trim();
+    if(desc.length<2)continue;
+    txns.push({date,desc,value:val,cat:classifyTx(desc,val)});
+  }
+  return txns;
+}
+
+// ── Santander Empresas (PJ) — Data | Histórico | Documento | Valor (R$) | Saldo (R$) ──
+// Descrição frequentemente quebrada em 3 linhas: fragmento ANTES da linha da data
+// (ex.: "Pix Enviado LEYZEANE MARQUES DO"), a linha com a própria data + valor/saldo
+// (às vezes só um nº de documento solto), e um fragmento DEPOIS (ex.: "NASCI").
+// Valor já vem com o sinal certo (débito negativo/crédito positivo); Saldo é ignorado.
+const SANT_PJ2_SKIP=[
+  /^santander empresas/i,/^ag[eê]ncia:/i,/^per[ií]odos?:/i,/^saldo dispon[ií]vel/i,
+  /^data\s+hist[oó]rico/i,/^saldo de contamax/i,/^saldo$/i,/^posi[çc][ãa]o em/i,
+  /entenda a composi/i,/^[a-z]\s*[–-]\s*saldo/i,/^[a-z]\s*[–-]\s*limite/i,
+  /^[a-z]\s*[–-]\s*provis/i,/^[a-z]\s*-\s*provis/i,/desbloqueio em/i,
+  /^central de atendimento/i,/^\d{4}-?\d{3,4}\b/,/^0800/i,/^sac\b/i,/^ouvidoria/i,
+  /pessoas com defici/i,/^\d\/\d$/,
+];
+function santPJ2Skip(t){return!t||t.length<3||SANT_PJ2_SKIP.some(r=>r.test(t.trim()));}
+function parseSantanderExtratoPJ2(lines){
+  const dateRe=/^(\d{2}\/\d{2}\/\d{4})\s+(.*)/;
+  const filtered=lines.filter(l=>!santPJ2Skip(l.text));
+  // Agrupa em "blocos" por proximidade vertical: as linhas de um mesmo lançamento
+  // ficam coladas (~7pt de distância entre si), enquanto a distância normal entre
+  // lançamentos diferentes é bem maior (~25pt) — não dá pra usar só "próxima linha
+  // sem data = continuação", porque alguns lançamentos (ex.: "Ted Recebida") vêm
+  // numa linha só, sem prefixo nem sufixo, e a linha seguinte pode já ser o
+  // PREFIXO do próximo lançamento (não uma continuação do anterior).
+  const blocks=[];
+  let cur=null,prevY=null,prevPage=null;
+  for(const l of filtered){
+    // Troca de página sempre força um bloco novo — o Y reinicia por página, então
+    // "y anterior - y atual" pode dar um valor pequeno/negativo por coincidência
+    // e juntar por engano o fim de uma página com o começo da próxima.
+    const gap=(prevY===null||prevPage!==l.page)?999:(prevY-l.y);
+    if(gap>15||!cur){cur=[];blocks.push(cur);}
+    cur.push(l);
+    prevY=l.y;prevPage=l.page;
+  }
+  const txns=[];
+  for(const block of blocks){
+    let anchorIdx=-1,date=null,rest=null;
+    for(let i=0;i<block.length;i++){
+      const m=block[i].text.match(dateRe);
+      if(m){anchorIdx=i;date=m[1];rest=m[2].trim();break;}
+    }
+    if(anchorIdx===-1)continue;
+    const nums=extractNums(rest);
+    if(nums.length<2)continue; // precisa de Valor + Saldo
+    const val=convParseBR(nums[nums.length-2]);
+    if(val===null)continue;
+    let descPart=rest;
+    nums.forEach(n=>{descPart=descPart.replace(n,'');});
+    descPart=descPart.replace(/\s{2,}/g,' ').trim();
+    // Quando há outras linhas de descrição no bloco, um token solto só de dígitos
+    // na linha da data é o nº de Documento (não faz parte do Histórico) — descarta.
+    if(block.length>1&&/^\d{5,}$/.test(descPart))descPart='';
+    const before=block.slice(0,anchorIdx).map(l=>l.text.trim());
+    const after=block.slice(anchorIdx+1).map(l=>l.text.trim());
+    const desc=[...before,descPart,...after].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+    if(desc.length<2)continue;
+    txns.push({date,desc,value:val,cat:classifyTx(desc,val)});
+  }
+  return txns;
+}
+
+// ── Santander Extrato clássico — precisa da linha exata "MOVIMENTAÇÃO" ─────────
+// Data só na 1ª transação do dia; débitos com "-" no final (26,55-);
+// linha de complemento (favorecido) vem abaixo, sem valores.
+function parseSantanderExtratoClassico(lines,allText){
   const txns=[];
   let year=new Date().getFullYear();
   const ym=(allText||'').toLowerCase().match(/(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\/(\d{4})/);
