@@ -4803,7 +4803,16 @@ function save(){
     _sbSaveTimer=setTimeout(sbSaveNow,800);
   }
 }
-<<<<<<< HEAD
+let _sbDirty=false;
+function setSaveIndicator(state){
+  const el=document.getElementById('save-indicator');
+  if(!el)return;
+  if(state==='saving'){el.className='save-indicator saving';el.textContent='⏳ salvando...';}
+  else if(state==='saved'){
+    el.className='save-indicator saved';el.textContent='✓ salvo';
+    setTimeout(()=>{el.className='save-indicator';},3000);
+  } else {el.className='save-indicator';}
+}
 // ── Persistência genérica dos campos das "calculadoras" (IR/PGBL,
 // Aposentadoria, Simulador) — cada cliente guarda os próprios valores, que
 // ficam salvos até serem alterados (nunca somem ao trocar de aba/cliente).
@@ -4841,25 +4850,10 @@ function initCalcPanelsPersistence(){
   restoreCalcFields('panel-irpgbl');
   restoreCalcFields('panel-aposent');
   restoreCalcFields('panel-simulador');
-  // Recalcula tudo com os valores restaurados para os quadros/tabelas já
-  // aparecerem preenchidos, sem esperar o usuário digitar algo.
   try{irCalc();}catch(e){}
   try{aposCalc();}catch(e){}
   try{simCalc();}catch(e){}
 }
-
-=======
-let _sbDirty=false;
-function setSaveIndicator(state){
-  const el=document.getElementById('save-indicator');
-  if(!el)return;
-  if(state==='saving'){el.className='save-indicator saving';el.textContent='⏳ salvando...';}
-  else if(state==='saved'){
-    el.className='save-indicator saved';el.textContent='✓ salvo';
-    setTimeout(()=>{el.className='save-indicator';},3000);
-  } else {el.className='save-indicator';}
-}
->>>>>>> 281e659 (feat: indicador de save + debounce 800ms + aviso beforeunload)
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
   localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
