@@ -30,6 +30,7 @@
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#f4ede4;--surface:#fff;--s2:#e8ddcd;--lilac:#c7c3db;
@@ -106,7 +107,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .col-hdr span{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right}
 .col-hdr span:first-child{text-align:left;color:var(--primary)}
 .parent-grp{margin-bottom:10px}
-.parent-grp-hdr{font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
+.parent-grp-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:baseline;font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
+.parent-grp-hdr .grp-sum{font-size:11px;font-weight:700;text-align:right;color:var(--muted);letter-spacing:0}
+.parent-grp-hdr .grp-sum.real{color:var(--primary)}
 .subtype-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 1px;font-weight:500}
 .despesas-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);background:rgba(56,28,23,.07);padding:5px 10px;border-radius:5px;margin:8px 0 4px}
 .cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
@@ -175,10 +178,13 @@ tr:last-child td{border-bottom:none}
 .fld-date{width:128px}.fld-desc{flex:1;min-width:140px}.fld-cat{min-width:160px;flex:1}.fld-pgto{min-width:140px}.fld-val{width:115px}
 
 /* TX TOTALS */
-.tx-total-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.tx-total-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .tx-total{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:12px 16px;text-align:center}
 .tx-total .lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
 .tx-total .val{font-size:18px;font-weight:700}
+.tx-total-sub{font-size:10.5px;color:var(--muted);margin-top:4px}
+.tx-total-sub .delta{font-weight:600}
+.tx-total-sub .ok{color:var(--ok)}.tx-total-sub .warn{color:var(--warn)}.tx-total-sub .bad{color:var(--bad)}
 
 /* FLUXO DE PGTO */
 .fluxo-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
@@ -256,7 +262,6 @@ canvas{max-width:100%}
   .fld-val{width:calc(50% - 4px)}
   .form-row .btn{width:calc(50% - 4px)}
   .tx-total-bar{grid-template-columns:1fr 1fr;gap:8px}
-  .tx-total-bar .tx-total:last-child{grid-column:1/-1}
   .timeline-row,.tl-header{grid-template-columns:36px 1fr auto 88px}
   .tl-header span:last-child,.timeline-row .tl-saldo{display:none}
   .tl-day{font-size:16px}
@@ -774,9 +779,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   .pat-row{grid-template-columns:80px 1fr 90px 24px!important}
   .pat-ativos-hdr{grid-template-columns:80px 1fr 90px 24px!important}
   /* Orçamento — remove coluna variação, ajusta grid */
-  .col-hdr,.cat-row,.tot-row,.renda-row{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
+  .col-hdr,.cat-row,.tot-row,.renda-row,.parent-grp-hdr{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
   .cat-row .var-cell,.tot-row .var-cell,.renda-row .var-cell{display:none!important}
   .col-hdr>*:nth-child(4){display:none!important}
+  .parent-grp-hdr>*:nth-child(4){display:none!important}
   .cat-grid{min-width:0!important}
   /* Diagnóstico — garantir que cards não transbordem */
   .diag-kpis{grid-template-columns:1fr 1fr!important}
@@ -893,6 +899,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
     <button class="abar-btn" onclick="exportData()">⬇ Exportar JSON</button>
+    <button class="abar-btn" onclick="forceSyncLocalToCloud()" title="Envia dados salvos neste navegador para a nuvem — use para recuperar lançamentos perdidos">🔄 Sync local→nuvem</button>
+    <button class="abar-btn danger" onclick="clearAllTransactions()" title="Apaga só os lançamentos de todos os meses — mantém orçamento, metas, diagnóstico etc.">🗑 Limpar Lançamentos</button>
     <button class="abar-btn danger" onclick="clearData()">🗑 Limpar dados</button>
     <button class="abar-btn" onclick="location.href=location.pathname">↩ Trocar cliente</button>
     <button class="abar-btn" onclick="sbLogout()" title="Sair da conta Supabase">🔓 Sair</button>
@@ -1003,7 +1011,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="card">
         <div class="ctitle">Distribuição do Realizado</div>
         <div class="donut-wrap"><canvas id="donutChart"></canvas>
-          <div class="donut-center"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">comprometido</div></div>
+          <div class="donut-center"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">da renda</div></div>
         </div>
         <div class="legend">
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#a08060"></div><span>Trabalho</span></div><div class="leg-r"><span class="pct" id="lct-p">0%</span><span class="val" id="lct-v"> — R$ 0</span></div></div>
@@ -1032,6 +1040,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="sp"></div>
     <button class="btn btn-p btn-sm" onclick="openConvOverlay()">📄 Importar Extrato</button>
     <button class="btn btn-o btn-sm" id="tx-form-toggle" onclick="toggleTxForm()">＋ Manual</button>
+    <button class="btn btn-o btn-sm" onclick="openContasModal()">🏦 Contas/Cartões</button>
+    <button class="btn btn-o btn-sm" onclick="exportTxExcel()">📊 Exportar Excel</button>
   </div>
 
   <!-- Formulário manual (colapsável) -->
@@ -1042,17 +1052,27 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="fld fld-desc"><label>Descrição</label><input type="text" id="tx-desc" placeholder="Ex: Supermercado, Aluguel..." maxlength="80"></div>
       <div class="fld fld-cat"><label>Grupo</label><select id="tx-cat-grp" onchange="filterCatSub('tx-cat-grp','tx-cat')"></select></div>
       <div class="fld fld-cat"><label>Subcategoria</label><select id="tx-cat"></select></div>
-      <div class="fld fld-pgto"><label>Forma de pgto</label><select id="tx-pgto"></select></div>
+      <div class="fld fld-pgto"><label>Conta/Cartão/Forma de Pgto</label><select id="tx-pgto"></select></div>
       <div class="fld fld-val"><label>Valor (R$)</label><input type="number" id="tx-val" min="0" placeholder="0,00" step="0.01"></div>
+      <div class="fld" style="display:flex;align-items:flex-end;padding-bottom:6px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer;white-space:nowrap" title="Marque quando este valor é um reembolso/estorno que reduz o gasto da categoria escolhida (ex: um amigo te devolveu parte de uma despesa)">
+          <input type="checkbox" id="tx-credito-cat" style="width:14px;height:14px;accent-color:var(--primary)"> É reembolso/estorno (abate da categoria)
+        </label>
+      </div>
       <button class="btn btn-ok" onclick="addTx()">＋ Lançar</button>
     </div>
   </div>
 
   <!-- Totais do mês -->
   <div class="tx-total-bar">
-    <div class="tx-total"><div class="lbl">Receitas</div><div class="val pos" id="tx-tot-rec">R$ 0</div></div>
-    <div class="tx-total"><div class="lbl">Despesas</div><div class="val bad" id="tx-tot-dep">R$ 0</div></div>
-    <div class="tx-total"><div class="lbl">Saldo do mês</div><div class="val" id="tx-tot-sal">R$ 0</div></div>
+    <div class="tx-total"><div class="lbl">Receitas</div><div class="val pos" id="tx-tot-rec">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-rec-o">R$ 0</span> · <span class="delta" id="tx-tot-rec-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Despesas</div><div class="val bad" id="tx-tot-dep">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-dep-o">R$ 0</span> · <span class="delta" id="tx-tot-dep-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Investimento</div><div class="val" id="tx-tot-inv">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-inv-o">R$ 0</span> · <span class="delta" id="tx-tot-inv-p">—</span></div></div>
+    <div class="tx-total"><div class="lbl">Saldo do mês</div><div class="val" id="tx-tot-sal">R$ 0</div>
+      <div class="tx-total-sub">Planejado: <span id="tx-tot-sal-o">R$ 0</span></div></div>
   </div>
 
   <!-- Barra de busca e filtros -->
@@ -1073,6 +1093,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <option value="ct">Custo Trabalho</option>
       <option value="neutro">Neutros</option>
     </select>
+    <input type="number" id="tx-filter-val-min" placeholder="Valor mín." min="0" step="0.01" oninput="renderTxList()"
+      style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
+    <input type="number" id="tx-filter-val-max" placeholder="Valor máx." min="0" step="0.01" oninput="renderTxList()"
+      style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
     <button class="btn btn-o btn-sm" onclick="clearTxFilters()" title="Limpar filtros">✕</button>
   </div>
 
@@ -1119,14 +1143,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <button onclick="changeMonth(1)">›</button>
     </div>
     <div class="sp"></div>
-    <button class="btn btn-o btn-sm" onclick="openModal('conta')">🏦 Nova conta</button>
     <button class="btn btn-o btn-sm" onclick="openModal('card')">💳 Novo cartão</button>
     <button class="btn btn-o btn-sm" onclick="openModal('pgto')">＋ Entrada / Saída</button>
-  </div>
-
-  <!-- Contas bancárias bar -->
-  <div class="cards-bar" id="contas-bar" style="margin-bottom:6px">
-    <div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma conta bancária cadastrada.</div>
+    <button class="btn btn-o btn-sm" onclick="openImportOrc()">📥 Importar do Orçamento</button>
+    <button class="btn btn-o btn-sm" onclick="openCopyPrevMonth()">📆 Copiar do Mês Anterior</button>
   </div>
 
   <!-- Cards bar -->
@@ -1148,6 +1168,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <label>💰 Saldo inicial da conta (dia 1)</label>
       <input type="number" id="saldo-inicial" min="0" placeholder="0" step="0.01" oninput="S.saldoInicial=+this.value||0;renderFluxoPgto();save()">
     </div>
+    <div id="fp-verdict" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600"></div>
     <div class="tl-header">
       <span>Dia</span><span>Descrição</span><span></span><span style="text-align:right">Valor</span><span style="text-align:right">Saldo</span>
     </div>
@@ -1240,8 +1261,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="ir-sec" style="margin-bottom:0">
         <div class="ir-sec-title">Projeção PGBL vs VGBL (longo prazo)</div>
         <div class="pgbl-inputs-row">
-          <div class="ir-fld" style="margin:0"><label>Retorno (% a.a.)</label><input type="number" id="pv-ret" placeholder="10" min="0" step="0.1" oninput="irCalc()"></div>
           <div class="ir-fld" style="margin:0"><label>Prazo (anos)</label><input type="number" id="pv-prazo" placeholder="20" min="1" max="50" oninput="irCalc()"></div>
+          <div class="ir-fld" style="margin:0"><label>Retorno (% a.a.)</label><input type="number" id="pv-ret" placeholder="10" min="0" step="0.1" oninput="irCalc()"></div>
           <div class="ir-fld" style="margin:0"><label>Alíquota resgate</label>
             <select id="pv-aliq" onchange="irCalc()">
               <option value="0.275">27,5% — progressiva</option>
@@ -1562,6 +1583,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <!-- SEGUROS -->
   <div class="card">
     <div class="ctitle" style="margin-bottom:14px">🔰 Registro de Seguros</div>
+    <div id="seg-venc-alert" style="display:none;margin-bottom:14px"></div>
     <div class="seg-seg-grid" id="seg-seg-grid">
       <!-- rendered by renderSeguranca() -->
     </div>
@@ -1597,7 +1619,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <table class="div-table">
         <thead><tr>
           <th>Tipo</th><th>Instituição</th><th style="min-width:100px">Valor Contrat.</th>
-          <th>Taxa % a.m.</th><th>Modalidade</th><th>1ª Parcela</th><th>Nº Parc.</th>
+          <th>Taxa % a.a.</th><th>Modalidade</th><th>1ª Parcela</th><th>Nº Parc.</th>
           <th>Vl. Parcela</th><th style="min-width:110px">Total a Pagar</th>
           <th style="min-width:90px">Já Pago</th><th style="min-width:110px">Saldo Aberto</th><th></th>
         </tr></thead>
@@ -1761,6 +1783,13 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="conv-hide-neutral" checked onchange="convApplyFilters()"> Ocultar neutros</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="conv-hide-income" onchange="convApplyFilters()"> Ocultar receitas</label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:5px" title="Aplica essa data de vencimento a todos os lançamentos visíveis na tabela">
+        Venc. fatura (todos): <input type="date" id="conv-venc-global" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px">
+        <button class="btn btn-o" style="padding:3px 10px;font-size:12px" onclick="convApplyVencAll()">Aplicar</button>
+      </label>
+      <label style="font-size:13px;display:flex;align-items:center;gap:5px" title="Aplicada a todos os lançamentos deste extrato, pra saber depois de onde veio cada um">
+        Conta/cartão de origem: <select id="conv-conta-batch" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px"><option value="">— não informado —</option></select>
+      </label>
       <label style="margin-left:auto;font-size:13px;display:flex;align-items:center;gap:5px">
         Buscar: <input type="text" id="conv-search" placeholder="descrição…" oninput="convApplyFilters()" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px;width:140px">
       </label>
@@ -1773,6 +1802,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500">Descrição</th>
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:right;font-weight:500;white-space:nowrap">Valor</th>
             <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500;width:200px">Categoria</th>
+            <th style="background:var(--primary);color:var(--bg);padding:8px 10px;text-align:left;font-weight:500;white-space:nowrap" title="Data de vencimento da fatura — define em qual mês o lançamento aparece no orçamento">Venc. Fatura</th>
           </tr>
         </thead>
         <tbody id="conv-tbody"></tbody>
@@ -1848,20 +1878,6 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
 
     <!-- ADD CARD -->
-    <!-- NOVA CONTA BANCÁRIA -->
-    <div id="m-conta" style="display:none">
-      <div class="m-title">Cadastrar Conta Bancária</div>
-      <div class="m-sub">Identifique de qual conta saem e entram os recursos.</div>
-      <div class="card-form-grid">
-        <div class="fld"><label>Nome da conta</label><input type="text" id="conta-nome" placeholder="Ex: Itaú Corrente, Bradesco..."></div>
-        <div class="fld"><label>Cor de identificação</label><input type="color" id="conta-cor" value="#b5763a" style="height:36px;width:100%;border-radius:5px;border:1px solid var(--border);cursor:pointer"></div>
-      </div>
-      <div class="m-foot">
-        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-p" onclick="saveContaBancaria()">Salvar conta</button>
-      </div>
-    </div>
-
     <div id="m-card" style="display:none">
       <div class="m-title">Cadastrar Cartão de Crédito</div>
       <div class="m-sub">Os lançamentos desse cartão aparecerão no Fluxo de Pgto na data de vencimento da fatura.</div>
@@ -1878,7 +1894,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 
     <!-- ADD PGTO ENTRY -->
     <div id="m-pgto" style="display:none">
-      <div class="m-title">Adicionar Entrada / Saída</div>
+      <input type="hidden" id="pgto-edit-id" value="">
+      <div class="m-title" id="pgto-modal-title">Adicionar Entrada / Saída</div>
       <div class="m-sub">Lançamento fixo que aparece todo mês no Fluxo de Pgto (ex: aluguel, salário, financiamento).</div>
       <div class="form-row" style="gap:10px">
         <div class="fld" style="flex:1"><label>Descrição</label><input type="text" id="pgto-desc" placeholder="Ex: Aluguel, Salário..."></div>
@@ -1898,7 +1915,54 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       </div>
       <div class="m-foot">
         <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-p" onclick="savePgto()">Adicionar</button>
+        <button class="btn btn-p" id="pgto-modal-btn" onclick="savePgto()">Adicionar</button>
+      </div>
+    </div>
+
+    <!-- IMPORT FROM ORÇAMENTO -->
+    <div id="m-import-orc" style="display:none">
+      <div class="m-title">Importar do Orçamento</div>
+      <div class="m-sub" id="import-orc-sub">Ajuste o valor exato do mês e informe o dia de vencimento/recebimento de cada item. Só os itens marcados são importados.</div>
+      <div id="import-orc-body" style="max-height:50vh;overflow-y:auto"></div>
+      <div class="m-foot">
+        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-p" onclick="applyImportOrc()">Importar selecionados</button>
+      </div>
+    </div>
+
+    <!-- COPIAR DO MÊS ANTERIOR -->
+    <div id="m-copy-prev" style="display:none">
+      <div class="m-title">Copiar do Mês Anterior</div>
+      <div class="m-sub" id="copy-prev-sub">Traz os lançamentos avulsos do mês anterior pra este mês. Só os itens marcados são copiados.</div>
+      <div id="copy-prev-body" style="max-height:50vh;overflow-y:auto"></div>
+      <div class="m-foot">
+        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-p" onclick="applyCopyPrevMonth()">Copiar selecionados</button>
+      </div>
+    </div>
+
+    <!-- CONTAS & CARTÕES (registro de origem dos lançamentos) -->
+    <div id="m-contas" style="display:none">
+      <div class="m-title">Contas & Cartões</div>
+      <div class="m-sub">Cadastre as contas bancárias e cartões do cliente pra saber sempre de onde veio cada lançamento.</div>
+      <div class="form-row" style="gap:8px">
+        <div class="fld" style="flex:1"><label>Nome</label><input type="text" id="conta-nome" placeholder="Ex: Santander PF, Nubank Cartão..."></div>
+        <div class="fld" style="width:160px">
+          <label>Tipo</label>
+          <select id="conta-tipo">
+            <option value="corrente">🏦 Conta Corrente</option>
+            <option value="poupanca">🐷 Poupança</option>
+            <option value="credito">💳 Cartão de Crédito</option>
+            <option value="debito">💳 Cartão de Débito</option>
+            <option value="dinheiro">💵 Dinheiro</option>
+            <option value="outro">◽ Outro</option>
+          </select>
+        </div>
+        <button class="btn btn-ok" onclick="addConta()">＋ Adicionar</button>
+      </div>
+      <div id="contas-list" style="margin-top:14px;max-height:40vh;overflow-y:auto"></div>
+      <div class="m-foot">
+        <button class="btn btn-p" onclick="closeModal()">Fechar</button>
       </div>
     </div>
 
@@ -1912,10 +1976,15 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div class="fld"><label>Data Pgto (vencimento)</label><input type="date" id="etx-datapgto"></div>
         <div class="fld"><label>Parcela (ex: 2/6)</label><input type="text" id="etx-parcela" placeholder="ex: 2/6 ou vazio"></div>
         <div class="fld"><label>Valor (R$)</label><input type="number" id="etx-valor" min="0" step="0.01" placeholder="0,00"></div>
-        <div class="fld"><label>Conta / Cartão</label><select id="etx-conta"></select></div>
         <div class="fld"><label>Grupo</label><select id="etx-cat-grp" onchange="filterCatSub('etx-cat-grp','etx-cat')"></select></div>
         <div class="fld"><label>Subcategoria</label><select id="etx-cat"></select></div>
+        <div class="fld"><label>Conta/Cartão/Forma de Pgto</label><select id="etx-conta"><option value="">— não informado —</option></select></div>
         <div class="fld full"><label>Descrição</label><input type="text" id="etx-desc" maxlength="80"></div>
+        <div class="fld full" id="etx-credito-wrap">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer" title="Marque quando este valor é um reembolso/estorno que reduz o gasto da categoria escolhida (ex: um amigo te devolveu parte de uma despesa)">
+            <input type="checkbox" id="etx-credito-cat" style="width:14px;height:14px;accent-color:var(--primary)"> É reembolso/estorno (abate da categoria)
+          </label>
+        </div>
       </div>
       <div class="m-foot">
         <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
@@ -1960,12 +2029,14 @@ const DEFS={
     {id:'ct_assin',   lbl:'Assinaturas / Sistemas de Trabalho', grpNome:'Custos Profissionais'},
     {id:'ct_cont',    lbl:'Contador',                            grpNome:'Custos Profissionais'},
     {id:'ct_imp',     lbl:'Impostos (IRPJ / CSLL / Simples)',    grpNome:'Custos Profissionais'},
+    {id:'ct_iss',     lbl:'Impostos ISS',                        grpNome:'Custos Profissionais'},
     {id:'ct_alug',    lbl:'Aluguel do Consultório',              grpNome:'Custos Profissionais'},
     {id:'ct_sal',     lbl:'Funcionários / Encargos',             grpNome:'Custos Profissionais'},
     {id:'ct_mkt',     lbl:'Marketing',                           grpNome:'Custos Profissionais'},
     {id:'ct_mat',     lbl:'Material / Insumos',                  grpNome:'Custos Profissionais'},
     {id:'ct_cursos',  lbl:'Cursos / Eventos da Área',            grpNome:'Custos Profissionais'},
     {id:'ct_inv_emp', lbl:'Investimentos na Empresa',            grpNome:'Custos Profissionais'},
+    {id:'ct_taxas',   lbl:'Taxas/Anuidades',                     grpNome:'Custos Profissionais'},
     {id:'ct_outros',  lbl:'Outros Profissional',                 grpNome:'Custos Profissionais'},
   ],
   fixas:[
@@ -2002,6 +2073,7 @@ const DEFS={
     {id:'f_seg_vida', lbl:'Seguro de Vida',                grpNome:'Seguros'},
     {id:'f_seg_rc',   lbl:'Seguro de Resp. Civil',         grpNome:'Seguros'},
     {id:'f_seg_ap',   lbl:'Seguro de Itens Pessoais',       grpNome:'Seguros'},
+    {id:'f_seg_viag', lbl:'Seguro de Viagem',               grpNome:'Seguros'},
     {id:'f_tarifa',   lbl:'Tarifas Bancárias',             grpNome:'Taxas e Impostos'},
     {id:'f_conselho', lbl:'Anuidade Conselho (CRM/OAB)',   grpNome:'Taxas e Impostos'},
     {id:'f_div',      lbl:'Empréstimo Pessoal',            grpNome:'Dívidas'},
@@ -2020,6 +2092,7 @@ const DEFS={
     {id:'v_nutri',    lbl:'Nutricionista',                   grpNome:'Bem-Estar e Esporte'},
     {id:'v_fisio',    lbl:'Fisioterapia',                    grpNome:'Bem-Estar e Esporte'},
     {id:'v_esporte',  lbl:'Esportes de Final de Semana',     grpNome:'Bem-Estar e Esporte'},
+    {id:'v_supl',     lbl:'Suplementos',                     grpNome:'Bem-Estar e Esporte'},
     {id:'v_comb',     lbl:'Combustível',                     grpNome:'Transporte'},
     {id:'v_taxi',     lbl:'Uber / Transporte Público',       grpNome:'Transporte'},
     {id:'v_estac',    lbl:'Estacionamento / Pedágio',        grpNome:'Transporte'},
@@ -2041,6 +2114,7 @@ const DEFS={
     {id:'v_hobby',    lbl:'Hobbies / Jogos',                 grpNome:'Lazer'},
     {id:'v_compras',  lbl:'Compras para Casa',                 grpNome:'Compras'},
     {id:'v_vestu',    lbl:'Vestuário e Acessórios',           grpNome:'Compras'},
+    {id:'v_outrascompras', lbl:'Outras Compras',               grpNome:'Compras'},
     {id:'v_salao',    lbl:'Salão / Barbearia',                grpNome:'Cuidados Pessoais'},
     {id:'v_estetica', lbl:'Procedimentos Estéticos',          grpNome:'Cuidados Pessoais'},
     {id:'v_cosmet',   lbl:'Cosméticos e Perfumaria',          grpNome:'Cuidados Pessoais'},
@@ -2052,6 +2126,7 @@ const DEFS={
     {id:'v_irpf',     lbl:'Impostos PF',                       grpNome:'Taxas e Impostos'},
     {id:'v_cartorio', lbl:'Taxas Cartorárias',                grpNome:'Taxas e Impostos'},
     {id:'v_outras',   lbl:'Outros Impostos/Taxas',             grpNome:'Taxas e Impostos'},
+    {id:'v_outrasdesp',lbl:'Outras Despesas',                  grpNome:'Outros'},
   ],
   inv:[
     {id:'i_corr', lbl:'Corretora (Geral)'},
@@ -2071,115 +2146,134 @@ const DEFS={
     {id:'n_reimb',   lbl:'Estorno / Reembolso'},
   ],
 };
-const GRP_ORDER=['Moradia','Alimentação Básica','Saúde','Bem-Estar e Esporte','Transporte','Pets','Educação','Filhos e Família','Lazer','Compras','Cuidados Pessoais','Assinaturas','Presentes','Serviços','Seguros','Taxas e Impostos','Dívidas'];
+const GRP_ORDER=['Moradia','Alimentação Básica','Saúde','Bem-Estar e Esporte','Transporte','Pets','Educação','Filhos e Família','Lazer','Compras','Cuidados Pessoais','Assinaturas','Presentes','Serviços','Seguros','Taxas e Impostos','Dívidas','Outros'];
 const KW={
   // CT — Custo de Trabalho / Profissional
   ct_alug:    ['aluguel consultorio','aluguel clinica','aluguel sala'],
   ct_sal:     ['folha pgto','folha de pagamento','pagamento salario','pgto salario','pro-labore','prolabore'],
-  ct_mat:     ['material medico','insumo clinica','descartavel clinica'],
+  ct_mat:     ['material medico','insumo clinica','descartavel clinica','lacutanee','4bio medicamentos','4bio '],
   ct_cursos:  ['congresso medico','curso medico','evento clinica'],
   ct_inv_emp: ['investimento empresa','reforma clinica'],
   ct_assin:   ['prontuario','software medico','sistema clinica','totvs','aps ','suporte ti clinica','assinatura clinica','plataforma clinica'],
-  ct_mkt:     ['marketing clinica','google ads','facebook ads','meta ads','publicidade clinica'],
+  ct_mkt:     ['marketing clinica','google ads','facebook ads','meta ads','publicidade clinica','facebk'],
   ct_cont:    ['honorario contab','contador clinica','contabilidade clinica'],
   ct_imp:     ['simples nacional','das ','irpj','cofins','csll','contribuicao mensal'],
+  ct_iss:     ['pm juiz de fora','pref mun juiz de for','pref municipal juiz de fora','issqn','iss retido'],
   ct_outros:  [],
   // FIXAS — 1. Moradia
   f_alug:     ['aluguel residencial','aluguel casa','aluguel apto','aluguel imovel','locacao resid'],
   f_cond:     ['condominio','cond. resid'],
   f_iptu_p:   ['iptu prov','provisao iptu'],
-  f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa'],
+  f_agua:     ['sabesp','cedae ','embasa ','cagece ','sanepar ','caesb','aguas ','saneamento','copasa','casama'],
   f_luz:      ['copel ','cemig ','enel ','light ','celpe ','coelba ','ampla ','energisa ','cpfl','equatorial','neoenergia'],
   f_gas:      ['comgas','liquigas','copagaz','supergasbras','ultragaz'],
-  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net'],
-  f_cel:      ['tim movel','claro movel','vivo movel','oi movel'],
+  f_inet:     ['vivo fibra','claro net','net banda','oi fibra','brt net','conta vivo','vero sa','vero','bmb *vero'],
+  f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos','telefonia','tim*tim'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
   f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude'],
   f_med_cont: ['medicamento cont','tratamento cont','farmacia cont'],
   // FIXAS — 4. Bem-Estar e Esporte
   f_terapia:  ['psicolog','psicoterapi','terapia '],
-  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech'],
+  f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech','totalpass','wellhub','move 4 you','move4you','aquadyn'],
   f_personal: ['personal trainer','alta personal'],
   // FIXAS — 5. Transporte
-  f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine'],
+  f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine','yelumseg'],
   f_ipva_p:   ['ipva prov','provisao ipva'],
   f_estac_m:  ['garagem mensal','estacionamento mensal','aluguel garagem'],
   // FIXAS — 6. Pets
   f_pet_plano: ['plano pet','saude pet','seguro pet'],
   f_pet_creche:['creche pet','hotel pet','hotelzinho pet'],
   // FIXAS — 7. Educacao
-  f_facul:    ['faculdade','universidade','mensalidade curso','pos-graduacao','mba '],
+  f_facul:    ['faculdade','universidade','mensalidade curso','pos-graduacao','mba ','plural mantenedora'],
   f_curso_l:  ['curso longa','curso extenso'],
   // FIXAS — 8. Filhos e Familia
   f_escola:   ['mensalidade escol','escola ','colegio '],
   f_baba:     ['baba ','babysitter'],
   f_fesporte: ['esporte filho','escolinha ','natacao ','futebol ','judo ','ballet '],
   // FIXAS — 11. Assinaturas e Servicos
-  f_assin:    ['netflix','spotify','amazon prime','prime video','disney+','disney plus','hbo max','max.com','apple tv','apple.com/bill','globoplay','deezer','youtube premium','youtubepremium','paramount+','crunchyroll','star+','google one','icloud','dropbox'],
+  f_assin:    ['netflix','spotify','amazon prime','amazonprime','prime video','disney+','disney plus','hbo max','max.com','apple tv','apple.com/bill','apple','globoplay','deezer','youtube premium','youtubepremium','paramount+','crunchyroll','star+','google one','icloud','dropbox'],
   f_app:      ['canva ','chatgpt','openai','claude.ai','anthropic','melimais','meli+'],
   f_clube:    ['clube benefit','clube de beneficio'],
   // FIXAS — 14. Servicos de Terceiros
-  f_terccons: ['consultoria ','honorario cons'],
+  f_terccons: ['consultoria ','honorario cons','salu gestao estrategica'],
   f_contab:   ['contabilidade ','escritorio contab'],
   // FIXAS — 15. Seguros
-  f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg'],
-  f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida'],
-  f_seg_rc:   ['responsabilidade civil','resp civil'],
+  f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg','bbseguros'],
+  f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida','azos segu','azos '],
+  f_seg_rc:   ['responsabilidade civil','resp civil','fairfax'],
   f_seg_ap:   ['seguro perda','seguro roubo','perda ou roubo','seguro aparelho'],
   // FIXAS — 16. Taxas e Tarifas
-  f_tarifa:   ['tarifa bancaria','anuidade cartao','anuidade - parc','anuidade ','manutencao conta','mensalidade pacote'],
+  f_tarifa:   ['tarifa bancaria','anuidade cartao','anuidade - parc','anuidade ','manutencao conta','mensalidade pacote','tarifa ted','tarifa pix'],
   f_conselho: ['anuidade crm','anuidade oab','crm anual','oab anual','conselho prof'],
   // FIXAS — 17. Dividas
   f_div:      ['parcela pessoal','financiamento pessoal','emprestimo pessoal'],
   f_fin_im:   ['financiamento imovel','financiamento casa','financiamento apto','parcela imovel','prestacao hab','debito prestacao hab'],
   f_fin_ve:   ['financiamento veiculo','financiamento carro','parcela veiculo'],
-  f_cons:     ['parcela cons','consorci ','consorcio '],
+  f_cons:     ['parcela cons','consorci ','consorcio ','porto consorcio'],
   f_reneg:    ['renegociacao'],
   // VAR — 1. Moradia
   v_habmanut: ['material de construcao','reforma ','manutencao resid','pintura casa','telhas'],
   // VAR — 2. Alimentacao Basica
-  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','compras casa'],
+  v_compras:  ['casa e decoracao','leroy merlin','tok stok','havan ','casas bahia','magazine luiza','americanas ','shopee ','mercado livre','mercadolivre','compras casa','ambientallis','amazon','pontofriocom'],
   v_esporte:  ['corrida de rua','trilha ','futebol ','beach tennis','padel ','voleib ','futsal','squash','esporte fim de semana'],
-  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota'],
-  v_feira:    ['padaria','acougue','feira ','quitanda','mercearia','cafeteria '],
+  v_super:    ['supermercado','carrefour','extra ','pao de acucar','atacadao','assai ','hortifruti','sams club','zaffari','zona sul ','guanabara','prezunic','mart minas','bh superm','epa superm','bretas','condor super','angeloni','bistek','giassi','sacolao','mercadinho','dia superm','oxxo ','st marche','hirota','hortif','acougue','nutricar','organizacoes pais','santo antonio convenie','bahamas','l a martins','hortfrutleia','sr a granel','mercado'],
+  // "cafeteria " tirado daqui (ia pra Feira/Açougue) — cafeteria é lazer/restaurante, não feira
+  v_feira:    ['feira ','quitanda','mercearia','panificadora','casa kenedy','barraca'],
+  // VAR — 2b. Restaurante do dia a dia
+  // "foods" (plural) em vez de "food" pra não capturar "pet food" (ração de pet, categoria própria)
+  v_restaurdia: ['restaurante','padaria','pao ','tutti paulista','foods','caverna do espeto','cabana burger','la bodeguita','2m conveniencia','bold snacks'],
   // VAR — 3. Saude
-  v_farm:     ['farmacia','drogaria','droga ','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas'],
+  v_farm:     ['farmacia','drogaria','droga','ultrafarma','drogasil','pacheco ','araujo','pague menos','panvel','drogal ','onofre','nissei ','extrafarma','drogamais','farmarcas','farma','pharma','raia6','rdsaude','rd saude'],
   v_consulta: ['consulta medica','clinica medica','odontolog','dentista '],
   v_exame:    ['exame laborat','laboratorio ','clinica exame'],
   // VAR — 4. Bem-Estar e Esporte
   v_nutri:    ['nutricionista','nutricao '],
   v_fisio:    ['fisioterapia','fisioterapeuta'],
   v_massagem: ['massagem ','spa ','tratamento estetico'],
+  v_supl:     ['shapejardimno','suplement'],
+  // v_deliv precisa vir antes de v_taxi e de v_restaur: prefixos de plataforma de
+  // entrega ("IFD*", "Uber Eats") têm que ganhar de palavras genéricas de
+  // corrida/comida ("uber ", " burger", "cafe") — senão "Uber Eats" vira corrida
+  // de Uber em vez de Delivery, e "IFD*Home Burger" vira Restaurante.
+  v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados','delivery'],
   // VAR — 5. Transporte e Mobilidade
-  v_comb:     ['posto ','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto'],
-  v_taxi:     ['uber ','uber*','dl*uber','99pop','99app','99 tecnologia','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
-  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar'],
-  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo'],
+  // "posto" como palavra inteira (via #, ver kwHit) — não colide com "imposto" porque
+  // exige limite de palavra antes do "p" (dentro de "imposto" não há esse limite).
+  v_comb:     ['posto de gas','#posto','combustivel','shell ','ipiranga ','br distribuidora','petrobras','br mania','ale sat','auto posto','abastece','postoseteanoes','visa posto norte sul'],
+  v_taxi:     ['uber ','uber*','dl*uber','dl *uber','99pop','99app','99 tecnologia','dl*99','dl *99','pg*99','pg *99','*99 ride','#99','cabify','taxi ','metro ','bilhete unico','cptm ','brt '],
+  v_estac:    ['estacionamento','estac ','pedagio','sem parar','veloe ','conectcar','tag ','estapar','bfh adm de estaciona','7 cartoes','park','guardauto','unicred tag'],
+  v_manut:    ['oficina ','manutencao veiculo','funilaria','pneu ','autocenter','auto center','troca de oleo','bmw ','nagai automoveis'],
   v_lavagem:  ['lava rapido','lava jato','lavagem '],
   // VAR — 6. Pets
-  v_pet_racao: ['racao ','alimentacao pet','pet food'],
+  // pet_banho e pet_vet vêm antes de pet_racao porque este último ganhou a regra
+  // genérica "#pet" (qualquer descrição com a palavra "pet") — precisa ser a
+  // última opção do grupo Pets, senão rouba "Pet Shop"/"Medicamento Pet" etc.
   v_pet_banho: ['pet shop','petshop','petz ','cobasi','petlove','banho e tosa','banho pet','tosa '],
   v_pet_vet:   ['veterinari','veterinario','consulta vet','medicamento pet'],
+  v_pet_racao: ['racao ','alimentacao pet','pet food','#pet'],
   // VAR — 7. Educacao
   v_curso:    ['curso online','alura ','coursera','udemy','hotmart','kiwify','eduzz','duolingo','goldincision'],
   v_livro:    ['livro ','livraria','saraiva','amazon kindle','kindle'],
   // VAR — 8. Filhos e Familia
   v_filhos_saude: ['farmacia filho','saude filho','medicamento filho'],
-  v_filhos_comp:  ['roupa filho','brinquedo','fraldas','roupa bebe'],
+  v_filhos_comp:  ['roupa filho','brinquedo','fraldas','roupa bebe','free baby','puket','alphabeto','kids','baby','playkids','estripulia'],
   v_mesada:       ['mesada '],
   // VAR — 9. Lazer e Gastronomia
-  v_restaur:  ['restaurante','burguer','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes'],
-  v_deliv:    ['ifood','ifd*','ifd ','rappi','uber eats','ze delivery','aiqfome','daki ','arcos dourados'],
-  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis '],
-  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','parque '],
-  v_festas:   ['buffet ','decoracao festa','festa '],
+  v_restaur:  ['burguer',' burger','bar ','churrascaria','gastronomia','forneria','quintana','outback','mcdonald','mc donald','burger king','bobs ','habibs','subway','spoleto','giraffas','madero','coco bambu','starbucks','pizzaria','sushi','temakeria','lanchonete','hamburgueria','china in box','divino fogao','vivenda do camarao','ragazzo ','patroni','griletto','kfc ','popeyes','cafe','barbacoa','bacio di latte','chefe mineiro','kopenhagen','mana poke','matilda servicos','cafeteria teatro centr','planet ','brasador','barcelos gelateria','cacau show','calebito','tim tim'],
+  // v_viagem vem antes de v_passeio: "#parque" (pedido explícito da cliente) precisa
+  // ganhar do "parque " de v_passeio (que era usado pra parque de diversões/lazer).
+  v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser','localiza','#parque'],
+  v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','zigpay'],
+  v_festas:   ['buffet ','decoracao festa','festa ','ticketmais'],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
   // VAR — 10. Cuidados Pessoais e Estetica
-  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados'],
-  v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha'],
+  v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','#optica','#otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie','chilli beans','malha'],
+  v_salao:    ['salao ','barbearia','cabeleireiro','manicure','sobrancelha','tati pinheir'],
   v_estetica: ['estetica ','depilacao','facial '],
-  v_cosmet:   ['o boticario','boticario','natura ','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria'],
+  // "natura" precisa ser palavra inteira (#natura) — como substring simples colidia
+  // com "assiNATURA" (ex.: "Assinatura Clube") e classificava errado como cosmético.
+  v_cosmet:   ['o boticario','boticario','#natura','sephora','epoca cosmet','quem disse berenice','mac cosmet','cosmetico','perfumaria','nolan comercial','loccitane',"l'occitane",'artesanip'],
   // VAR — 12. Presentes e Eventos
   v_pres:     ['presente ','gift '],
   v_doacao:   ['doacao','dizimo','oferta ','contribuicao social'],
@@ -2195,17 +2289,21 @@ const KW={
   i_prev:     ['previdencia','pgbl ','vgbl ','brasilprev','quanta prev','mens quanta prev','integr parc capital'],
   i_aporte:   ['aporte programado','aplicacao programada'],
   i_reserva:  ['aplicacao emergencia','reserva emergencia'],
-  i_rf:       ['aplicacao pos','pos-fixado','aplicacao contamax','aplicacao rdb','cdb ','lci ','lca ','tesouro direto','poupanca'],
+  i_rf:       ['aplicacao pos','pos-fixado','aplicacao contamax','cdb ','lci ','lca ','tesouro direto','poupanca'],
   i_acoes:    ['acoes ','fii ','fundos imobil','b3 '],
   i_fundo:    ['fundo de invest','fundo multimerc'],
-  i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao'],
+  // Aplicação/Resgate de RDB juntos em Corretora (Geral) pra o saldo líquido do mês
+  // (aplicação menos resgate) refletir o valor exato investido — ver txSignedAmount()
+  i_corr:     ['xp investimentos','btg pactual','rico ','nuinvest','clear corretora','toro invest','avenue ','integralizacao','aplicacao rdb','resgate rdb'],
   i_imovel:   ['construcao imovel','compra imovel','terreno '],
   // NEUTRO
-  n_fatcc:    ['pagamento fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial'],
+  // "pagamento de boleto efetuado" sozinho é genérico demais (também aparece em boleto de
+  // imposto tipo ISS) — aqui só entra combinado com o nome do banco emissor do cartão.
+  n_fatcc:    ['pagamento fatura','pagamento de fatura','fatura cartao','pgto fatura','pgt fat','pagamento recebido','deb fatura','fatura- cartao','pagamento cartao credito','pagamento on line','deb aut parcial','pagamento-boleto','pagamento boleto bancario','pagamentos validos normais','banco xp s/a','banco xp s.a','pag fatura','pagamento de boleto cartoes','pagamento de boleto cartões','pagto. por deb em c/c','pagto por deb em c/c'],
   n_transf:   ['transf entre contas','transferencia entre','debito transf pix','rende facil','bb rende','rende mais','transferencia interna','tef '],
-  n_resgate:  ['resgate aplic','resgate contamax','resgate rdb','resgate investimento'],
+  n_resgate:  ['resgate aplic','resgate contamax','resgate investimento'],
   n_saldo:    ['saldo inicial','lancamento saldo','saldo dia','saldo anterior','limite convertido em saldo'],
-  n_reimb:    ['estorno de compra','pix devolvido','estorno pix','anuidade - bonif'],
+  n_reimb:    ['estorno de compra','pix devolvido','estorno pix','anuidade - bonif','anuidade por uso','desc anuidade'],
   // RECEITAS
   r_consul:   ['consulta particular','honorarios consulta','atendimento medico','deposito de vendas'],
   r_plantao:  ['plantao ','honorarios plantao','producao medica'],
@@ -2214,9 +2312,9 @@ const KW={
   r_docenc:   ['palestra ','honorarios aula','curso ministrado'],
   r_prolabore:['pro-labore pj','prolabore pj'],
   r_alug_im:  ['aluguel recebido','locacao recebida'],
-  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup'],
+  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup','rendimento','rend'],
   r_resgate:  ['resgate aplic','resgate investimento','resgate cdb'],
-  r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod'],
+  r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod','fernandes melo oftalmologia'],
   r_pix:      ['cred recebimento pix','recebimento pix','pix recebido'],
   r_emp:      ['emprestimo recebido','credito pessoal'],
 };
@@ -2368,15 +2466,28 @@ async function sbLoadData(user) {
   if(loadSlug) {
     const {data} = await _sb
       .from('client_data')
-      .select('data')
+      .select('data,updated_at')
       .eq('slug', loadSlug)
       .single();
-    if(data?.data && typeof data.data === 'object') {
+    const sbTs = data?.updated_at ? new Date(data.updated_at).getTime() : 0;
+    const localTs = parseInt(localStorage.getItem(SKEY+'_ts')||'0');
+    const localRaw = localStorage.getItem(SKEY);
+    const localData = localRaw ? (() => { try{return JSON.parse(localRaw);}catch(_){return null;} })() : null;
+    if(localTs > sbTs + 5000 && localData && Object.keys(localData).length > 3) {
+      // Dado local é mais de 5s mais novo que Supabase → usa local e sincroniza
+      S = { ...freshState(), ...localData };
+      console.log('[Structa] Dados locais mais recentes detectados — sincronizando com nuvem...');
+      _sbDirty = true;
+      setTimeout(sbSaveNow, 1500);
+    } else if(data?.data && typeof data.data === 'object') {
       S = { ...freshState(), ...data.data };
     }
   }
   // localStorage mirror para acesso offline
-  try { localStorage.setItem(SKEY, JSON.stringify(S)); } catch(_) {}
+  try {
+    localStorage.setItem(SKEY, JSON.stringify(S));
+    localStorage.setItem(SKEY+'_ts', Date.now().toString());
+  } catch(_) {}
 }
 
 async function sbSaveNow() {
@@ -2442,10 +2553,10 @@ function freshState(){
       inv:   DEFS.inv.map(c=>({...c,orc:0,real:0})),
       neutro:DEFS.neutro.map(c=>({...c})),
     },
-    transactions:[], // {id,date,desc,catId,grp,pgto,cartaoId,contaId,amount}
+    transactions:[], // {id,date,desc,catId,grp,pgto,cartaoId,amount}
     cartoes:[],      // {id,nome,fechaDia,vencDia}
-    contas:[],       // {id,nome,cor} — contas bancárias
     pgtoEntries:[],  // {id,desc,dia,tipo,valor,recorrente}
+    contas:[],       // {id,nome,tipo} — contas/cartões cadastrados, só pra rastrear origem do lançamento
     goals:[],        // {id,nome,icone,meta,acumulado,dataInicio,dataFim,aporte,taxa}
     irPago:{fonte:0,carneLeao:0,outros:0},
     seguros:freshSeguros(),
@@ -2459,6 +2570,7 @@ function freshState(){
     },
     merchants:{},  // {normalizedKey: catId} — memória de estabelecimentos (persiste com o cliente)
     merchantNames:{}, // {normalizedKey: nomeLimpo} — memória de nomes de estabelecimento corrigidos
+    calcInputs:{}, // {inputId: valor} — campos das calculadoras (IR/PGBL, Aposentadoria, Simulador), por cliente
   };
 }
 let S=freshState();
@@ -2476,8 +2588,8 @@ function orcMonthKey(y,m){
   return `${y}-${String(m+1).padStart(2,'0')}`;
 }
 function _getMB(key){if(!S.monthlyBudgets)S.monthlyBudgets={};return S.monthlyBudgets[key]||{};}
-function getOrcVal(catId){
-  const mb=_getMB(orcMonthKey());
+function getOrcVal(catId,y,m){
+  const mb=_getMB(orcMonthKey(y,m));
   if(mb.cats&&mb.cats[catId]!==undefined)return mb.cats[catId];
   // fallback: global cat.orc
   for(const g of['ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
@@ -2491,8 +2603,8 @@ function setOrcVal(catId,val){
   S.monthlyBudgets[key].cats[catId]=val;
   recalc();save();
 }
-function getOrcRendaOrc(){
-  const mb=_getMB(orcMonthKey());
+function getOrcRendaOrc(y,m){
+  const mb=_getMB(orcMonthKey(y,m));
   return mb.rendaOrc!==undefined?mb.rendaOrc:S.rendaOrc||0;
 }
 function setOrcRendaOrc(val){
@@ -2502,7 +2614,7 @@ function setOrcRendaOrc(val){
   S.monthlyBudgets[key].rendaOrc=val;
   recalc();save();
 }
-function sumOrc(cats){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id)||0),0);}
+function sumOrc(cats,y,m){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id,y,m)||0),0);}
 
 function orcPrevMonth(){
   orcViewMonth--;if(orcViewMonth<0){orcViewMonth=11;orcViewYear--;}
@@ -2698,18 +2810,12 @@ function renderSeguranca(){
   const meses=S.seguros.reservaMeses||6;
   const ra=S.seguros.reservaAtual||0;
   let gastosMes=0;
-  ['ct','fixas','var'].forEach(g=>{(S.cats[g]||[]).forEach(c=>{gastosMes+=c.orc||0;});});
+  ['fixas','var'].forEach(g=>{(S.cats[g]||[]).forEach(c=>{gastosMes+=c.orc||0;});});
   const rendaMes=S.rendaOrc||0;
   const metaVida=gastosMes*meses;
   const metaSal=rendaMes*meses;
   function segKpiCard(lbl,meta,atual){
-    if(meta===0){
-      return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rad-sm);padding:12px 14px">
-        <div style="font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px">${lbl}</div>
-        <div style="font-size:12px;color:var(--muted);font-style:italic;margin-top:4px">Configure o orçamento mensal para calcular esta meta.</div>
-      </div>`;
-    }
-    const pct=Math.min(100,atual/meta*100);
+    const pct=meta>0?Math.min(100,atual/meta*100):(atual>0?100:0);
     const cls=pct>=100?'ok':pct>=50?'warn':'bad';
     const gap=meta-atual;
     return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rad-sm);padding:12px 14px">
@@ -2726,19 +2832,22 @@ function renderSeguranca(){
     `<div style="grid-column:1/-1;font-size:12px;color:var(--muted)">Reserva atual: <b style="color:var(--text);font-size:15px">${fmt(ra)}</b></div>`+
     segKpiCard(`Cenário padrão de vida — ${meses}× despesas (${fmt(gastosMes)}/mês)`,metaVida,ra)+
     segKpiCard(`Cenário salário — ${meses}× renda (${fmt(rendaMes)}/mês)`,metaSal,ra);
+  // Vencimento + valor pago valem pra qualquer tipo de seguro/plano, por isso
+  // entram à parte (VENC_FIELDS) em vez de repetidos em cada item do SEG_DEFS.
+  const VENC_FIELDS=[{f:'vencimento',lbl:'Vencimento',t:'date'},{f:'valorPago',lbl:'Valor Pago (R$)',t:'number'}];
   const SEG_DEFS=[
     {key:'segVida',icon:'🛡',lbl:'Seguro de Vida',
-      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'cobertura',lbl:'Cobertura (R$)',t:'number'},{f:'premio',lbl:'Prêmio/mês (R$)',t:'number'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'cobertura',lbl:'Cobertura (R$)',t:'number'},{f:'premio',lbl:'Prêmio/mês (R$)',t:'number'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
     {key:'segAuto',icon:'🚗',lbl:'Seguro Auto',
-      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'tipo',lbl:'Tipo cobertura',t:'text'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'tipo',lbl:'Tipo cobertura',t:'text'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
     {key:'segRC',icon:'⚖️',lbl:'Resp. Civil Profissional',
-      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
     {key:'segResid',icon:'🏠',lbl:'Seguro Residencial',
-      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
     {key:'segViagem',icon:'✈️',lbl:'Seguro Viagem',
-      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Seguradora',t:'text'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
     {key:'planoSaude',icon:'🏥',lbl:'Plano de Saúde',
-      fields:[{f:'seguradora',lbl:'Operadora',t:'text'},{f:'tipo',lbl:'Tipo plano',t:'text'},{f:'obs',lbl:'Obs',t:'text'}]},
+      fields:[{f:'seguradora',lbl:'Operadora',t:'text'},{f:'tipo',lbl:'Tipo plano',t:'text'},...VENC_FIELDS,{f:'obs',lbl:'Obs',t:'text'}]},
   ];
   const grid=document.getElementById('seg-seg-grid');
   if(!grid)return;
@@ -2759,6 +2868,34 @@ function renderSeguranca(){
         </label>
       </div>${fieldsHtml}</div>`;
   }).join('');
+
+  // Alerta de vencimento: dispara a partir de 30 dias antes de vencer (e continua
+  // avisando se já venceu), só pra seguros/planos marcados como "Possui".
+  const hojeV=new Date();hojeV.setHours(0,0,0,0);
+  const avisos=[];
+  SEG_DEFS.forEach(({key,lbl})=>{
+    const d=S.seguros[key]||{};
+    if(!d.ativo||!d.vencimento)return;
+    const venc=new Date(d.vencimento+'T00:00:00');
+    const diasRestantes=Math.round((venc-hojeV)/86400000);
+    if(diasRestantes<=30) avisos.push({lbl,venc,diasRestantes});
+  });
+  const alertEl=document.getElementById('seg-venc-alert');
+  if(alertEl){
+    if(!avisos.length){alertEl.style.display='none';}
+    else{
+      avisos.sort((a,b)=>a.diasRestantes-b.diasRestantes);
+      const anyVencido=avisos.some(a=>a.diasRestantes<0);
+      alertEl.style.display='block';
+      alertEl.style.cssText+=`padding:10px 14px;border-radius:var(--rad-sm);font-size:13px;background:color-mix(in srgb, var(--${anyVencido?'bad':'warn'}) 12%, transparent);color:var(--${anyVencido?'bad':'warn'})`;
+      alertEl.innerHTML=avisos.map(a=>{
+        const dataStr=a.venc.toLocaleDateString('pt-BR');
+        if(a.diasRestantes<0) return `⚠️ <b>${a.lbl}</b> venceu em ${dataStr} (há ${Math.abs(a.diasRestantes)} dia${Math.abs(a.diasRestantes)===1?'':'s'}) — renovar o quanto antes.`;
+        if(a.diasRestantes===0) return `⚠️ <b>${a.lbl}</b> vence hoje (${dataStr}).`;
+        return `⏰ <b>${a.lbl}</b> vence em ${a.diasRestantes} dia${a.diasRestantes===1?'':'s'} (${dataStr}).`;
+      }).join('<br>');
+    }
+  }
 
   // Seguro de Vida — tabela de coberturas
   if(!S.seguros.vidaCobertura)S.seguros.vidaCobertura={};
@@ -2811,6 +2948,11 @@ function renderSeguranca(){
 // ── DÍVIDAS ───────────────────────────────────────────────────────────────────
 const DIV_TIPOS=['Cartão de Crédito','Financiamento Imobiliário','Financiamento Veículo','Empréstimo Pessoal','CDC','Consórcio','Outro'];
 
+// A cliente digita/vê a taxa em % a.a. (mais comum em contratos), mas o cálculo
+// de amortização (PRICE/SAC) usa taxa mensal — por isso guardamos d.taxaMes
+// internamente (compatível com dados já existentes) e só convertemos na exibição.
+function taxaMesToAno(m){return m>0?((Math.pow(1+m/100,12)-1)*100):0;}
+function taxaAnoToMes(a){return a>0?((Math.pow(1+a/100,1/12)-1)*100):0;}
 function calcDividaStats(d){
   const nParc=d.nParc||0;const valorParc=d.valorParc||0;const valorCont=d.valorCont||0;
   const i=(d.taxaMes||0)/100;
@@ -2872,7 +3014,7 @@ function renderDividas(){
       </select></td>
       <td><input class="div-inp" type="text" value="${d.inst||''}" placeholder="Banco/Inst." onchange="saveDivField('${d.id}','inst',this.value)"></td>
       <td><input class="div-inp" type="number" value="${d.valorCont||0}" min="0" onchange="saveDivField('${d.id}','valorCont',parseFloat(this.value)||0)"></td>
-      <td><input class="div-inp" type="number" value="${d.taxaMes||0}" step="0.01" min="0" placeholder="1.5" style="width:65px" onchange="saveDivField('${d.id}','taxaMes',parseFloat(this.value)||0)"></td>
+      <td><input class="div-inp" type="number" value="${taxaMesToAno(d.taxaMes||0).toFixed(2)}" step="0.01" min="0" placeholder="19,56" style="width:65px" title="Taxa ao ano — convertida internamente pra taxa mensal usada no cálculo da amortização" onchange="saveDivField('${d.id}','taxaMes',taxaAnoToMes(parseFloat(this.value)||0))"></td>
       <td><select class="div-inp" style="min-width:72px" title="PRICE: parcela constante. SAC: amortização constante (parcelas decrescentes)." onchange="saveDivField('${d.id}','modalidade',this.value)">
         <option${(d.modalidade||'PRICE')==='PRICE'?' selected':''}>PRICE</option>
         <option${d.modalidade==='SAC'?' selected':''}>SAC</option>
@@ -3149,8 +3291,8 @@ function bootApp(){
   document.getElementById('hDate').textContent=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
   if(!S.transactions)S.transactions=[];
   if(!S.cartoes)S.cartoes=[];
-  if(!S.contas)S.contas=[];
   if(!S.pgtoEntries)S.pgtoEntries=[];
+  if(!S.contas)S.contas=[];
   if(!S.saldoInicial)S.saldoInicial=0;
   if(!S.goals)S.goals=[];
   // Map removed/renamed category IDs
@@ -3183,8 +3325,9 @@ function bootApp(){
   if(!S.monthlyBudgets)S.monthlyBudgets={};
   if(!S.merchants)S.merchants={};
   if(!S.merchantNames)S.merchantNames={};
+  if(!S.calcInputs)S.calcInputs={};
   seedMerchants();
-  renderAll();buildCatSelect();buildPgtoSelect();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();renderContasBar();
+  renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
   renderSeguranca();renderDividas();renderInvestimentos();renderPatrimonio();renderPerfil();renderPassos();
   // Pre-populate IR pago fields
@@ -3193,6 +3336,8 @@ function bootApp(){
   if(irC)irC.value=S.irPago?.carneLeao||0;
   if(irO)irO.value=S.irPago?.outros||0;
   const si=document.getElementById('saldo-inicial');if(si)si.value=S.saldoInicial||'';
+  // Restaura e passa a salvar os campos das calculadoras (IR/PGBL, Aposentadoria, Simulador)
+  initCalcPanelsPersistence();
   // Aplicar permissões
   applyPermissions();
 }
@@ -3204,6 +3349,7 @@ function renderAll(){
   document.getElementById('rendaReal').value=S.rendaReal||'';
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
 }
+function grpSumId(grp,nome){return 'grpsum-'+grp+'-'+(nome||'').replace(/[^a-z0-9]/gi,'_').toLowerCase();}
 function renderDespesas(){
   const el=document.getElementById('grp-despesas');
   if(!el)return;
@@ -3220,8 +3366,16 @@ function renderDespesas(){
     const done=new Set();
     [...GRP_ORDER,...Object.keys(byNome)].forEach(nome=>{
       if(done.has(nome)||!byNome[nome])return;done.add(nome);
+      let orcSum=0,realSum=0;
+      byNome[nome].forEach(cat=>{
+        orcSum+=getOrcVal(cat.id)||0;
+        const ft=txMap[cat.id]!==undefined;
+        realSum+=ft?(txMap[cat.id]||0):(cat.real||0);
+      });
       const wrap=document.createElement('div');wrap.className='parent-grp';
-      const hdr=document.createElement('div');hdr.className='parent-grp-hdr';hdr.textContent='📁 '+nome;
+      const hdr=document.createElement('div');hdr.className='parent-grp-hdr';
+      const sid=grpSumId(grp,nome);
+      hdr.innerHTML=`<span>📁 ${esc(nome)}</span><span class="grp-sum orc" id="${sid}-o">${fmt(orcSum)}</span><span class="grp-sum real" id="${sid}-r">${fmt(realSum)}</span><span></span><span></span>`;
       wrap.appendChild(hdr);
       byNome[nome].forEach(cat=>{
         const ft=txMap[cat.id]!==undefined;
@@ -3340,84 +3494,102 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
     makeGrp(vars,'var','Variável');
   }
   if(prev) sc.value=prev;
+  // Checkbox "é reembolso/estorno" só faz sentido em categoria de despesa/custo
+  // (fixas/var/ct) — some junto com o grupo pra receita/investimento/neutro.
+  const isDespGrp=key==='ct'||key.startsWith('grp:');
+  const credWrapId=isEdit?'etx-credito-wrap':null;
+  if(credWrapId){
+    const w=document.getElementById(credWrapId);
+    if(w)w.style.display=isDespGrp?'':'none';
+  } else {
+    const chk=document.getElementById('tx-credito-cat');
+    if(chk){const fld=chk.closest('.fld');if(fld)fld.style.display=isDespGrp?'':'none';}
+  }
 }
 const PGTO_LBLS={
-  'pix':    'PIX / Transferência',
-  'cdeb':   'Cartão de Débito',
-  'din':    'Dinheiro',
-  'dep':    'Depósito',
-  'saque':  'Saque',
-  'debito': 'Débito/PIX', // legado
-  'credito':'Cartão de Crédito', // legado import
-  'ted':    'TED',
-  'doc':    'DOC',
-  'boleto': 'Boleto',
+  'pix':   'PIX / Transferência',
+  'cdeb':  'Cartão de Débito',
+  'din':   'Dinheiro',
+  'dep':   'Depósito',
+  'saque': 'Saque',
+  'debito':'Débito/PIX', // legado
 };
-function getContaById(id){
-  return (S.contas||[]).find(c=>c.id===id) || S.cartoes.find(c=>c.id===id);
-}
 function getPgtoLbl(tx){
-  const srcId = tx.contaId || tx.pgto;
-  // Contas bancárias
-  const conta=(S.contas||[]).find(c=>c.id===srcId);
-  if(conta) return '🏦 '+conta.nome;
-  // Cartões de crédito
-  const card=S.cartoes.find(c=>c.id===srcId||(tx.cartaoId&&c.id===tx.cartaoId));
-  if(card) return '💳 '+card.nome;
+  // Prioridade: conta/cartão cadastrado > cartão de fatura (Fluxo de Pgto) > forma de pgto genérica
+  if(tx.contaId){const l=getContaLbl(tx.contaId);if(l)return l;}
   if(tx.pgto&&PGTO_LBLS[tx.pgto]) return PGTO_LBLS[tx.pgto];
+  if(tx.cartaoId) return S.cartoes.find(c=>c.id===tx.cartaoId)?.nome||'Cartão de Crédito';
   return tx.meioPgto||tx.pgto||'—';
 }
 function isCartaoCredito(pgtoVal){
   return S.cartoes.some(c=>c.id===pgtoVal);
 }
-function isContaBancaria(pgtoVal){
-  return (S.contas||[]).some(c=>c.id===pgtoVal);
+function isContaId(val){
+  return (S.contas||[]).some(c=>c.id===val);
 }
-function buildPgtoSelect(){
-  const s=document.getElementById('tx-pgto');const p=s.value;
-  const contasHtml=(S.contas||[]).length
-    ?`<optgroup label="Contas Bancárias">${(S.contas||[]).map(c=>`<option value="${c.id}" style="color:${c.cor}">🏦 ${c.nome}</option>`).join('')}</optgroup>`:'';
-  const cardsHtml=S.cartoes.length
-    ?`<optgroup label="Cartões de Crédito">${S.cartoes.map(c=>`<option value="${c.id}">💳 ${c.nome}</option>`).join('')}</optgroup>`:'';
-  s.innerHTML=`${contasHtml}${cardsHtml}
-  <optgroup label="Outros">
+// Um só campo pra "forma de pgto" + "conta/cartão" — o usuário escolhe direto a
+// conta/cartão de onde saiu o dinheiro (ou uma forma de pgto genérica quando não
+// quer detalhar), em vez de preencher dois campos redundantes.
+function pgtoSelectHtml(){
+  return `<optgroup label="Formas de Pagamento">
     <option value="pix">⚡ PIX / Transferência</option>
     <option value="cdeb">💳 Cartão de Débito</option>
     <option value="din">💵 Dinheiro</option>
     <option value="dep">🏦 Depósito</option>
     <option value="saque">💸 Saque</option>
-  </optgroup>`;
+  </optgroup>
+  ${S.cartoes.length?`<optgroup label="Cartões de Crédito (fatura)">${S.cartoes.map(c=>`<option value="${c.id}">💳 ${c.nome}</option>`).join('')}</optgroup>`:''}
+  ${(S.contas||[]).length?`<optgroup label="Contas/Cartões Cadastrados">${S.contas.map(c=>`<option value="${c.id}">${CONTA_TIPO_ICON[c.tipo]||'◽'} ${esc(c.nome)}</option>`).join('')}</optgroup>`:''}`;
+}
+function buildPgtoSelect(){
+  const s=document.getElementById('tx-pgto');if(!s)return;const p=s.value;
+  s.innerHTML=pgtoSelectHtml();
   if(p)s.value=p;
 }
-// ── CONTAS BANCÁRIAS ──────────────────────────────────────────────────────────
-function saveContaBancaria(){
+
+// ── CONTAS & CARTÕES (rastreio de origem do lançamento) ─────────────────────
+const CONTA_TIPO_ICON={corrente:'🏦',poupanca:'🐷',credito:'💳',debito:'💳',dinheiro:'💵',outro:'◽'};
+const CONTA_TIPO_LBL={corrente:'Conta Corrente',poupanca:'Poupança',credito:'Cartão de Crédito',debito:'Cartão de Débito',dinheiro:'Dinheiro',outro:'Outro'};
+function openContasModal(){renderContasList();openModal('contas');}
+function addConta(){
   const nome=document.getElementById('conta-nome').value.trim();
-  const cor=document.getElementById('conta-cor').value||'#b5763a';
-  if(!nome){alert('Nome da conta é obrigatório.');return;}
-  if(!S.contas)S.contas=[];
-  S.contas.push({id:'conta_'+Date.now(),nome,cor});
-  buildPgtoSelect();renderContasBar();save();closeModal();
+  const tipo=document.getElementById('conta-tipo').value;
+  if(!nome){alert('Informe um nome pra essa conta/cartão.');return;}
+  S.contas.push({id:'conta_'+Date.now(),nome,tipo});
+  document.getElementById('conta-nome').value='';
+  renderContasList();buildContaSelects();save();
 }
-function delContaBancaria(id){
-  S.contas=(S.contas||[]).filter(c=>c.id!==id);
+function delConta(id){
+  if(!confirm('Remover esta conta/cartão? Os lançamentos já marcados com ela ficam sem conta de origem.'))return;
+  S.contas=S.contas.filter(c=>c.id!==id);
   S.transactions.forEach(t=>{if(t.contaId===id)t.contaId=null;});
-  buildPgtoSelect();renderContasBar();save();
+  renderContasList();buildContaSelects();renderTxList();save();
 }
-function renderContasBar(){
-  const bar=document.getElementById('contas-bar');
-  if(!bar)return;
-  if(!(S.contas||[]).length){
-    bar.innerHTML='<div style="font-size:11px;color:var(--muted);font-style:italic">Nenhuma conta bancária cadastrada.</div>';return;
-  }
-  bar.innerHTML='';
-  S.contas.forEach(conta=>{
-    const chip=document.createElement('div');chip.className='card-chip';
-    chip.style.borderLeft=`4px solid ${conta.cor}`;
-    chip.innerHTML=`<span style="font-size:16px">🏦</span>
-      <div><div class="chip-name">${esc(conta.nome)}</div></div>
-      <button class="chip-del" onclick="delContaBancaria('${conta.id}')" title="Remover">×</button>`;
-    bar.appendChild(chip);
-  });
+function renderContasList(){
+  const el=document.getElementById('contas-list');if(!el)return;
+  if(!S.contas.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);font-style:italic;padding:8px 0">Nenhuma conta/cartão cadastrado ainda.</div>';return;}
+  el.innerHTML=S.contas.map(c=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+    <span style="font-size:13px">${CONTA_TIPO_ICON[c.tipo]||'◽'} ${esc(c.nome)} <span style="color:var(--muted);font-size:11px">— ${CONTA_TIPO_LBL[c.tipo]||''}</span></span>
+    <button class="del-btn" onclick="delConta('${c.id}')" title="Remover">×</button>
+  </div>`).join('');
+}
+// Preenche os selects de conta/cartão no lançamento manual, na edição e no
+// mapeamento em massa do importador de extrato.
+function buildContaSelects(){
+  // conv-conta-batch (importador de extrato): só a lista de contas/cartões cadastrados,
+  // já que uma forma de pgto genérica não faz sentido pra um extrato inteiro.
+  const contaOnly='<option value="">— não informado —</option>'+S.contas.map(c=>`<option value="${c.id}">${CONTA_TIPO_ICON[c.tipo]||'◽'} ${esc(c.nome)}</option>`).join('');
+  const convSel=document.getElementById('conv-conta-batch');
+  if(convSel){const prev=convSel.value;convSel.innerHTML=contaOnly;if(prev)convSel.value=prev;}
+  // etx-conta (edição de lançamento): mesmo campo único (conta/cartão/forma de pgto)
+  // do lançamento manual, com opção de deixar em branco.
+  const etxSel=document.getElementById('etx-conta');
+  if(etxSel){const prev=etxSel.value;etxSel.innerHTML='<option value="">— não informado —</option>'+pgtoSelectHtml();if(prev)etxSel.value=prev;}
+  buildPgtoSelect();
+}
+function getContaLbl(contaId){
+  const c=(S.contas||[]).find(x=>x.id===contaId);
+  return c?`${CONTA_TIPO_ICON[c.tipo]||'◽'} ${c.nome}`:'';
 }
 
 // ── TRANSACTIONS ─────────────────────────────────────────────────────────────
@@ -3428,15 +3600,23 @@ function addTx(){
   const catId=catSel.value;
   const grp=catSel.selectedOptions[0]?.dataset?.grp||'';
   const pgtoSel=document.getElementById('tx-pgto');
-  const pgto=pgtoSel.value;
-  const isCard=isCartaoCredito(pgto);
-  const isConta=isContaBancaria(pgto);
+  const pgtoVal=pgtoSel.value;
+  // Campo único: o valor escolhido pode ser uma forma de pgto genérica (pix/cdeb/...),
+  // um cartão de crédito de fatura (S.cartoes) ou uma conta/cartão cadastrado (S.contas).
+  const isCard=isCartaoCredito(pgtoVal);
+  const isConta=isContaId(pgtoVal);
+  const pgto=isConta?null:pgtoVal;
+  const contaId=isConta?pgtoVal:null;
   const amount=parseFloat(document.getElementById('tx-val').value)||0;
   if(!date||!desc||!catId||amount<=0){alert('Preencha todos os campos.');return;}
-  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,
-    cartaoId:isCard?pgto:null,contaId:isConta?pgto:null,amount});
+  // "Reembolso/estorno": só faz sentido pra grupos de despesa/custo (fixas/var/ct) —
+  // marca o lançamento pra ele ABATER da categoria em vez de somar (encontro de contas).
+  const creditoCatEl=document.getElementById('tx-credito-cat');
+  const creditoNaCategoria=!!(creditoCatEl&&creditoCatEl.checked&&['fixas','var','ct'].includes(grp));
+  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,cartaoId:isCard?pgtoVal:null,amount,creditoNaCategoria,contaId});
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-val').value='';
+  if(creditoCatEl)creditoCatEl.checked=false;
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
@@ -3460,13 +3640,6 @@ function openTxEdit(id){
   document.getElementById('etx-parcela').value=tx.parcela||'';
   document.getElementById('etx-valor').value=tx.amount||'';
   document.getElementById('etx-desc').value=tx.desc||'';
-  // Populate conta/cartão select
-  const etxConta=document.getElementById('etx-conta');
-  const currentSrc=tx.contaId||tx.cartaoId||tx.pgto||'';
-  let etxContaHtml='<option value="">— nenhuma —</option>';
-  if((S.contas||[]).length) etxContaHtml+=`<optgroup label="Contas Bancárias">${(S.contas||[]).map(c=>`<option value="${c.id}"${currentSrc===c.id?' selected':''}>🏦 ${c.nome}</option>`).join('')}</optgroup>`;
-  if(S.cartoes.length) etxContaHtml+=`<optgroup label="Cartões">${S.cartoes.map(c=>`<option value="${c.id}"${currentSrc===c.id?' selected':''}>💳 ${c.nome}</option>`).join('')}</optgroup>`;
-  etxConta.innerHTML=etxContaHtml;
   // Build cascading cat selects
   const esg=document.getElementById('etx-cat-grp');
   let ghml='<option value="">-- Grupo --</option>';
@@ -3492,6 +3665,10 @@ function openTxEdit(id){
   if(txGrpKey) esg.value=txGrpKey;
   const restoreVal=tx.catId&&tx.grp?`${tx.catId}|${tx.grp}`:'';
   filterCatSub('etx-cat-grp','etx-cat',restoreVal);
+  const creditoEl=document.getElementById('etx-credito-cat');
+  if(creditoEl)creditoEl.checked=!!tx.creditoNaCategoria;
+  const contaEl=document.getElementById('etx-conta');
+  if(contaEl)contaEl.value=tx.contaId||tx.cartaoId||tx.pgto||'';
   openModal('edit-tx');
 }
 function saveTxEdit(){
@@ -3504,11 +3681,14 @@ function saveTxEdit(){
   tx.desc=document.getElementById('etx-desc').value.trim()||tx.desc;
   const cv=document.getElementById('etx-cat').value;
   if(cv&&cv!=='|'){const[catId,grp]=cv.split('|');tx.catId=catId;tx.grp=grp;tx.isRec=grp==='receita';}
-  const contaSel=document.getElementById('etx-conta').value;
-  if(contaSel){
-    if(isContaBancaria(contaSel)){tx.contaId=contaSel;tx.cartaoId=null;tx.pgto=contaSel;}
-    else if(isCartaoCredito(contaSel)){tx.cartaoId=contaSel;tx.contaId=null;tx.pgto=contaSel;}
-  }
+  const creditoEl=document.getElementById('etx-credito-cat');
+  tx.creditoNaCategoria=!!(creditoEl&&creditoEl.checked&&['fixas','var','ct'].includes(tx.grp));
+  const contaVal=document.getElementById('etx-conta')?.value||'';
+  const isConta=isContaId(contaVal);
+  const isCard=isCartaoCredito(contaVal);
+  tx.contaId=isConta?contaVal:null;
+  tx.cartaoId=isCard?contaVal:null;
+  tx.pgto=(contaVal&&!isConta&&!isCard)?contaVal:null;
   closeModal();
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
@@ -3517,7 +3697,13 @@ function saveTxEdit(){
 // ── RENDER TX LIST ────────────────────────────────────────────────────────────
 function txPrevMonth(){if(txViewMonth===0){txViewMonth=11;txViewYear--;}else txViewMonth--;renderTxList();recalc();}
 function txNextMonth(){if(txViewMonth===11){txViewMonth=0;txViewYear++;}else txViewMonth++;renderTxList();recalc();}
-function toggleTxForm(){const f=document.getElementById('tx-manual-form');const btn=document.getElementById('tx-form-toggle');const open=f.style.display==='none';f.style.display=open?'':'none';btn.textContent=open?'✕ Fechar':'＋ Manual';}
+function toggleTxForm(){
+  const f=document.getElementById('tx-manual-form');const btn=document.getElementById('tx-form-toggle');
+  const open=f.style.display==='none';f.style.display=open?'':'none';btn.textContent=open?'✕ Fechar':'＋ Manual';
+  // Reconstrói o seletor de conta/cartão/forma de pgto toda vez que o form abre —
+  // garante que contas cadastradas depois do carregamento da página apareçam.
+  if(open)buildPgtoSelect();
+}
 function clearTxMonth(){
   const lbl=new Date(txViewYear,txViewMonth).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   if(!confirm('Limpar todos os lançamentos de '+lbl+'?'))return;
@@ -3540,6 +3726,8 @@ function clearTxFilters(){
   const s=document.getElementById('tx-search');if(s)s.value='';
   const fc=document.getElementById('tx-filter-cat');if(fc)fc.value='';
   const fg=document.getElementById('tx-filter-grp');if(fg)fg.value='';
+  const vmn=document.getElementById('tx-filter-val-min');if(vmn)vmn.value='';
+  const vmx=document.getElementById('tx-filter-val-max');if(vmx)vmx.value='';
   renderTxList();
 }
 function buildTxCatFilter(){
@@ -3549,12 +3737,10 @@ function buildTxCatFilter(){
   sel.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
 }
 
-function renderTxList(){
-  // Update month label
-  const monthLabel=new Date(txViewYear,txViewMonth).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  const mlEl=document.getElementById('tx-month-label');if(mlEl)mlEl.textContent=monthLabel;
-
-  // Get search/filter values
+// Filtro+ordenação compartilhado entre a tabela de Lançamentos e a exportação
+// pra Excel — garante que o que a cliente vê na tela é exatamente o que sai no
+// arquivo (mesmo mês, mesma busca, mesmo filtro de categoria/tipo).
+function getFilteredTx(){
   const q=(document.getElementById('tx-search')?.value||'').toLowerCase().trim();
   const fCat=document.getElementById('tx-filter-cat')?.value||'';
   const fGrp=document.getElementById('tx-filter-grp')?.value||'';
@@ -3574,6 +3760,10 @@ function renderTxList(){
   });
   if(fCat) filtered=filtered.filter(tx=>tx.catId===fCat);
   if(fGrp) filtered=filtered.filter(tx=>tx.grp===fGrp);
+  const vMin=parseFloat(document.getElementById('tx-filter-val-min')?.value);
+  const vMax=parseFloat(document.getElementById('tx-filter-val-max')?.value);
+  if(!isNaN(vMin)) filtered=filtered.filter(tx=>Math.abs(tx.amount)>=vMin);
+  if(!isNaN(vMax)) filtered=filtered.filter(tx=>Math.abs(tx.amount)<=vMax);
 
   // Sort
   filtered.sort((a,b)=>{
@@ -3583,6 +3773,38 @@ function renderTxList(){
     else{va=a.amount;vb=b.amount;}
     if(va<vb)return -1*txSortDir;if(va>vb)return txSortDir;return 0;
   });
+  return filtered;
+}
+// Exporta os lançamentos do mês/filtro em exibição pra Excel (.xlsx), pra
+// facilitar a conferência fora do sistema (contador, cliente, planilha própria).
+function exportTxExcel(){
+  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o gerador de Excel agora — verifique a conexão e tente de novo.');return;}
+  const filtered=getFilteredTx();
+  if(!filtered.length){alert('Não há lançamentos para exportar neste mês/filtro.');return;}
+  const TIPO_LBL={receita:'Receita',fixas:'Despesa Fixa',var:'Despesa Variável',inv:'Investimento',ct:'Custo Profissional',neutro:'Neutro'};
+  const rows=filtered.map(tx=>({
+    'Data':(tx.dataPgto||tx.date)?new Date((tx.dataPgto||tx.date)+'T00:00:00').toLocaleDateString('pt-BR'):'',
+    'Descrição':tx.desc||'',
+    'Categoria':getCatLbl(tx.catId,tx.grp),
+    'Tipo':TIPO_LBL[tx.grp]||tx.grp||'',
+    'Conta/Cartão/Forma de Pgto':getPgtoLbl(tx),
+    'Parcela':tx.parcela||'',
+    'Reembolso/Estorno':tx.creditoNaCategoria?'Sim':'',
+    'Valor (R$)':(tx.grp==='receita'?1:-1)*(tx.creditoNaCategoria?-1:1)*Math.abs(tx.amount),
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:11},{wch:34},{wch:22},{wch:16},{wch:26},{wch:9},{wch:14},{wch:13}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Lançamentos');
+  const clientName=(S.name||'cliente').replace(/[^a-z0-9]+/gi,'_');
+  XLSX.writeFile(wb,`lancamentos_${clientName}_${MESES_PT[txViewMonth].toLowerCase()}_${txViewYear}.xlsx`);
+}
+function renderTxList(){
+  // Update month label
+  const monthLabel=new Date(txViewYear,txViewMonth).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const mlEl=document.getElementById('tx-month-label');if(mlEl)mlEl.textContent=monthLabel;
+
+  const filtered=getFilteredTx();
 
   // Sort indicator
   const srtEl=document.getElementById('srt-'+txSortKey);
@@ -3608,29 +3830,35 @@ function renderTxList(){
   if(allChkHdr)allChkHdr.checked=false;
 
   if(count===0){empty.style.display='block';table.style.display='none';
-    setText('tx-tot-rec',fmt(0));setText('tx-tot-dep',fmt(0));setText('tx-tot-sal',fmt(0));
-    txUpdateBulkBar();return;}
+    setText('tx-tot-rec',fmt(0));setText('tx-tot-dep',fmt(0));setText('tx-tot-inv',fmt(0));setText('tx-tot-sal',fmt(0));
+    txUpdateBulkBar();txUpdatePlanComparison(0,0,0,0);return;}
   empty.style.display='none';table.style.display='';
-  body.innerHTML='';let totRec=0,totDep=0;
+  body.innerHTML='';let totRec=0,totDep=0,totInv=0;
   filtered.forEach(tx=>{
-    if(tx.grp==='receita')totRec+=tx.amount;else if(tx.grp!=='neutro')totDep+=tx.amount;
+    // Categorias "Neutro" (transferência entre contas, pgto de fatura, saldo, resgate,
+    // reembolso) nunca entram em Receitas nem Despesas — verifica tanto tx.grp quanto
+    // o prefixo do catId ("n_"), como segurança extra caso o grp fique dessincronizado.
+    const isNeutral=tx.grp==='neutro'||(tx.catId||'').startsWith('n_');
+    if(isNeutral){/* não soma em nada */}
+    else if(tx.grp==='receita')totRec+=tx.amount;
+    else if(tx.grp==='inv')totInv+=txSignedAmount(tx);
+    else totDep+=txSignedAmount(tx);
     const catLbl=getCatLbl(tx.catId,tx.grp);
     const pgtoLbl=getPgtoLbl(tx);
-    const bClass=tx.grp==='receita'?'b-rec':tx.grp==='inv'?'b-inv':tx.grp==='neutro'?'b-card':'b-dep';
-    const amtClass=tx.grp==='receita'?'pos r':'bad r';
-    const prefix=tx.grp==='receita'?'+':'-';
-    // Date display: show purchase date + arrow + payment date when they differ (credit card case)
-    const hasDiff=tx.dataPgto&&tx.date&&tx.date!==tx.dataPgto;
-    const fmtD=d=>d?new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'—';
-    const dsCompra=fmtD(tx.date);
-    const dsPgto=hasDiff?fmtD(tx.dataPgto):'';
-    const dateCell=hasDiff
-      ?`<span title="Compra: ${dsCompra} · Pgto: ${dsPgto}" style="display:flex;flex-direction:column;gap:1px"><span>${dsCompra}</span><span style="font-size:10px;color:var(--muted)">pgto ${dsPgto}</span></span>`
-      :`${fmtD(tx.dataPgto||tx.date)}`;
+    // Reembolso/estorno marcado numa categoria de despesa: mostra como crédito
+    // (verde, "+") mesmo a categoria sendo de despesa — é ele que abate do total.
+    const isCredEstorno=!isNeutral&&tx.grp!=='receita'&&tx.grp!=='inv'&&tx.creditoNaCategoria;
+    const bClass=tx.grp==='receita'||isCredEstorno?'b-rec':tx.grp==='inv'?'b-inv':tx.grp==='neutro'?'b-card':'b-dep';
+    const amtClass=tx.grp==='receita'||isCredEstorno?'pos r':'bad r';
+    const prefix=tx.grp==='receita'||isCredEstorno?'+':'-';
+    // Show dataPgto (effective) date; show purchase date as tooltip if different
+    const effDate=tx.dataPgto||tx.date;
+    const ds=effDate?new Date(effDate+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'—';
+    const dtTitle=tx.dataPgto&&tx.date!==tx.dataPgto?` title="Compra: ${new Date(tx.date+'T00:00:00').toLocaleDateString('pt-BR')}"`:''  ;
     const parcBadge=tx.parcela?`<span class="badge-parc">${tx.parcela}</span>`:'';
     body.innerHTML+=`<tr>
       <td class="td-chk" style="padding:0 0 0 10px;width:36px"><input type="checkbox" data-id="${tx.id}" onchange="txToggleRow(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--primary)"></td>
-      <td class="td-date">${dateCell}</td>
+      <td class="td-date"${dtTitle}>${ds}</td>
       <td class="td-desc">${tx.desc}${parcBadge}</td>
       <td class="td-cat"><span class="badge ${bClass}">${catLbl}</span></td>
       <td class="td-pgto" style="font-size:11px;color:var(--muted)">${pgtoLbl}</td>
@@ -3639,10 +3867,42 @@ function renderTxList(){
     </tr>`;
   });
   txUpdateBulkBar();
-  const saldo=totRec-totDep;
-  setText('tx-tot-rec',fmt(totRec));setText('tx-tot-dep',fmt(totDep));
+  const saldo=totRec-totDep-totInv;
+  setText('tx-tot-rec',fmt(totRec));setText('tx-tot-dep',fmt(totDep));setText('tx-tot-inv',fmt(totInv));
   const se=document.getElementById('tx-tot-sal');
   if(se){se.textContent=fmt(Math.abs(saldo));se.className='val '+(saldo>=0?'pos':'neg');}
+  txUpdatePlanComparison(totRec,totDep,totInv,saldo);
+}
+// Compara Realizado (do mês em exibição na aba Lançamentos) x Planejado no Orçamento para o mesmo mês
+function txUpdatePlanComparison(totRec,totDep,totInv,saldo){
+  const tCo=sumOrc(S.cats.ct||[],txViewYear,txViewMonth);
+  const tFo=sumOrc(S.cats.fixas||[],txViewYear,txViewMonth);
+  const tVo=sumOrc(S.cats.var||[],txViewYear,txViewMonth);
+  const tIo=sumOrc(S.cats.inv||[],txViewYear,txViewMonth);
+  const orcRenda=getOrcRendaOrc(txViewYear,txViewMonth);
+  const orcDep=tCo+tFo+tVo;
+  const orcSaldo=orcRenda-orcDep-tIo;
+
+  setText('tx-tot-rec-o',fmt(orcRenda));
+  setDeltaPill('tx-tot-rec-p',totRec-orcRenda,true,orcRenda);
+
+  setText('tx-tot-dep-o',fmt(orcDep));
+  setDeltaPill('tx-tot-dep-p',orcDep-totDep,true,orcDep); // gastou menos que o planejado = bom
+
+  setText('tx-tot-inv-o',fmt(tIo));
+  setDeltaPill('tx-tot-inv-p',totInv-tIo,true,tIo);
+
+  setText('tx-tot-sal-o',fmt(orcSaldo));
+}
+// Mostra a diferença Real x Planejado como pílula colorida (✓ cumpriu / ✗ não cumpriu)
+function setDeltaPill(id,delta,higherIsGood,base){
+  const el=document.getElementById(id);if(!el)return;
+  if(!base){el.textContent='—';el.className='delta';return;}
+  const pctDelta=delta/base;
+  const good=higherIsGood?delta>=0:delta<=0;
+  const sign=delta>=0?'+':'−';
+  el.textContent=(good?'✓ ':'✗ ')+sign+fmt(Math.abs(delta));
+  el.className='delta '+(good?'ok':Math.abs(pctDelta)<=.1?'warn':'bad');
 }
 function getCatLbl(catId,grp){
   if(grp==='receita'){return DEFS.receita.find(c=>c.id===catId)?.lbl||'Receita';}
@@ -3689,10 +3949,153 @@ function savePgto(){
   const val=parseFloat(document.getElementById('pgto-val').value)||0;
   const rec=document.getElementById('pgto-rec').checked;
   if(!desc||!dia||val<=0){alert('Preencha todos os campos.');return;}
-  S.pgtoEntries.push({id:'pe_'+Date.now(),desc,dia,tipo,valor:val,recorrente:rec,year:rec?null:pgtoYear,month:rec?null:pgtoMonth});
+  const editId=document.getElementById('pgto-edit-id').value;
+  if(editId){
+    const e=S.pgtoEntries.find(x=>x.id===editId);
+    if(e){
+      e.desc=desc;e.dia=dia;e.tipo=tipo;e.valor=val;e.recorrente=rec;
+      e.year=rec?null:(e.year!=null?e.year:pgtoYear);
+      e.month=rec?null:(e.month!=null?e.month:pgtoMonth);
+    }
+  }else{
+    S.pgtoEntries.push({id:'pe_'+Date.now(),desc,dia,tipo,valor:val,recorrente:rec,year:rec?null:pgtoYear,month:rec?null:pgtoMonth});
+  }
   renderFluxoPgto();save();closeModal();
 }
 function delPgtoEntry(id){S.pgtoEntries=S.pgtoEntries.filter(e=>e.id!==id);renderFluxoPgto();save();}
+// Abre o modal de Entrada/Saída já preenchido com o lançamento existente do
+// Fluxo de Pgto, permitindo editar em vez de só excluir e recriar do zero.
+function editPgtoEntry(id){
+  const e=S.pgtoEntries.find(x=>x.id===id);if(!e)return;
+  openModal('pgto');
+  document.getElementById('pgto-edit-id').value=e.id;
+  document.getElementById('pgto-desc').value=e.desc||'';
+  document.getElementById('pgto-dia').value=e.dia||'';
+  document.getElementById('pgto-tipo').value=e.tipo||'saida';
+  document.getElementById('pgto-val').value=e.valor||'';
+  document.getElementById('pgto-rec').checked=!!e.recorrente;
+  document.getElementById('pgto-modal-title').textContent='Editar Entrada / Saída';
+  document.getElementById('pgto-modal-btn').textContent='Salvar';
+}
+
+// ── IMPORTAR ORÇAMENTO → FLUXO DE PGTO ──────────────────────────────────────
+// Traz as categorias fixas/variáveis orçadas (e a renda planejada) do mês em
+// exibição no Fluxo pra dentro do timeline, já com o valor daquele mês — a
+// cliente só ajusta o valor exato (se precisar) e digita o dia de venc./receb.
+// Reimportar substitui os itens já trazidos da mesma origem (não duplica).
+function openImportOrc(){
+  const y=pgtoYear,m=pgtoMonth;
+  const lbl=MESES_PT[m]+'/'+y;
+  document.getElementById('import-orc-sub').textContent=
+    `Ajuste o valor exato de ${lbl} e informe o dia de vencimento/recebimento de cada item. Só os itens marcados são importados.`;
+  const already={};
+  (S.pgtoEntries||[]).forEach(e=>{if(e.fromOrc&&e.year===y&&e.month===m)already[e.orcKey]=e;});
+
+  function row(orcKey,label,val,tipo){
+    const prev=already[orcKey];
+    const dia=prev?prev.dia:'';
+    const valor=prev?prev.valor:val;
+    const checked=val>0?'checked':'';
+    return `<div class="form-row" style="gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <input type="checkbox" class="io-chk" data-key="${orcKey}" data-tipo="${tipo}" data-desc="${esc(label)}" ${checked} style="width:15px;height:15px">
+      <span style="flex:1;font-size:13px">${esc(label)}</span>
+      <input type="number" class="io-val" data-key="${orcKey}" min="0" step="0.01" value="${valor||''}" placeholder="0,00" style="width:100px">
+      <input type="number" class="io-dia" data-key="${orcKey}" min="1" max="31" value="${dia}" placeholder="dia" style="width:60px">
+    </div>`;
+  }
+
+  let html='';
+  html+='<div style="font-size:12px;font-weight:700;color:var(--muted);margin:10px 0 2px">💰 Receita prevista</div>';
+  html+=row('__renda__','Receita Prevista (total orçado)',getOrcRendaOrc(y,m),'entrada');
+  html+='<div style="font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 2px">📤 Despesas fixas</div>';
+  (S.cats.fixas||[]).forEach(c=>{
+    const v=getOrcVal(c.id,y,m)||0;
+    if(v>0||already['f:'+c.id])html+=row('f:'+c.id,c.lbl,v,'saida');
+  });
+  html+='<div style="font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 2px">📤 Despesas variáveis</div>';
+  (S.cats.var||[]).forEach(c=>{
+    const v=getOrcVal(c.id,y,m)||0;
+    if(v>0||already['v:'+c.id])html+=row('v:'+c.id,c.lbl,v,'saida');
+  });
+  document.getElementById('import-orc-body').innerHTML=html||'<div style="padding:16px;color:var(--muted);font-size:13px">Nenhum valor orçado para este mês ainda — preencha o Orçamento primeiro.</div>';
+  openModal('import-orc');
+}
+function applyImportOrc(){
+  const y=pgtoYear,m=pgtoMonth;
+  const chks=[...document.querySelectorAll('#import-orc-body .io-chk')];
+  let imported=0;
+  chks.forEach(chk=>{
+    const key=chk.dataset.key;
+    const valEl=document.querySelector(`.io-val[data-key="${key}"]`);
+    const diaEl=document.querySelector(`.io-dia[data-key="${key}"]`);
+    const valor=parseFloat(valEl?.value)||0;
+    const dia=parseInt(diaEl?.value)||0;
+    // Remove uma importação anterior desse mesmo item (evita duplicar ao reimportar)
+    S.pgtoEntries=S.pgtoEntries.filter(e=>!(e.fromOrc&&e.year===y&&e.month===m&&e.orcKey===key));
+    if(!chk.checked||!dia||valor<=0)return;
+    S.pgtoEntries.push({id:'pe_'+Date.now()+'_'+key,desc:chk.dataset.desc,dia,tipo:chk.dataset.tipo,
+      valor,recorrente:false,year:y,month:m,fromOrc:true,orcKey:key});
+    imported++;
+  });
+  save();renderFluxoPgto();closeModal();
+}
+
+// ── COPIAR DO MÊS ANTERIOR → FLUXO DE PGTO ──────────────────────────────────
+// Além de importar do Orçamento (o planejado), também dá pra trazer o que já
+// foi lançado manualmente no mês anterior do Fluxo — útil quando o mês se repete
+// e a cliente só quer ajustar valor/dia em vez de recadastrar tudo de novo.
+// Itens recorrentes já aparecem sozinhos todo mês (ver renderFluxoPgto) e por
+// isso não entram nessa lista — só os lançamentos avulsos de um mês específico.
+function pgtoPrevYM(){
+  return pgtoMonth===0?{y:pgtoYear-1,m:11}:{y:pgtoYear,m:pgtoMonth-1};
+}
+function openCopyPrevMonth(){
+  const{y:py,m:pm}=pgtoPrevYM();
+  const y=pgtoYear,m=pgtoMonth;
+  const prevLbl=MESES_PT[pm]+'/'+py,curLbl=MESES_PT[m]+'/'+y;
+  document.getElementById('copy-prev-sub').textContent=
+    `Traz os lançamentos avulsos de ${prevLbl} pra ${curLbl}. Itens recorrentes já aparecem automaticamente todo mês e não precisam ser copiados.`;
+  const already={};
+  (S.pgtoEntries||[]).forEach(e=>{if(e.copiedFromId&&e.year===y&&e.month===m)already[e.copiedFromId]=e;});
+  const prevEntries=(S.pgtoEntries||[]).filter(e=>!e.recorrente&&e.year===py&&e.month===pm);
+  const body=document.getElementById('copy-prev-body');
+  if(!prevEntries.length){
+    body.innerHTML=`<div style="padding:16px;color:var(--muted);font-size:13px">Nenhum lançamento avulso encontrado em ${prevLbl}.</div>`;
+  }else{
+    body.innerHTML=prevEntries.map(e=>{
+      const prev=already[e.id];
+      const valor=prev?prev.valor:e.valor;
+      const dia=prev?prev.dia:e.dia;
+      const icon=e.tipo==='entrada'?'💰':'📤';
+      return `<div class="form-row" style="gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+        <input type="checkbox" class="cp-chk" data-id="${e.id}" data-tipo="${e.tipo}" data-desc="${esc(e.desc)}" checked style="width:15px;height:15px">
+        <span style="flex:1;font-size:13px">${icon} ${esc(e.desc)}</span>
+        <input type="number" class="cp-val" data-id="${e.id}" min="0" step="0.01" value="${valor||''}" placeholder="0,00" style="width:100px">
+        <input type="number" class="cp-dia" data-id="${e.id}" min="1" max="31" value="${dia}" placeholder="dia" style="width:60px">
+      </div>`;
+    }).join('');
+  }
+  openModal('copy-prev');
+}
+function applyCopyPrevMonth(){
+  const y=pgtoYear,m=pgtoMonth;
+  const chks=[...document.querySelectorAll('#copy-prev-body .cp-chk')];
+  let count=0;
+  chks.forEach(chk=>{
+    const id=chk.dataset.id;
+    const valEl=document.querySelector(`.cp-val[data-id="${id}"]`);
+    const diaEl=document.querySelector(`.cp-dia[data-id="${id}"]`);
+    const valor=parseFloat(valEl?.value)||0;
+    const dia=parseInt(diaEl?.value)||0;
+    // Remove uma cópia anterior desse mesmo item de origem (evita duplicar ao recopiar)
+    S.pgtoEntries=S.pgtoEntries.filter(e=>!(e.copiedFromId===id&&e.year===y&&e.month===m));
+    if(!chk.checked||!dia||valor<=0)return;
+    S.pgtoEntries.push({id:'pe_'+Date.now()+'_'+id,desc:chk.dataset.desc,dia,tipo:chk.dataset.tipo,
+      valor,recorrente:false,year:y,month:m,copiedFromId:id});
+    count++;
+  });
+  save();renderFluxoPgto();closeModal();
+}
 
 // ── CREDIT CARD CALC ──────────────────────────────────────────────────────────
 function calcCardTotal(card,year,month){
@@ -3768,33 +4171,69 @@ function renderFluxoPgto(){
 
   // Render timeline
   const body=document.getElementById('timeline-body');
+  const verdictEl=document.getElementById('fp-verdict');
   if(!events.length){
     body.innerHTML='<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Adicione cartões ou entradas/saídas para visualizar o fluxo.</div>';
+    if(verdictEl)verdictEl.style.display='none';
     return;
   }
   let saldoCurr=S.saldoInicial||0;
+  let minSaldo=saldoCurr,minDia=null;
   body.innerHTML='';
   events.forEach(ev=>{
     const isEnt=ev.tipo==='entrada';
     saldoCurr+=isEnt?ev.valor:-ev.valor;
+    if(saldoCurr<minSaldo){minSaldo=saldoCurr;minDia=ev.dia;}
     const d=new Date(y,m,ev.dia);
     const diaSem=DIAS_PT[d.getDay()];
     const valStr=(isEnt?'+ ':'- ')+fmt(ev.valor);
     const valClass=isEnt?'pos':'neg';
     const badge=isEnt?'<span class="badge b-rec">Entrada</span>':ev.isCard?'<span class="badge b-card">Cartão</span>':'<span class="badge b-dep">Saída</span>';
     const saldoClass=saldoCurr>=0?'ok':'bad';
-    const delBtn=ev.canDel?`<button class="del-btn btn-sm" onclick="delPgtoEntry('${ev.id}')" title="Remover" style="margin-left:6px">×</button>`:'';
+    const editBtn=ev.canDel?`<button class="edit-btn btn-sm" onclick="editPgtoEntry('${ev.id}')" title="Editar" style="margin-left:6px">✏</button>`:'';
+    const delBtn=ev.canDel?`<button class="del-btn btn-sm" onclick="delPgtoEntry('${ev.id}')" title="Remover" style="margin-left:2px">×</button>`:'';
     body.innerHTML+=`<div class="timeline-row">
       <div><div class="tl-day">${ev.dia}</div><div class="tl-day-sub">${diaSem}</div></div>
       <div><div class="tl-desc">${esc(ev.desc)}</div></div>
-      <div class="tl-badge">${badge}${delBtn}</div>
+      <div class="tl-badge">${badge}${editBtn}${delBtn}</div>
       <div class="tl-val ${valClass}">${valStr}</div>
       <div class="tl-saldo ${saldoClass}">${fmt(saldoCurr)}</div>
     </div>`;
   });
+
+  // Veredito: dá pra pagar tudo até o próximo recebimento? Sobra pra investir,
+  // ou é melhor aguardar? Usa o MENOR saldo que a conta atinge no mês (não só o
+  // final) — é ele que decide se falta dinheiro em algum dia no meio do caminho,
+  // e quanto dá pra tirar da conta sem correr esse risco.
+  if(verdictEl){
+    verdictEl.style.display='block';
+    if(minSaldo<0){
+      verdictEl.style.background='color-mix(in srgb, var(--danger,#c0392b) 12%, transparent)';
+      verdictEl.style.color='var(--danger,#c0392b)';
+      verdictEl.textContent=`⚠️ Aguarde antes de investir: no dia ${minDia} o saldo fica negativo em ${fmt(Math.abs(minSaldo))} — não vai dar pra cobrir todas as contas até o próximo recebimento.`;
+    } else if(minSaldo===0){
+      verdictEl.style.background='color-mix(in srgb, var(--muted) 15%, transparent)';
+      verdictEl.style.color='var(--text)';
+      verdictEl.textContent=`ℹ️ O saldo chega a zerar (dia ${minDia}) mas não fica negativo — dá pra pagar tudo, porém sem sobra pra investir esse mês.`;
+    } else {
+      verdictEl.style.background='color-mix(in srgb, var(--ok,#2e7d32) 12%, transparent)';
+      verdictEl.style.color='var(--ok,#2e7d32)';
+      verdictEl.textContent=`✅ Dá pra pagar todas as contas até o próximo recebimento. Sobra segura para investir agora: ${fmt(minSaldo)} (menor saldo do mês, dia ${minDia}).`;
+    }
+  }
 }
 
 // ── RECALC ───────────────────────────────────────────────────────────────────
+// Resgates de RDB/aplicação lançados em "Corretora (Geral)" (i_corr) entram como valor NEGATIVO
+// dentro da própria categoria, pra a aplicação menos o resgate no mês resultar no valor líquido
+// realmente investido (em vez de somar os dois como se fossem despesas separadas).
+function txSignedAmount(t){
+  if(t.catId==='i_corr'&&/resgat/i.test(t.desc||''))return-Math.abs(t.amount);
+  // "Reembolso/estorno" marcado manualmente: abate da categoria em vez de somar
+  // (encontro de contas — ex.: gastou 100 de Lazer, um amigo devolveu 50, líquido = 50).
+  if(t.creditoNaCategoria)return-Math.abs(t.amount);
+  return t.amount;
+}
 function getTxMap(yr,mo){
   yr=yr!==undefined?yr:txViewYear; mo=mo!==undefined?mo:txViewMonth;
   const m={};
@@ -3802,7 +4241,8 @@ function getTxMap(yr,mo){
     const effDate=t.dataPgto||t.date;if(!effDate)return;
     const d=new Date(effDate+'T00:00:00');
     if(d.getFullYear()!==yr||d.getMonth()!==mo)return;
-    if(t.grp!=='receita'&&t.grp!=='neutro')m[t.catId]=(m[t.catId]||0)+t.amount;
+    const isNeutral=t.grp==='neutro'||(t.catId||'').startsWith('n_');
+    if(t.grp!=='receita'&&!isNeutral)m[t.catId]=(m[t.catId]||0)+txSignedAmount(t);
   });
   return m;
 }
@@ -3826,7 +4266,7 @@ function recalc(){
   const orcRenda=getOrcRendaOrc();
   const rendaReal=hasTx&&txRenda>0?txRenda:S.rendaReal;
   const slO=Math.max(orcRenda-tDo,0),slR=Math.max(rendaReal-tDr,0);
-  const rR=rendaReal||1;
+  const rR=rendaReal||1; // usado só para % de investimento sobre a renda (só faz sentido havendo renda real)
 
   // tx indicators
   const ri=document.getElementById('renda-tx-ind');if(ri)ri.textContent=txRenda>0?' ●':'';
@@ -3851,6 +4291,23 @@ function recalc(){
   });
   setVar('var-renda',rendaReal-orcRenda,true);
 
+  // Subtotais por classe (Moradia, Saúde, etc.) dentro de Fixo/Variável
+  function updateGrpSums(grp,cats){
+    const byNome={};
+    (cats||[]).forEach(c=>{const n=c.grpNome||'Outros';if(!byNome[n])byNome[n]=[];byNome[n].push(c);});
+    Object.keys(byNome).forEach(nome=>{
+      let o=0,r=0;
+      byNome[nome].forEach(c=>{
+        o+=getOrcVal(c.id)||0;
+        r+=txMap[c.id]!==undefined?(txMap[c.id]||0):(c.real||0);
+      });
+      const sid=grpSumId(grp,nome);
+      setText(sid+'-o',fmt(o));setText(sid+'-r',fmt(r));
+    });
+  }
+  updateGrpSums('fixas',S.cats.fixas);
+  updateGrpSums('var',S.cats.var);
+
   // Group totals
   setText('tct-o',fmt(tCo));setText('tct-r',fmt(tCr));
   setText('tf-o',fmt(tFo+tVo));setText('tf-r',fmt(tFr+tVr)); // combined despesas
@@ -3861,19 +4318,38 @@ function recalc(){
   setText('kpi-renda',fmt(rendaReal));setText('kpi-renda-o',fmt(orcRenda));
   setText('kpi-comp',fmt(tDr));setText('kpi-comp-o',fmt(tDo));
   const cp=document.getElementById('kpi-comp-p');
-  if(cp){cp.textContent=pct(tDr,rR);cp.className='delta '+(tDr/rR>.9?'bad':tDr/rR>.75?'warn':'ok');}
+  // % comprometido = comparativo orçado x realizado (quanto do orçamento já foi gasto),
+  // e não % sobre a renda — evita % absurdo quando ainda não há renda lançada no mês
+  if(cp){
+    const compR=tDo>0?tDr/tDo:0;
+    cp.textContent=tDo>0?pct(tDr,tDo):'—';
+    cp.className='delta '+(compR>.9?'bad':compR>.75?'warn':'ok');
+  }
   setText('kpi-saldo',fmt(slR));setText('kpi-saldo-o',fmt(slO));
-  const ki=document.getElementById('kpi-inv'),ip=tIr/rR;
-  if(ki){ki.textContent=pct(tIr,rR);ki.className='kpi-val '+(ip>=.15?'ok':ip>=.08?'warn':'bad');}
+  const ki=document.getElementById('kpi-inv');
+  if(ki){
+    if(rendaReal>0){
+      const ip=tIr/rendaReal;
+      ki.textContent=pct(tIr,rendaReal);
+      ki.className='kpi-val '+(ip>=.15?'ok':ip>=.08?'warn':'bad');
+    }else{
+      ki.textContent='—';ki.className='kpi-val';
+    }
+  }
   setText('kpi-inv-o',pct(tIo,orcRenda||1));
 
-  // Legend
-  setText('lct-p',pct(tCr,rR));setText('lct-v',' — '+fmt(tCr));
-  setText('lf-p',pct(tFr,rR));setText('lf-v',' — '+fmt(tFr));
-  setText('lv-p',pct(tVr,rR));setText('lv-v',' — '+fmt(tVr));
-  setText('li-p',pct(tIr,rR));setText('li-v',' — '+fmt(tIr));
-  setText('ls-p',pct(slR,rR));setText('ls-v',' — '+fmt(slR));
-  setText('donut-c',pct(tDr,rR));
+  // Legend — % de cada grupo dentro do total realizado no mês (distribuição do donut)
+  const pieTotal=tCr+tFr+tVr+tIr+slR;
+  setText('lct-p',pct(tCr,pieTotal||1));setText('lct-v',' — '+fmt(tCr));
+  setText('lf-p',pct(tFr,pieTotal||1));setText('lf-v',' — '+fmt(tFr));
+  setText('lv-p',pct(tVr,pieTotal||1));setText('lv-v',' — '+fmt(tVr));
+  setText('li-p',pct(tIr,pieTotal||1));setText('li-v',' — '+fmt(tIr));
+  setText('ls-p',pct(slR,pieTotal||1));setText('ls-v',' — '+fmt(slR));
+  // Centro do donut: % da RENDA REALIZADA já comprometida (mesma base da legenda
+  // logo abaixo, que também é % sobre a renda) — antes usava orçado como base
+  // (comprometido/orçado), o que dava um número sem relação com os % da legenda
+  // e confundia (ex: "228%" no centro vs. fatias que somam 100% na legenda).
+  setText('donut-c',rendaReal>0?pct(tDr,rendaReal):'—');
 
   updateDonut([tCr,tFr,tVr,tIr,slR]);
   updateBar([tCo,tFo,tVo,tIo],[tCr,tFr,tVr,tIr]);
@@ -4214,13 +4690,21 @@ function openModal(type,goalId){
   activeModal=type;
   document.getElementById('m-csv').style.display=type==='csv'?'block':'none';
   document.getElementById('m-card').style.display=type==='card'?'block':'none';
-  document.getElementById('m-conta').style.display=type==='conta'?'block':'none';
   document.getElementById('m-pgto').style.display=type==='pgto'?'block':'none';
   document.getElementById('m-goal').style.display=type==='goal'?'block':'none';
   document.getElementById('m-edit-tx').style.display=type==='edit-tx'?'block':'none';
+  document.getElementById('m-import-orc').style.display=type==='import-orc'?'block':'none';
+  document.getElementById('m-copy-prev').style.display=type==='copy-prev'?'block':'none';
+  document.getElementById('m-contas').style.display=type==='contas'?'block':'none';
   document.getElementById('backdrop').classList.add('open');
   if(type==='card'){document.getElementById('card-nome').value='';document.getElementById('card-fecha').value='';document.getElementById('card-venc').value='';}
-  if(type==='pgto'){document.getElementById('pgto-desc').value='';document.getElementById('pgto-dia').value='';document.getElementById('pgto-val').value='';}
+  if(type==='pgto'){
+    document.getElementById('pgto-edit-id').value='';
+    document.getElementById('pgto-desc').value='';document.getElementById('pgto-dia').value='';document.getElementById('pgto-val').value='';
+    document.getElementById('pgto-tipo').value='entrada';document.getElementById('pgto-rec').checked=true;
+    document.getElementById('pgto-modal-title').textContent='Adicionar Entrada / Saída';
+    document.getElementById('pgto-modal-btn').textContent='Adicionar';
+  }
   if(type==='goal'){
     const g=goalId?S.goals.find(x=>x.id===goalId):null;
     document.getElementById('goal-modal-title').textContent=g?'Editar Objetivo':'Novo Objetivo';
@@ -4242,6 +4726,7 @@ function openConvOverlay(){
   document.getElementById('conv-overlay').classList.add('open');
   document.body.style.overflow='hidden';
   renderMerchantMemory();
+  buildContaSelects();
 }
 function closeConvOverlay(){
   document.getElementById('conv-overlay').classList.remove('open');
@@ -4270,6 +4755,10 @@ function switchTab(el){
   document.querySelectorAll('.panel:not(#panel-conversor)').forEach(p=>p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('panel-'+el.dataset.tab).classList.add('active');
+  // Garante que o seletor de conta/cartão/forma de pgto do lançamento manual
+  // está sempre atualizado ao entrar na aba (mesmo se a conta foi cadastrada
+  // numa sessão/aba diferente e o select ainda não tinha sido reconstruído).
+  if(el.dataset.tab==='lancamentos')buildPgtoSelect();
   // Pre-populate IR pago fields from state
   if(el.dataset.tab==='irpgbl'&&S.irPago){
     const f=document.getElementById('ir-fonte');const c=document.getElementById('ir-carneleao');const o=document.getElementById('ir-pagoutros');
@@ -4285,7 +4774,10 @@ function pct(v,r){return r?Math.round((v||0)/(r||1)*100)+'%':'0%';}
 function sumF(arr,k){return arr.reduce((a,c)=>a+(c[k]||0),0);}
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function save(){
-  try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(_){}
+  try{
+    localStorage.setItem(SKEY,JSON.stringify(S));
+    localStorage.setItem(SKEY+'_ts',Date.now().toString());
+  }catch(_){}
   // Sync to Supabase with 800ms debounce
   if(_sb&&_sbUser){
     _sbDirty=true;
@@ -4294,6 +4786,52 @@ function save(){
     _sbSaveTimer=setTimeout(sbSaveNow,800);
   }
 }
+<<<<<<< HEAD
+// ── Persistência genérica dos campos das "calculadoras" (IR/PGBL,
+// Aposentadoria, Simulador) — cada cliente guarda os próprios valores, que
+// ficam salvos até serem alterados (nunca somem ao trocar de aba/cliente).
+function bindCalcPersistence(panelId){
+  const panel=document.getElementById(panelId);
+  if(!panel||panel._calcBound)return;
+  panel._calcBound=true;
+  panel.addEventListener('input',e=>{
+    const el=e.target;
+    if(!el||!el.id||(el.tagName!=='INPUT'&&el.tagName!=='SELECT'&&el.tagName!=='TEXTAREA'))return;
+    if(!S.calcInputs)S.calcInputs={};
+    S.calcInputs[el.id]=(el.type==='checkbox'||el.type==='radio')?el.checked:el.value;
+    save();
+  });
+  panel.addEventListener('change',e=>{
+    const el=e.target;
+    if(!el||!el.id||el.tagName!=='SELECT')return;
+    if(!S.calcInputs)S.calcInputs={};
+    S.calcInputs[el.id]=el.value;
+    save();
+  });
+}
+function restoreCalcFields(panelId){
+  const panel=document.getElementById(panelId);
+  if(!panel||!S.calcInputs)return;
+  panel.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
+    const v=S.calcInputs[el.id];
+    if(v===undefined)return;
+    if(el.type==='checkbox'||el.type==='radio')el.checked=!!v;
+    else el.value=v;
+  });
+}
+function initCalcPanelsPersistence(){
+  ['panel-irpgbl','panel-aposent','panel-simulador'].forEach(bindCalcPersistence);
+  restoreCalcFields('panel-irpgbl');
+  restoreCalcFields('panel-aposent');
+  restoreCalcFields('panel-simulador');
+  // Recalcula tudo com os valores restaurados para os quadros/tabelas já
+  // aparecerem preenchidos, sem esperar o usuário digitar algo.
+  try{irCalc();}catch(e){}
+  try{aposCalc();}catch(e){}
+  try{simCalc();}catch(e){}
+}
+
+=======
 let _sbDirty=false;
 function setSaveIndicator(state){
   const el=document.getElementById('save-indicator');
@@ -4304,9 +4842,22 @@ function setSaveIndicator(state){
     setTimeout(()=>{el.className='save-indicator';},3000);
   } else {el.className='save-indicator';}
 }
+>>>>>>> 281e659 (feat: indicador de save + debounce 800ms + aviso beforeunload)
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
-  localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
+  localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
+}
+
+// Apaga só os lançamentos (todos os meses de uma vez) — mantém orçamento,
+// metas, diagnóstico e todo o resto do cliente intactos. Útil para reimportar
+// um extrato do zero sem perder o resto do trabalho já feito.
+function clearAllTransactions(){
+  const n=(S.transactions||[]).length;
+  if(!n){alert('Não há lançamentos para apagar.');return;}
+  if(!confirm(`Apagar todos os ${n} lançamentos de "${_rawCid}" (todos os meses)? Orçamento, metas e o restante dos dados do cliente NÃO serão afetados. Esta ação não pode ser desfeita.`))return;
+  S.transactions=[];
+  save();
+  recalc();renderTxList();renderFluxoPgto();renderAll();renderOrcMonth();
 }
 
 // ── CSV REVIEW (LANÇAMENTOS) ──────────────────────────────────────────────────
@@ -5058,6 +5609,21 @@ function exportData(){
   a.download='structa-'+(_cid||'cliente')+'.json';
   a.click();
 }
+async function forceSyncLocalToCloud(){
+  if(!_sb||!_sbUser){alert('Você precisa estar autenticado para sincronizar.');return;}
+  const localRaw=localStorage.getItem(SKEY);
+  if(!localRaw){alert('Nenhum dado local encontrado neste navegador.');return;}
+  let localData;
+  try{localData=JSON.parse(localRaw);}catch(_){alert('Dado local corrompido.');return;}
+  const localTs=parseInt(localStorage.getItem(SKEY+'_ts')||'0');
+  const localDate=localTs?new Date(localTs).toLocaleString('pt-BR'):'data desconhecida';
+  const txCount=(localData.transactions||[]).length;
+  if(!confirm(`Dados locais deste navegador:\n• ${txCount} lançamentos\n• Salvo em: ${localDate}\n\nSubstituir os dados da nuvem por estes?`))return;
+  S={...freshState(),...localData};
+  await sbSaveNow();
+  renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();renderSeguranca();renderDividas();renderInvestimentos();renderPatrimonio();renderContasBar();
+  alert('✓ Dados sincronizados com a nuvem com sucesso!');
+}
 
 // ── PERMISSÕES ────────────────────────────────────────────────────────────────
 // Tabs visíveis para clientes (as outras ficam ocultas)
@@ -5128,12 +5694,22 @@ function generateReport(){
   const today=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
 
   // ── Orçamento summary
-  const totalOrcF=sumF(S.cats.fixas,'orc'), totalRealF=sumF(S.cats.fixas,'real');
-  const totalOrcV=sumF(S.cats.var,'orc'),   totalRealV=sumF(S.cats.var,'real');
-  const totalOrcI=sumF(S.cats.inv,'orc'),   totalRealI=sumF(S.cats.inv,'real');
+  // Mesma lógica de cálculo que recalc() usa pra preencher a tela do Orçamento
+  // (via getTxMap, que lê direto dos lançamentos) — os campos S.cats.*.real e
+  // S.rendaReal só existem como fallback manual e ficam em 0 quando os valores
+  // realizados vêm dos lançamentos, então usá-los direto aqui gerava um relatório
+  // sempre zerado mesmo com lançamentos reais no mês.
+  const rptTxMap=getTxMap(orcViewYear,orcViewMonth);
+  const rptTxRenda=getTxRenda(orcViewYear,orcViewMonth);
+  const rptHasTx=S.transactions.length>0;
+  function rptRealOf(cats){return(cats||[]).reduce((s,c)=>s+(rptTxMap[c.id]!==undefined?rptTxMap[c.id]:c.real||0),0);}
+  const totalOrcF=sumF(S.cats.fixas,'orc'), totalRealF=rptRealOf(S.cats.fixas);
+  const totalOrcV=sumF(S.cats.var,'orc'),   totalRealV=rptRealOf(S.cats.var);
+  const totalOrcI=sumF(S.cats.inv,'orc'),   totalRealI=rptRealOf(S.cats.inv);
   const totalOrc=totalOrcF+totalOrcV+totalOrcI, totalReal=totalRealF+totalRealV+totalRealI;
-  const saldo=( S.rendaReal||0)-totalReal;
-  const txPoupanca=S.rendaReal?Math.round(totalRealI/(S.rendaReal)*100):0;
+  const rendaReal=rptHasTx&&rptTxRenda>0?rptTxRenda:(S.rendaReal||0);
+  const saldo=rendaReal-totalReal;
+  const txPoupanca=rendaReal?Math.round(totalRealI/rendaReal*100):0;
 
   // ── Objetivos
   const goalsHtml=S.goals&&S.goals.length?S.goals.map(g=>{
@@ -5171,7 +5747,7 @@ function generateReport(){
   // ── Segurança
   const seg=S.seguros||{};
   const despMensais=totalRealF+totalRealV;
-  const metaReserva=(despMensais||S.rendaReal||0)*(seg.reservaMeses||6);
+  const metaReserva=(despMensais||rendaReal||0)*(seg.reservaMeses||6);
   const reservaPctNum=metaReserva>0?Math.min(100,Math.round((seg.reservaAtual||0)/metaReserva*100)):0;
   const SEG_LABEL={segVida:'Seguro de Vida',segAuto:'Seguro Auto',segRC:'Responsabilidade Civil',segResid:'Seguro Residencial',segViagem:'Seguro Viagem',planoSaude:'Plano de Saúde'};
   const segRows=Object.entries(SEG_LABEL).map(([k,nome])=>{
@@ -5189,7 +5765,7 @@ function generateReport(){
       <td class="num">${fmt(st.totalAPagar)}</td>
       <td class="num" style="color:#3d6b4f">${fmt(st.jaPago)}</td>
       <td class="num" style="${st.saldoAberto>0?'color:#c0392b':''}">${fmt(st.saldoAberto)}</td>
-      <td class="num">${d.taxaMes>0?d.taxaMes.toFixed(2).replace('.',',')+'% a.m.':'—'}</td>
+      <td class="num">${d.taxaMes>0?taxaMesToAno(d.taxaMes).toFixed(2).replace('.',',')+'% a.a.':'—'}</td>
     </tr>`;
   }).join(''):'<tr><td colspan="6" style="color:#8a7068">Nenhuma dívida cadastrada</td></tr>';
   const totalDividasAberto=(S.dividas||[]).reduce((s,d)=>s+calcDividaStats(d).saldoAberto,0);
@@ -5236,13 +5812,13 @@ function generateReport(){
     <div class="rpt-kpi-row">
       <div class="rpt-kpi">
         <div class="rpt-kpi-label">Renda Mensal</div>
-        <div class="rpt-kpi-value">${fmt(S.rendaReal||S.rendaOrc)}</div>
-        <div class="rpt-kpi-note">Referência do planejamento</div>
+        <div class="rpt-kpi-value">${fmt(rendaReal||S.rendaOrc)}</div>
+        <div class="rpt-kpi-note">${rendaReal?'Realizada no mês':'Referência do planejamento'}</div>
       </div>
       <div class="rpt-kpi">
         <div class="rpt-kpi-label">Total de Gastos</div>
-        <div class="rpt-kpi-value" style="${totalReal>(S.rendaReal||0)?'color:#c0392b':''}">${fmt(totalReal)}</div>
-        <div class="rpt-kpi-note">${S.rendaReal?Math.round(totalReal/S.rendaReal*100)+'% da renda':''}</div>
+        <div class="rpt-kpi-value" style="${totalReal>rendaReal?'color:#c0392b':''}">${fmt(totalReal)}</div>
+        <div class="rpt-kpi-note">${rendaReal?Math.round(totalReal/rendaReal*100)+'% da renda':''}</div>
       </div>
       <div class="rpt-kpi">
         <div class="rpt-kpi-label">Saldo Mensal</div>
@@ -5253,10 +5829,10 @@ function generateReport(){
     <table class="rpt-table">
       <thead><tr><th>Categoria</th><th class="num">Orçado</th><th class="num">Realizado</th><th class="num">% Renda</th></tr></thead>
       <tbody>
-        <tr><td><b>Despesas Fixas</b></td><td class="num">${fmt(totalOrcF)}</td><td class="num">${fmt(totalRealF)}</td><td class="num">${S.rendaReal?Math.round(totalRealF/S.rendaReal*100)+'%':'—'}</td></tr>
-        <tr><td><b>Despesas Variáveis</b></td><td class="num">${fmt(totalOrcV)}</td><td class="num">${fmt(totalRealV)}</td><td class="num">${S.rendaReal?Math.round(totalRealV/S.rendaReal*100)+'%':'—'}</td></tr>
+        <tr><td><b>Despesas Fixas</b></td><td class="num">${fmt(totalOrcF)}</td><td class="num">${fmt(totalRealF)}</td><td class="num">${rendaReal?Math.round(totalRealF/rendaReal*100)+'%':'—'}</td></tr>
+        <tr><td><b>Despesas Variáveis</b></td><td class="num">${fmt(totalOrcV)}</td><td class="num">${fmt(totalRealV)}</td><td class="num">${rendaReal?Math.round(totalRealV/rendaReal*100)+'%':'—'}</td></tr>
         <tr style="background:#f0eef8"><td><b>Investimentos</b></td><td class="num">${fmt(totalOrcI)}</td><td class="num">${fmt(totalRealI)}</td><td class="num ${txPoupanca>=10?'ok':'warn'}">${txPoupanca}%</td></tr>
-        <tr style="font-weight:700"><td>Total</td><td class="num">${fmt(totalOrc)}</td><td class="num">${fmt(totalReal)}</td><td class="num">${S.rendaReal?Math.round(totalReal/S.rendaReal*100)+'%':'—'}</td></tr>
+        <tr style="font-weight:700"><td>Total</td><td class="num">${fmt(totalOrc)}</td><td class="num">${fmt(totalReal)}</td><td class="num">${rendaReal?Math.round(totalReal/rendaReal*100)+'%':'—'}</td></tr>
       </tbody>
     </table>
     ${txPoupanca<10?'<div class="rpt-highlight">⚠ A taxa de poupança atual (<b>'+txPoupanca+'%</b>) está abaixo do recomendado de 10–20% da renda. Revise as despesas variáveis para ampliar o investimento mensal.</div>':'<div class="rpt-highlight">✓ Taxa de poupança de <b>'+txPoupanca+'%</b> dentro da faixa saudável (≥ 10%). Continue o aporte disciplinado.</div>'}
@@ -5345,10 +5921,10 @@ function generateReport(){
     <div class="rpt-section-title">6. Dívidas e Financiamentos</div>
     ${totalDividasAberto>0?`<div class="rpt-kpi-row">
       <div class="rpt-kpi"><div class="rpt-kpi-label">Total em Aberto</div><div class="rpt-kpi-value" style="color:#c0392b">${fmt(totalDividasAberto)}</div><div class="rpt-kpi-note">Saldo devedor atual</div></div>
-      <div class="rpt-kpi" style="grid-column:2/4"><div class="rpt-kpi-label">Comprometimento da Renda</div><div class="rpt-kpi-value" style="font-size:14px;padding-top:6px">${S.rendaReal?Math.round(totalDividasAberto/(S.rendaReal*12)*100)+'% da renda anual':'—'}</div></div>
+      <div class="rpt-kpi" style="grid-column:2/4"><div class="rpt-kpi-label">Comprometimento da Renda</div><div class="rpt-kpi-value" style="font-size:14px;padding-top:6px">${rendaReal?Math.round(totalDividasAberto/(rendaReal*12)*100)+'% da renda anual':'—'}</div></div>
     </div>`:''}
     <table class="rpt-table">
-      <thead><tr><th>Tipo</th><th>Instituição</th><th class="num">Total a Pagar</th><th class="num">Já Pago</th><th class="num">Saldo em Aberto</th><th class="num">Taxa a.m.</th></tr></thead>
+      <thead><tr><th>Tipo</th><th>Instituição</th><th class="num">Total a Pagar</th><th class="num">Já Pago</th><th class="num">Saldo em Aberto</th><th class="num">Taxa a.a.</th></tr></thead>
       <tbody>${dividasRows}</tbody>
       ${S.dividas&&S.dividas.length?`<tfoot><tr style="font-weight:700;background:#fdf4f4"><td colspan="4">Total em aberto</td><td class="num" style="color:#c0392b">${fmt(totalDividasAberto)}</td><td></td></tr></tfoot>`:''}
     </table>
@@ -6585,6 +7161,25 @@ function buildCAT(){
 }
 const CAT=buildCAT();
 
+// CAT_LABEL_MAP: nome da categoria (normalizado) → catId. Permite que uma
+// coluna "Categoria" de uma planilha já classificada manualmente (com o
+// nome por extenso, ex.: "Transferência Entre Contas") seja reconhecida
+// mesmo sem usar o id interno (ex.: "n_transf").
+function buildCatLabelMap(){
+  const m={};
+  Object.entries(CAT).forEach(([id,lbl])=>{m[convNorm(lbl).trim()]=id;});
+  return m;
+}
+const CAT_LABEL_MAP=buildCatLabelMap();
+// Resolve um texto de categoria (id interno OU nome por extenso) para um catId válido.
+function convResolveCat(rawCat){
+  if(!rawCat)return null;
+  const s=rawCat.toString().trim();
+  if(!s)return null;
+  if(CAT[s])return s;
+  return CAT_LABEL_MAP[convNorm(s).trim()]||null;
+}
+
 // ── convCatHTML: gera <select> de categoria ──────────────────────────────────
 function convCatHTML(selected){
   const byNome={};
@@ -6627,6 +7222,9 @@ function convCatHTML(selected){
 function convImportToDash(){
   if(!_convTxns||!_convTxns.length){alert('Nenhuma transação para importar.');return;}
   let count=0;
+  // Conta/cartão marcado no importador — aplicado a TODOS os lançamentos deste
+  // extrato, já que um extrato inteiro sempre vem de uma única conta/cartão.
+  const contaId=document.getElementById('conv-conta-batch')?.value||null;
   _convTxns.forEach(t=>{
     const parts=(t.date||'').split('/');
     const iso=parts.length===3?`${parts[2]}-${parts[1]}-${parts[0]}`:t.date;
@@ -6634,10 +7232,11 @@ function convImportToDash(){
     const grp=convTxGrp(cat);
     const amount=Math.abs(t.value);
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
+    const dataPgto=(t.dataPgto&&/^\d{4}-\d{2}-\d{2}$/.test(t.dataPgto))?t.dataPgto:iso;
     const tx={
       id:Date.now()+'_'+count+'_'+Math.random().toString(36).substr(2,5),
-      date:iso,dataPgto:iso,desc:cleanName,descOriginal:t.desc,
-      amount:amount,catId:cat,grp:grp,pgto:(t.pgto&&t.pgto.trim())||'outros',
+      date:iso,dataPgto:dataPgto,desc:cleanName,descOriginal:t.desc,
+      amount:amount,catId:cat,grp:grp,pgto:(t.pgto&&t.pgto.trim())||'outros',contaId,
     };
     if(t.parcela)tx.parcela=t.parcela;
     S.transactions.push(tx);
@@ -6908,19 +7507,41 @@ function renderMerchantMemory(){
   }).join('');
 }
 
+// Se o nome do próprio cliente (dono da conta) aparece na descrição do lançamento,
+// é transferência entre contas dele mesmo (ex.: PIX entre conta PF e PJ), nunca receita/despesa real.
+// Exige todas as palavras relevantes do nome (>=3 letras) presentes, pra evitar falso positivo com nome comum.
+function clientNameMatches(d){
+  const raw=(S.name||'').trim();
+  if(!raw)return false;
+  const words=convNorm(raw).split(/\s+/).filter(w=>w.length>=3);
+  if(words.length<2)return false;
+  return words.every(w=>d.includes(w));
+}
+// Casa a keyword contra a descrição já normalizada. Prefixo "#" = palavra inteira
+// (limites de palavra via regex), pra evitar que um radical curto vire substring
+// de outra palavra sem relação (ex.: "#posto" não deve casar dentro de "imposto").
+function kwHit(k,d){
+  if(k.length>1&&k[0]==='#'){
+    const w=convNorm(k.slice(1));
+    return new RegExp('(^|[^a-z0-9])'+w+'($|[^a-z0-9])').test(d);
+  }
+  return d.includes(convNorm(k));
+}
 function classifyTx(desc,value){
   const d=convNorm(desc);
   // 1º: classificações já corrigidas anteriormente (aprendizado)
   const lk=learnKeyOf(desc),learned=getLearned();
   if(learned[lk]&&CAT[learned[lk]])return learned[lk];
+  // 2º: nome do próprio cliente na descrição = transferência entre contas
+  if(clientNameMatches(d))return 'n_transf';
   // Neutral first
   for(const cat of NEUTRAL_CATS){
-    if(KW[cat]&&KW[cat].some(k=>d.includes(convNorm(k))))return cat;
+    if(KW[cat]&&KW[cat].some(k=>kwHit(k,d)))return cat;
   }
   // Income if positive
   if(value>0){
     for(const cat of INCOME_CATS){
-      if(KW[cat]&&KW[cat].some(k=>d.includes(convNorm(k))))return cat;
+      if(KW[cat]&&KW[cat].some(k=>kwHit(k,d)))return cat;
     }
   }
   // All KW (skip income cats for non-positive values)
@@ -6930,9 +7551,9 @@ function classifyTx(desc,value){
   for(const[cat,kws]of Object.entries(KW)){
     if(value<=0&&INCOME_CATS.includes(cat))continue;
     if(receb&&!INCOME_CATS.includes(cat))continue;
-    if(kws.some(k=>d.includes(convNorm(k))))return cat;
+    if(kws.some(k=>kwHit(k,d)))return cat;
   }
-  return value>0?'r_out':'v_outras';
+  return value>0?'r_out':'v_outrasdesp';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7042,10 +7663,13 @@ const BANK_NAMES={
   santander_extrato:'Santander – Extrato Conta Corrente',
   santander_fatura:'Santander – Fatura Cartão',
   bb_extrato:     'Banco do Brasil – Extrato Conta Corrente',
+  bb_fatura:      'Banco do Brasil – Fatura Ourocard',
   visa_fatura:    'Fatura Cartão Visa',
   inter_fatura:   'Banco Inter – Fatura Cartão',
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
+  sicoob_fatura:  'Sicoob – Fatura Cartão',
+  bradesco_fatura:'Bradesco – Fatura Cartão',
   coop_extrato:   'Cooperativa – Extrato Conta Corrente',
   cef_app:        'Caixa – Extrato por Período (App)',
   prox_fatura:    'Cartão – Demonstrativo Próxima Fatura',
@@ -7054,6 +7678,38 @@ const BANK_NAMES={
   csv_xls:        'CSV / Excel',
 };
 
+// Tenta identificar, a partir do texto do PDF, de qual conta/cartão específico
+// aquele extrato/fatura é (banco + agência/conta, quando o layout imprime isso),
+// pra já sugerir/criar automaticamente a conta cadastrada em vez do usuário ter
+// que escolher manualmente toda vez que importa um extrato.
+function detectContaNome(bank,allText){
+  const t=allText||'';
+  const bankName=(BANK_NAMES[bank]||'').split('–')[0].trim();
+  if(!bankName||bankName==='Formato Genérico'||bankName==='CSV / Excel')return null;
+  const agM=t.match(/ag[eê]ncia[:\s]*n?[ºo°]?\s*([\d]{2,6}[-.]?[\dxX]?)/i);
+  const ccM=t.match(/conta\s*(?:corrente|poupan[çc]a)?[:\s]*n?[ºo°]?\s*([\d]{2,10}[-.][\dxX]{1,2})/i);
+  const isPJ=/pessoa\s*jur[ií]dica|santander\s*empresas|\bcnpj\b/i.test(t);
+  let nome=bankName+(isPJ?' PJ':'');
+  if(agM&&ccM)nome+=` — Ag ${agM[1]} / CC ${ccM[1]}`;
+  else if(ccM)nome+=` — CC ${ccM[1]}`;
+  return nome;
+}
+// Garante que exista uma conta cadastrada correspondente ao extrato importado —
+// reaproveita se já existe uma com o mesmo nome, senão cria automaticamente.
+// Retorna o id da conta (ou null se não deu pra identificar nada).
+function ensureContaFromImport(bank,allText){
+  const nome=detectContaNome(bank,allText);
+  if(!nome)return null;
+  let conta=S.contas.find(c=>c.nome.toLowerCase()===nome.toLowerCase());
+  if(!conta){
+    const tipo=/fatura/.test(bank)?'credito':'corrente';
+    conta={id:'conta_'+Date.now()+'_'+Math.random().toString(36).substr(2,4),nome,tipo};
+    S.contas.push(conta);
+    buildContaSelects();
+    save();
+  }
+  return conta.id;
+}
 function detectBank(lines){
   const t=lines.map(l=>l.text).join('\n').toLowerCase();
   // Nubank: precisa vir antes do Santander (txns Pix podem citar "BCO SANTANDER")
@@ -7064,6 +7720,14 @@ function detectBank(lines){
     if(t.includes('fatura'))return'santander_fatura';
     return'santander_extrato';
   }
+  // Extrato PF do Internet Banking Santander que não imprime a palavra "santander"
+  // em lugar nenhum — identificado pelo conjunto de colunas específico
+  // "Docto / Situação / Crédito (R$) / Débito (R$)", exclusivo desse layout.
+  if(lines.some(l=>/docto/i.test(l.text)&&/situa[çc][ãa]o/i.test(l.text)
+     &&/cr[ée]dito\s*\(r\$\)/i.test(l.text)&&/d[ée]bito\s*\(r\$\)/i.test(l.text)))return'santander_extrato';
+  // Fatura de cartão BB (Ourocard) — precisa vir antes do extrato, senão "ouvidoria bb"
+  // (rodapé padrão de toda fatura BB) cai no parser de extrato de conta corrente.
+  if(t.includes('ourocard')&&(t.includes('fatura')||t.includes('lançamentos nesta fatura')||t.includes('lancamentos nesta fatura')))return'bb_fatura';
   if(t.includes('banco do brasil')||t.includes('dt. balancete')
      ||t.includes('rende facil')||t.includes('rende fácil')
      ||t.includes('ouvidoria bb'))return'bb_extrato';
@@ -7075,6 +7739,11 @@ function detectBank(lines){
      &&(t.includes('fatura')||t.includes('estabelecimento')))return'itau_fatura';
   if(t.includes('itaú')||t.includes('itau'))return'itau_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
+  // Fatura de cartão Sicoob (Sicoobcard) — precisa vir antes do extrato SISBR,
+  // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
+  // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
+  if(t.includes('sicoob')&&t.includes('fatura'))return'sicoob_fatura';
+  if(t.includes('bradesco')&&t.includes('fatura mensal'))return'bradesco_fatura';
   if(t.includes('sicoob')||t.includes('sisbr')||t.includes('coop.:'))return'sicoob_sisbr';
   if(t.includes('coop:')||t.includes('cooperativa de cr'))return'coop_extrato';
   // Banco Inter: "Despesas da fatura" + colunas "Data Movimentação Beneficiário"
@@ -7396,7 +8065,126 @@ function parseSantanderNum(s){
   return neg?-n:n;
 }
 
+// Despacha pro sub-parser certo de acordo com o layout do PDF — o Santander usa pelo
+// menos 3 formatos de extrato bem diferentes entre si (clássico com "MOVIMENTAÇÃO",
+// PF novo do internet banking com colunas Crédito/Débito separadas, e "Santander
+// Empresas" PJ com descrição quebrada em 3 linhas ao redor da linha da data).
 function parseSantanderExtrato(lines,allText){
+  if(lines.some(l=>/^movimenta[çc][ãa]o$/i.test(l.text))){
+    return parseSantanderExtratoClassico(lines,allText);
+  }
+  if(lines.some(l=>/docto/i.test(l.text)&&/situa[çc][ãa]o/i.test(l.text)
+     &&/cr[ée]dito\s*\(r\$\)/i.test(l.text)&&/d[ée]bito\s*\(r\$\)/i.test(l.text))){
+    return parseSantanderExtratoPF2(lines);
+  }
+  return parseSantanderExtratoPJ2(lines);
+}
+
+// ── Santander PF — internet banking, colunas "Docto Situação Crédito(R$) Débito(R$) Saldo(R$)" ──
+// Uma linha por lançamento; Crédito já vem positivo e Débito já vem negativo no
+// próprio PDF — a coluna Saldo é sempre ignorada. Usa skip próprio (não o SKIP
+// global) porque aqui "IOF ADICIONAL"/"JUROS ..." são encargos de verdade
+// (lançamentos de rotativo/limite), não texto de rodapé — o SKIP genérico
+// derrubaria essas transações.
+const SANT_PF2_SKIP=[
+  /^data\s+descri[çc][ãa]o/i,/^saldo anterior/i,/^saldo de conta/i,
+  /^saldo bloque/i,/^provis[ãa]o de encargos/i,/^seguro do limite/i,
+  /^saldo dispon[ií]vel/i,/^limite da conta/i,/^saldo em conta/i,
+  /^juros calculados/i,/^juros acumulados/i,/^iof acumulados/i,
+  /^data para d[eé]bito/i,/^[uú]ltimo movimento/i,/^dias utilizados/i,
+  /^central de atendimento/i,/^capitais e/i,/^demais localidades/i,
+  /^pessoas com defici/i,/^sac\b/i,/^ouvidoria/i,/^extrato de conta corrente/i,
+  /^per[ií]odo:/i,/^ag[eê]ncia e conta/i,/dispon[ií]vel das/i,/^internet banking/i,
+];
+function santPF2Skip(t){return!t||t.length<3||SANT_PF2_SKIP.some(r=>r.test(t.trim()));}
+function parseSantanderExtratoPF2(lines){
+  const txns=[];
+  const dateRe=/^(\d{2}\/\d{2}\/\d{4})\s+(.*)/;
+  for(const line of lines){
+    const text=line.text;
+    if(santPF2Skip(text))continue;
+    const m=text.match(dateRe);
+    if(!m)continue;
+    const date=m[1],rest=m[2].trim();
+    if(santPF2Skip(rest))continue;
+    const nums=extractNums(rest);
+    if(nums.length<2)continue; // precisa de Valor + Saldo; "saldo anterior" (1 nº) fica de fora
+    const val=convParseBR(nums[nums.length-2]);
+    if(val===null)continue;
+    let desc=rest;
+    nums.forEach(n=>{desc=desc.replace(n,'');});
+    desc=desc.replace(/\s{2,}/g,' ').replace(/[-\s]+$/,'').trim();
+    if(desc.length<2)continue;
+    txns.push({date,desc,value:val,cat:classifyTx(desc,val)});
+  }
+  return txns;
+}
+
+// ── Santander Empresas (PJ) — Data | Histórico | Documento | Valor (R$) | Saldo (R$) ──
+// Descrição frequentemente quebrada em 3 linhas: fragmento ANTES da linha da data
+// (ex.: "Pix Enviado LEYZEANE MARQUES DO"), a linha com a própria data + valor/saldo
+// (às vezes só um nº de documento solto), e um fragmento DEPOIS (ex.: "NASCI").
+// Valor já vem com o sinal certo (débito negativo/crédito positivo); Saldo é ignorado.
+const SANT_PJ2_SKIP=[
+  /^santander empresas/i,/^ag[eê]ncia:/i,/^per[ií]odos?:/i,/^saldo dispon[ií]vel/i,
+  /^data\s+hist[oó]rico/i,/^saldo de contamax/i,/^saldo$/i,/^posi[çc][ãa]o em/i,
+  /entenda a composi/i,/^[a-z]\s*[–-]\s*saldo/i,/^[a-z]\s*[–-]\s*limite/i,
+  /^[a-z]\s*[–-]\s*provis/i,/^[a-z]\s*-\s*provis/i,/desbloqueio em/i,
+  /^central de atendimento/i,/^\d{4}-?\d{3,4}\b/,/^0800/i,/^sac\b/i,/^ouvidoria/i,
+  /pessoas com defici/i,/^\d\/\d$/,
+];
+function santPJ2Skip(t){return!t||t.length<3||SANT_PJ2_SKIP.some(r=>r.test(t.trim()));}
+function parseSantanderExtratoPJ2(lines){
+  const dateRe=/^(\d{2}\/\d{2}\/\d{4})\s+(.*)/;
+  const filtered=lines.filter(l=>!santPJ2Skip(l.text));
+  // Agrupa em "blocos" por proximidade vertical: as linhas de um mesmo lançamento
+  // ficam coladas (~7pt de distância entre si), enquanto a distância normal entre
+  // lançamentos diferentes é bem maior (~25pt) — não dá pra usar só "próxima linha
+  // sem data = continuação", porque alguns lançamentos (ex.: "Ted Recebida") vêm
+  // numa linha só, sem prefixo nem sufixo, e a linha seguinte pode já ser o
+  // PREFIXO do próximo lançamento (não uma continuação do anterior).
+  const blocks=[];
+  let cur=null,prevY=null,prevPage=null;
+  for(const l of filtered){
+    // Troca de página sempre força um bloco novo — o Y reinicia por página, então
+    // "y anterior - y atual" pode dar um valor pequeno/negativo por coincidência
+    // e juntar por engano o fim de uma página com o começo da próxima.
+    const gap=(prevY===null||prevPage!==l.page)?999:(prevY-l.y);
+    if(gap>15||!cur){cur=[];blocks.push(cur);}
+    cur.push(l);
+    prevY=l.y;prevPage=l.page;
+  }
+  const txns=[];
+  for(const block of blocks){
+    let anchorIdx=-1,date=null,rest=null;
+    for(let i=0;i<block.length;i++){
+      const m=block[i].text.match(dateRe);
+      if(m){anchorIdx=i;date=m[1];rest=m[2].trim();break;}
+    }
+    if(anchorIdx===-1)continue;
+    const nums=extractNums(rest);
+    if(nums.length<2)continue; // precisa de Valor + Saldo
+    const val=convParseBR(nums[nums.length-2]);
+    if(val===null)continue;
+    let descPart=rest;
+    nums.forEach(n=>{descPart=descPart.replace(n,'');});
+    descPart=descPart.replace(/\s{2,}/g,' ').trim();
+    // Quando há outras linhas de descrição no bloco, um token solto só de dígitos
+    // na linha da data é o nº de Documento (não faz parte do Histórico) — descarta.
+    if(block.length>1&&/^\d{5,}$/.test(descPart))descPart='';
+    const before=block.slice(0,anchorIdx).map(l=>l.text.trim());
+    const after=block.slice(anchorIdx+1).map(l=>l.text.trim());
+    const desc=[...before,descPart,...after].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+    if(desc.length<2)continue;
+    txns.push({date,desc,value:val,cat:classifyTx(desc,val)});
+  }
+  return txns;
+}
+
+// ── Santander Extrato clássico — precisa da linha exata "MOVIMENTAÇÃO" ─────────
+// Data só na 1ª transação do dia; débitos com "-" no final (26,55-);
+// linha de complemento (favorecido) vem abaixo, sem valores.
+function parseSantanderExtratoClassico(lines,allText){
   const txns=[];
   let year=new Date().getFullYear();
   const ym=(allText||'').toLowerCase().match(/(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\/(\d{4})/);
@@ -7450,6 +8238,74 @@ function parseSantanderExtrato(lines,allText){
       lastTx.desc+=' '+rest.trim();
       lastTx.cat=classifyTx(lastTx.desc,lastTx.value);
     }
+  }
+  return txns;
+}
+
+// ── Santander Fatura (cartão de crédito) ────────────────────────────────────
+// Layout em 2 colunas lado a lado ("Compra Data Descrição Parcela R$ US$"
+// repetido) — o pdf.js junta as duas colunas na mesma linha de texto. Usa a
+// posição X de cada item para separar coluna esquerda/direita antes de
+// aplicar o regex de lançamento. Valor positivo na fatura = compra (despesa);
+// valor já negativo na fatura = estorno/pagamento (crédito).
+function parseSantanderFatura(lines,allText){
+  const txns=[];
+  let year=new Date().getFullYear();
+  const ym=(allText||'').match(/venciment\w*\D*?(\d{2})\/(\d{2})\/(\d{4})/i)||(allText||'').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if(ym)year=parseInt(ym[3]);
+
+  const COL_X=290; // fronteira entre coluna esquerda e direita da tabela de compras
+  const entryRe=/^\d?\s*(\d{2})\/(\d{2})\s+(.+?)(?:\s+(\d{2})\/(\d{2}))?\s+(-?[\d.]+,\d{2})(?:\s+-?[\d.]+,\d{2})?$/;
+  const iofRe=/^IOF DESPESA NO EXTERIOR\s+([\d.]+,\d{2})$/i;
+
+  function joinItems(items){
+    let text='';
+    for(let i=0;i<items.length;i++){
+      if(i===0){text=items[i].text;continue;}
+      const prev=items[i-1];
+      const gap=items[i].x-(prev.x+prev.w);
+      const th=Math.max(1.2,Math.min(prev.fsz,items[i].fsz)*0.17);
+      text+=(gap>th?' ':'')+items[i].text;
+    }
+    return text.replace(/\s+/g,' ').trim();
+  }
+
+  function tryEntry(text){
+    if(!text)return null;
+    const m=text.match(entryRe);
+    if(!m)return null;
+    const[,day,month,rawDesc,pDay,pMonth,amtStr]=m;
+    let desc=rawDesc.trim();
+    if(!desc||desc.length<2)return null;
+    if(shouldSkip(desc))return null;
+    if(/pagamento recebido|pagamento efetuado|valor total/i.test(desc))return null;
+    const amt=convParseBR(amtStr);
+    if(amt===null)return null;
+    const value=amt>0?-amt:Math.abs(amt);
+    const date=`${day}/${month}/${year}`;
+    const tx={date,desc,value,cat:classifyTx(desc,value)};
+    if(pDay&&pMonth)tx.parcela=`${parseInt(pDay,10)}/${parseInt(pMonth,10)}`;
+    return tx;
+  }
+
+  const lastDate={left:null,right:null};
+  for(const line of lines){
+    if(!line.items||!line.items.length)continue;
+    const left=line.items.filter(it=>it.x<COL_X);
+    const right=line.items.filter(it=>it.x>=COL_X);
+    [['left',left],['right',right]].forEach(([side,items])=>{
+      const text=joinItems(items);
+      const t=tryEntry(text);
+      if(t){txns.push(t);lastDate[side]=t.date;return;}
+      const iofM=text.match(iofRe);
+      if(iofM&&lastDate[side]){
+        const amt=convParseBR(iofM[1]);
+        if(amt!==null){
+          const desc='IOF Despesa no Exterior';
+          txns.push({date:lastDate[side],desc,value:-Math.abs(amt),cat:classifyTx(desc,-Math.abs(amt))});
+        }
+      }
+    });
   }
   return txns;
 }
@@ -7526,6 +8382,136 @@ function parseBBExtrato(lines){
     }
   }
   return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: BANCO DO BRASIL — Fatura Ourocard
+// Layout simples de uma coluna só: "DD/MM DESCRIÇÃO ... UF R$ VALOR" numa única
+// linha por lançamento (sem quebra de coluna como Sicoob/Santander). O PDF agrupa
+// os lançamentos por categoria de gasto (headers tipo "Saúde", "Restaurantes",
+// "Compras parceladas" etc.) e por portador do cartão adicional — ambos são só
+// texto solto, sem data/valor, então são ignorados naturalmente pelo regex.
+// Valor sem sinal = compra (despesa); "R$ -X" (sinal depois do R$, formato BB) =
+// pagamento/crédito (entra como receita/neutro).
+// ═══════════════════════════════════════════════════════════════════════════════
+const BB_FATURA_TX_RE=/^(\d{2})\/(\d{2})\s+(.+?)\s+([A-Za-zÀ-ú]{2})\s+(R\$\s?-?[\d.]+,\d{2})$/;
+const BB_FATURA_CARDHOLDER_RE=/^(.+?)\s+\(Cart[ãa]o\s+(\d+)\)$/i;
+const BB_FATURA_SKIP_RE=/^(saldo fatura anterior|subtotal|total da fatura)/i;
+function parseBBFatura(lines,allText){
+  let ancMonth=null,ancYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*[\s\S]{0,20}?(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(vm){ancMonth=parseInt(vm[2]);ancYear=parseInt(vm[3]);}
+  function resolveDate(day,month){
+    const mnum=parseInt(month,10);
+    let year=ancYear;
+    if(ancMonth&&mnum>ancMonth)year=ancYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const txns=[];
+  let cardholder='';
+  for(const line of lines){
+    const text=(line.text||'').trim();
+    if(!text)continue;
+    const ch=text.match(BB_FATURA_CARDHOLDER_RE);
+    if(ch){cardholder=ch[1].trim();continue;}
+    if(BB_FATURA_SKIP_RE.test(text))continue;
+    const m=text.match(BB_FATURA_TX_RE);
+    if(!m)continue;
+    const[,day,month,rawDesc,,amtStr]=m;
+    let desc=rawDesc.trim();
+    if(!desc)continue;
+    const amt=convParseBR(amtStr);
+    if(amt===null)continue;
+    const iso=resolveDate(day,month);
+    const value=amt<0?Math.abs(amt):-amt;
+    const fullDesc=cardholder?`${desc} (${cardholder})`:desc;
+    txns.push({date:iso,desc:fullDesc,value,cat:classifyTx(fullDesc,value)});
+  }
+  return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: BRADESCO — FATURA MENSAL (Lançamentos: Data | Histórico | Cidade | R$)
+// Colunas por posição X (painel de Limites/Taxas fica à direita, x>=360, ignorado).
+// Linha de troca de titular: "NOME ... Cartão NNNN XXXX XXXX NNNN" (cartão adicional).
+// Descrição/cidade às vezes quebram em 2 linhas (ex.: "...MARINBR06/1" + "0" na
+// linha seguinte, sem data nem valor) — junta como continuação sem espaço.
+// ═══════════════════════════════════════════════════════════════════════════════
+// O pdf.js às vezes junta o valor e o sinal de crédito num só item com espaço
+// no meio (ex.: "7.089,94 -"), diferente do padrão sem espaço de outras faturas.
+const BRADESCO_MONEY_RE=/^([\d.]+,\d{2})\s*-?$/;
+const BRADESCO_DATE_RE=/^(\d{2})\/(\d{2})$/;
+const BRADESCO_CARDHOLDER_RE=/cart[ãa]o\s+\d{3,4}/i;
+function parseBradescoFatura(lines,allText){
+  let vencMonth=null,vencYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*[\s\S]{0,20}?(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(vm){vencMonth=parseInt(vm[2]);vencYear=parseInt(vm[3]);}
+  function resolveDate(day,month){
+    const mnum=parseInt(month,10);
+    let year=vencYear;
+    if(vencMonth&&mnum>vencMonth)year=vencYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const txns=[];
+  const byPage={};
+  lines.forEach(l=>{(byPage[l.page]=byPage[l.page]||[]).push(l);});
+  const pages=Object.keys(byPage).map(Number).sort((a,b)=>a-b);
+  let cardholder='';
+  let pending=null;
+  for(const pg of pages){
+    const plines=byPage[pg].slice().sort((a,b)=>b.y-a.y);
+    for(const line of plines){
+      if(!line.items||!line.items.length)continue;
+      const items=line.items.filter(it=>it.x<360).slice().sort((a,b)=>a.x-b.x);
+      if(!items.length)continue;
+      const joined=items.map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+
+      if(BRADESCO_CARDHOLDER_RE.test(joined)){
+        const nm=joined.split(/cart[ãa]o/i)[0].trim();
+        // Ignora o cabeçalho "Número do Cartão XXXX..." — não é nome de titular
+        if(nm&&!/^n[uú]mero\b/i.test(nm))cardholder=nm;
+        pending=null;
+        continue;
+      }
+
+      const dm=items[0].text.match(BRADESCO_DATE_RE);
+      if(dm){
+        let moneyIdx=-1;
+        for(let i=items.length-1;i>=1;i--){
+          if(BRADESCO_MONEY_RE.test(items[i].text)){moneyIdx=i;break;}
+        }
+        if(moneyIdx===-1){pending=null;continue;}
+        const moneyText=items[moneyIdx].text;
+        const amt=convParseBR(moneyText.replace(/\s*-$/,''));
+        if(amt===null){pending=null;continue;}
+        const isCredit=/-$/.test(moneyText.trim());
+        const value=isCredit?Math.abs(amt):-Math.abs(amt);
+        const descItems=items.slice(1,moneyIdx).filter(it=>it.x<180);
+        let desc=descItems.map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+        if(!desc)desc='Compra Bradesco';
+        const iso=resolveDate(dm[1],dm[2]);
+        const txn={date:iso,desc,cardholder,value};
+        txns.push(txn);
+        pending=txn;
+        continue;
+      }
+
+      // Fim da tabela de lançamentos ("Total para NOME"/"Total da fatura...") —
+      // zera o buffer pra não grudar rodapé/central de atendimento na última compra.
+      if(/^total\b/i.test(joined)){pending=null;continue;}
+
+      // Continuação (quebra de linha no meio de um token de histórico/cidade) —
+      // só fragmentos curtos (ex.: "0", "4", "S" de um número/cidade cortado no
+      // fim da linha); qualquer coisa maior é texto de outra seção e é ignorado.
+      if(pending&&joined.length<=4&&!items.some(it=>BRADESCO_MONEY_RE.test(it.text))){
+        pending.desc+=joined;
+      }
+    }
+  }
+  return txns.map(t=>{
+    const fullDesc=t.cardholder?`${t.desc} (${t.cardholder})`:t.desc;
+    return{date:t.date,desc:fullDesc,value:t.value,cat:classifyTx(fullDesc,t.value)};
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -7661,6 +8647,98 @@ function parseSicoobSisbr(lines){
       cur.cat=classifyTx(cur.desc,cur.value);
     }
   }
+  return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: SICOOB — Fatura de Cartão (Sicoobcard, ex.: Mastercard Black Merith Pro)
+// Layout em colunas por posição X (não por regex de linha inteira): cada página
+// tem uma tabela "DATA DESCRIÇÃO CIDADE VALOR EM R$" que pode aparecer sozinha
+// (à direita) ou duplicada lado a lado (esquerda+direita) pra caber mais linhas.
+// Algumas compras parceladas quebram em 2-3 sub-linhas bem próximas (nome do
+// estabelecimento numa linha, DD MES CIDADE VALOR na linha seguinte, parcela
+// "NN/NN" às vezes numa terceira) — são remontadas via buffer por coluna.
+// Valores sem sinal = compra (despesa); valores com "-" no PDF = estorno,
+// desconto de anuidade ou pagamento da fatura anterior (entram como receita/neutro).
+// ═══════════════════════════════════════════════════════════════════════════════
+const SICOOB_FATURA_MESES={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+const SICOOB_FATURA_HEADER_DENY=/^total de |^saldo anterior|^walter c m e silva|^fatura anterior|^pagamento[s]? recebido/i;
+function sicoobFaturaJoinBucket(items){
+  if(!items.length)return'';
+  items=items.slice().sort((a,b)=>a.x-b.x);
+  let text='';
+  for(let i=0;i<items.length;i++){
+    if(i===0){text=items[i].text;continue;}
+    const prev=items[i-1];
+    const gap=items[i].x-(prev.x+prev.w);
+    const th=Math.max(1.2,Math.min(prev.fsz,items[i].fsz)*0.17);
+    text+=(gap>th?' ':'')+items[i].text;
+  }
+  return text.replace(/\s+/g,' ').trim();
+}
+function parseSicoobFatura(lines,allText){
+  let vencMonth=null,vencYear=new Date().getFullYear();
+  const vm=(allText||'').match(/venciment\w*\s+\d{1,2}\s+([a-zçã]{3})/i);
+  if(vm){
+    const ym=(allText||'').match(/venciment\w*\s+\d{1,2}\s+[a-zçã]{3}\s+(\d{4})/i);
+    vencMonth=SICOOB_FATURA_MESES[convNorm(vm[1]).slice(0,3)];
+    if(ym)vencYear=parseInt(ym[1]);
+  }
+  function resolveDate(day,mesAbbr){
+    const mnum=SICOOB_FATURA_MESES[convNorm(mesAbbr).slice(0,3)];
+    if(!mnum)return null;
+    let year=vencYear;
+    if(vencMonth&&mnum>vencMonth)year=vencYear-1;
+    return`${year}-${String(mnum).padStart(2,'0')}-${String(parseInt(day,10)).padStart(2,'0')}`;
+  }
+  const SIDES=[
+    {name:'left', min:0,   max:280, date:[10,50],  desc:[50,120], cidade:[120,205],valor:[205,280]},
+    {name:'right',min:280, max:620, date:[280,325],desc:[325,430],cidade:[430,490],valor:[490,620]},
+  ];
+  const txns=[];
+  const pending={left:null,right:null},pendingY={left:null,right:null};
+  const byPage={};
+  lines.forEach(l=>{(byPage[l.page]=byPage[l.page]||[]).push(l);});
+  Object.keys(byPage).map(Number).sort((a,b)=>a-b).forEach(pg=>{
+    const plines=byPage[pg].slice().sort((a,b)=>b.y-a.y);
+    for(const line of plines){
+      if(!line.items||!line.items.length)continue;
+      for(const side of SIDES){
+        const items=line.items.filter(it=>it.x>=side.min&&it.x<side.max);
+        if(!items.length)continue;
+        const bucket=range=>items.filter(it=>it.x>=range[0]&&it.x<range[1]);
+        const dateStr=sicoobFaturaJoinBucket(bucket(side.date));
+        const descStr=sicoobFaturaJoinBucket(bucket(side.desc));
+        const cidadeStr=sicoobFaturaJoinBucket(bucket(side.cidade));
+        const valorStr=sicoobFaturaJoinBucket(bucket(side.valor));
+        const dm=dateStr.match(/^(\d{1,2})\s+([A-Za-zÀ-ú]{3})/);
+        const vm2=valorStr.match(/(-?R\$\s?[\d.]+,\d{2})/);
+        if(!dm&&!vm2){
+          if(descStr&&!/^\d{1,2}\/\d{1,2}$/.test(descStr)&&!SICOOB_FATURA_HEADER_DENY.test(descStr)){
+            pending[side.name]=descStr;pendingY[side.name]=line.y;
+          }else if(!/^\d{1,2}\/\d{1,2}$/.test(descStr)){
+            pending[side.name]=null;
+          }
+          continue;
+        }
+        if(dm&&vm2){
+          const iso=resolveDate(dm[1],dm[2]);
+          if(!iso)continue;
+          let desc=descStr;
+          if(!desc&&pending[side.name]&&(pendingY[side.name]-line.y)<10)desc=pending[side.name];
+          pending[side.name]=null;
+          if(!desc)desc='Compra Sicoob';
+          const amt=convParseBR(vm2[1]);
+          if(amt===null)continue;
+          const value=amt<0?Math.abs(amt):-amt;
+          const desc2=cidadeStr?`${desc.trim()} - ${cidadeStr.replace(/^\d{1,2}\/\d{1,2}\s*/,'').trim()}`:desc.trim();
+          txns.push({date:iso,desc:desc2||desc.trim(),value,cat:classifyTx(desc2||desc.trim(),value)});
+        }else{
+          pending[side.name]=null;
+        }
+      }
+    }
+  });
   return txns;
 }
 
@@ -7920,13 +8998,26 @@ async function convProcessXLS(file){
       });
     }
     const ab=await file.arrayBuffer();
-    const wb=XLSX.read(ab,{type:'array'});
+    // cellDates:true faz colunas formatadas como data virem como objeto Date
+    // em vez do número serial do Excel (ex.: 46024) — sem isso, o mapeamento
+    // de colunas de data falha silenciosamente.
+    const wb=XLSX.read(ab,{type:'array',cellDates:true});
     const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).filter(r=>r.some(c=>String(c).trim()));
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''})
+      .map(r=>r.map(c=>(c instanceof Date)?convFormatDateCell(c):c))
+      .filter(r=>r.some(c=>String(c).trim()));
     if(!rows.length){convSetStatus('error','Planilha vazia.');return;}
     convSetStatus('hidden','');
     convShowMapper(rows,'xls');
   }catch(err){convSetStatus('error','Erro ao ler o arquivo: '+err.message);}
+}
+
+// Converte um objeto Date (célula de data do Excel, já decodificada pelo
+// SheetJS com cellDates:true) para "AAAA-MM-DD", no fuso local, evitando
+// o problema clássico de virar um dia a menos por causa do UTC.
+function convFormatDateCell(d){
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');
+  return`${y}-${m}-${day}`;
 }
 
 function convParseCSVText(text){
@@ -7949,16 +9040,38 @@ function convParseCSVText(text){
   });
 }
 
-// Se a primeira linha for um cabeçalho com os nomes de coluna do próprio
-// conversor (data,historico,parcela,data_pgto,catId,grp,pgto,valor), mapeia
-// direto pelo nome em vez de tentar adivinhar pelo conteúdo.
+// Reconhece colunas pelo NOME do cabeçalho (em vez de adivinhar pelo
+// conteúdo). Cobre tanto o formato interno do conversor
+// (data,historico,parcela,data_pgto,catId,grp,pgto,valor) quanto planilhas
+// já organizadas manualmente, com cabeçalhos como "DATA DA COMPRA",
+// "DATA PGTO", "FORMA DE PGTO", "CATEGORIA" etc.
 function guessColumnsByHeader(rows,maxCols){
   if(!rows.length||!isLikelyHeader(rows[0]))return null;
-  const hdr=rows[0].map(h=>(h??'').toString().toLowerCase().trim().replace(/[^a-z_]/g,''));
-  if(!hdr.includes('catid')&&!hdr.includes('historico'))return null; // não é o formato do conversor
-  const map={data:'data',historico:'desc',valor:'valor',catid:'catid',parcela:'parcela',pgto:'pgto'};
+  const hdr=rows[0].map(h=>convNorm((h??'').toString()).trim());
+  const avail=hdr.slice(); // colunas ainda não atribuídas a um papel
+  const claim=(...kws)=>{
+    const i=avail.findIndex(h=>h&&kws.some(k=>h.includes(k)));
+    if(i>=0)avail[i]=''; // marca como usada para não ser reaproveitada por outro papel
+    return i;
+  };
+  // Ordem importa: dos mais específicos para os mais genéricos, para que
+  // "DATA PGTO" seja capturado antes de "PGTO" cair no papel genérico.
+  const dataPgtoIdx=claim('data_pgto','data pgto','data de pagamento','data do pagamento','vencimento','data fatura','data da fatura');
+  const dataIdx=claim('data da compra','data compra','data');
+  const descIdx=claim('historico','descricao','desc');
+  const valorIdx=claim('valor');
+  const parcIdx=claim('parcela');
+  const catIdx=claim('catid','cat_id','categoria');
+  const pgtoIdx=claim('forma de pgto','forma de pagamento','meio de pagamento','meio de pgto','pgto');
+  if(dataIdx<0||descIdx<0)return null; // cabeçalho não reconhecido — cai no palpite por conteúdo
   const guesses=Array(maxCols).fill('ignorar');
-  hdr.forEach((h,c)=>{if(map[h])guesses[c]=map[h];});
+  guesses[dataIdx]='data';
+  guesses[descIdx]='desc';
+  if(valorIdx>=0)guesses[valorIdx]='valor';
+  if(parcIdx>=0)guesses[parcIdx]='parcela';
+  if(catIdx>=0)guesses[catIdx]='catid';
+  if(pgtoIdx>=0)guesses[pgtoIdx]='pgto';
+  if(dataPgtoIdx>=0)guesses[dataPgtoIdx]='datapgto';
   return guesses;
 }
 
@@ -8007,7 +9120,7 @@ function convShowMapper(rows,type){
   const maxCols=Math.max(...rows.slice(0,10).map(r=>(r||[]).length),1);
   const previewRows=rows.slice(0,6);
   const guesses=guessColumnsByHeader(rows,maxCols)||autoGuessColumns(rows,maxCols);
-  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito'],['catid','Classificação'],['parcela','Parcela'],['pgto','Forma de Pagamento']];
+  const colOpts=[['ignorar','Ignorar'],['data','Data'],['desc','Descrição'],['valor','Valor (±)'],['debito','Débito'],['credito','Crédito'],['catid','Classificação'],['parcela','Parcela'],['pgto','Forma de Pagamento'],['datapgto','Data de Pagamento (fatura)']];
   let tbl='<table style="border-collapse:collapse;font-size:11px;white-space:nowrap"><thead><tr>';
   for(let c=0;c<maxCols;c++){
     tbl+=`<th style="padding:4px 6px;background:var(--bg);border:1px solid var(--border);min-width:110px"><select id="conv-col-${c}" style="font-size:11px;padding:2px 4px;border:1px solid var(--border);border-radius:4px;width:100%">`;
@@ -8031,13 +9144,14 @@ function convShowMapper(rows,type){
 
 function convApplyMapping(){
   const maxCols=Math.max(..._mapperRows.slice(0,10).map(r=>(r||[]).length),1);
-  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1,catCol=-1,parcCol=-1,pgtoCol=-1;
+  let dateCol=-1,descCol=-1,valCol=-1,debCol=-1,credCol=-1,catCol=-1,parcCol=-1,pgtoCol=-1,dataPgtoCol=-1;
   for(let c=0;c<maxCols;c++){
     const sel=document.getElementById(`conv-col-${c}`);if(!sel)continue;
     switch(sel.value){
       case'data':dateCol=c;break;case'desc':descCol=c;break;case'valor':valCol=c;break;
       case'debito':debCol=c;break;case'credito':credCol=c;break;
       case'catid':catCol=c;break;case'parcela':parcCol=c;break;case'pgto':pgtoCol=c;break;
+      case'datapgto':dataPgtoCol=c;break;
     }
   }
   if(dateCol===-1||descCol===-1||(valCol===-1&&debCol===-1)){
@@ -8056,20 +9170,25 @@ function convApplyMapping(){
       const cred=Math.abs(convParseBR((row[credCol]??'').toString())??0);
       value=cred>0?cred:-deb;
     }
-    // Se a coluna de Classificação já traz um catId válido (ex.: reimportação
-    // de um CSV exportado por este conversor), usa direto — não reclassifica
-    // e não perde correções manuais já feitas.
+    // Se a coluna de Classificação já traz uma categoria reconhecível — seja
+    // o id interno (ex.: reimportação de um CSV exportado por este
+    // conversor) ou o nome por extenso (ex.: uma planilha já reclassificada
+    // manualmente, como "Transferência Entre Contas" ou "Pagamento Fatura
+    // Cartão") — usa direto. Não reclassifica e não perde a classificação
+    // (inclusive as neutras, que não entram em receita nem despesa) já feita.
     const rawCat=catCol>=0?(row[catCol]??'').toString().trim():'';
+    const resolvedCat=convResolveCat(rawCat);
     let cat;
-    if(rawCat&&CAT[rawCat]){
-      cat=rawCat;
+    if(resolvedCat){
+      cat=resolvedCat;
       value=cat.startsWith('r_')?Math.abs(value):-Math.abs(value);
     }else{
       cat=classifyTx(desc,value);
     }
     const parcela=parcCol>=0?(row[parcCol]??'').toString().trim():'';
     const pgto=pgtoCol>=0?(row[pgtoCol]??'').toString().trim():'';
-    txns.push({date,desc,value,cat,parcela,pgto});
+    const dataPgto=dataPgtoCol>=0?(convParseDate((row[dataPgtoCol]??'').toString())||''):'';
+    txns.push({date,desc,value,cat,parcela,pgto,dataPgto});
   }
   if(!txns.length){alert('Nenhuma transação válida encontrada. Verifique o mapeamento de colunas.');return;}
   document.getElementById('conv-mapper').style.display='none';
@@ -8104,12 +9223,16 @@ async function convProcessPDF(file){
       case'itau_extrato':    txns=parseItauExtrato(lines);break;
       case'itau_fatura':     txns=parseItauFatura(lines);break;
       case'santander_extrato':txns=parseSantanderExtrato(lines,allText);break;
+      case'santander_fatura': txns=parseSantanderFatura(lines,allText);break;
       case'bb_extrato':      txns=parseBBExtrato(lines);break;
+      case'bb_fatura':       txns=parseBBFatura(lines,allText);break;
       case'visa_fatura':     txns=parseUnicredFatura(lines,allText);break;
       case'inter_fatura':    txns=parseInterFatura(lines);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
+      case'sicoob_fatura':   txns=parseSicoobFatura(lines,allText);break;
+      case'bradesco_fatura': txns=parseBradescoFatura(lines,allText);break;
       case'coop_extrato':    txns=parseCoopExtrato(lines);break;
       case'cef_app':         txns=parseCefApp(lines);break;
       case'prox_fatura':     txns=parseProxFatura(lines,allText);break;
@@ -8123,7 +9246,10 @@ async function convProcessPDF(file){
 
     _convTxns=txns;
     convSetStatus('hidden','');
-    convShowResults(bank,txns);
+    // Tenta identificar a conta/cartão a partir do próprio PDF (banco + agência/conta
+    // quando o layout imprime isso) e já pré-seleciona (ou cadastra) no importador.
+    const autoContaId=ensureContaFromImport(bank,allText);
+    convShowResults(bank,txns,autoContaId);
   }catch(err){
     console.error(err);
     convSetStatus('error','Erro ao processar o PDF: '+err.message);
@@ -8165,13 +9291,17 @@ function convCatHTML(selected){
   return h+'</select>';
 }
 
-function convShowResults(bank,txns){
+function convShowResults(bank,txns,autoContaId){
   const lbl=document.getElementById('conv-bank-label');if(lbl)lbl.textContent=BANK_NAMES[bank]||bank;
   document.getElementById('conv-bank-badge').textContent=(BANK_NAMES[bank]||bank.replace('_',' ')).toUpperCase();
   document.getElementById('conv-count-badge').textContent=txns.length+' transações';
   convRenderTable(txns);
   document.getElementById('conv-results').style.display='';
   convApplyFilters();
+  if(autoContaId){
+    const sel=document.getElementById('conv-conta-batch');
+    if(sel)sel.value=autoContaId;
+  }
 }
 
 function convRenderTable(txns){
@@ -8181,6 +9311,7 @@ function convRenderTable(txns){
     const vc=isInc?'pos':'neg';
     const sign=isInc?'+':'';
     const clean=t.cleanName||cleanMerchantName(t.desc);
+    const venc=t.dataPgto||convDateToISO(t.date)||'';
     return`<tr data-idx="${i}" data-neutral="${isNt}" data-income="${isInc}" data-desc="${convNorm(t.desc)} ${convNorm(clean)}">
       <td class="date-col">${t.date}</td>
       <td class="desc-col">
@@ -8188,8 +9319,36 @@ function convRenderTable(txns){
       </td>
       <td class="val ${vc}">${sign}${convFmtBR(t.value)}</td>
       <td class="cat-col">${convCatHTML(t.cat)}</td>
+      <td class="venc-col"><input type="date" class="conv-venc-edit" value="${venc}" onchange="convOnVencChange(this)" title="Data de vencimento da fatura — define em qual mês aparece no orçamento" style="border:1px solid var(--border);border-radius:5px;padding:3px 6px;font-size:11px;font-family:inherit"></td>
     </tr>`;
   }).join('');
+}
+
+// Converte "DD/MM/AAAA" (formato usado em t.date) para "AAAA-MM-DD" (formato do <input type=date>)
+function convDateToISO(d){
+  if(!d)return'';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
+  const m=(d||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(!m)return'';
+  let y=m[3];if(y.length===2)y='20'+y;
+  return`${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+}
+
+function convOnVencChange(inp){
+  const row=inp.closest('tr');
+  const idx=+row.dataset.idx;
+  _convTxns[idx].dataPgto=inp.value||'';
+}
+
+function convApplyVencAll(){
+  const v=document.getElementById('conv-venc-global')?.value;
+  if(!v)return;
+  document.querySelectorAll('#conv-tbody tr:not(.hidden-row)').forEach(row=>{
+    const idx=+row.dataset.idx;
+    _convTxns[idx].dataPgto=v;
+    const inp=row.querySelector('.conv-venc-edit');
+    if(inp)inp.value=v;
+  });
 }
 
 function convOnNameChange(inp){
@@ -8293,7 +9452,8 @@ function convExportCSV(){
     const cleanName=t.cleanName||cleanMerchantName(t.desc);
     const parcela=(t.parcela!=null&&t.parcela!=='')?t.parcela:(convExtractParcela(t.desc)||'');
     const pgto=(t.pgto&&t.pgto.trim())||'pix';
-    rows.push([t.date,cleanName,parcela,'',cat,grp,pgto,amount]);
+    const dataPgto=(t.dataPgto&&/^\d{4}-\d{2}-\d{2}$/.test(t.dataPgto))?t.dataPgto:'';
+    rows.push([t.date,cleanName,parcela,dataPgto,cat,grp,pgto,amount]);
   });
   const csv=rows.map(r=>r.map(convQCSV).join(',')).join('\n');
   const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
