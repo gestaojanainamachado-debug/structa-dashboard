@@ -2440,13 +2440,30 @@ async function sbLoadData(user) {
       }
     } catch(e) { console.warn('invite activation failed:', e); }
   }
-  // Advisor: sync localStorage → Supabase em background (clientes que só existem localmente)
+  // Advisor: sync localStorage → Supabase em background
+  // Também carimba advisor_id em registros antigos que não tinham o campo
   if(_sbRole === 'advisor'){
     (async()=>{
+      // 1. Pegar todos os registros existentes no Supabase (sem filtro de advisor_id)
+      let existingSlugs = new Set();
+      try {
+        const {data:existing} = await _sb.from('client_data').select('slug,advisor_id');
+        if(existing) {
+          for(const row of existing){
+            existingSlugs.add(row.slug);
+            // Registros sem advisor_id: carimbar agora
+            if(!row.advisor_id){
+              await _sb.from('client_data').update({advisor_id:user.id}).eq('slug',row.slug);
+            }
+          }
+        }
+      } catch(_){}
+      // 2. Upsert clientes locais que não existem na nuvem
       for(let i=0;i<localStorage.length;i++){
         const k=localStorage.key(i);
         if(!k||!k.startsWith('structa_v4_'))continue;
         const s=k.replace('structa_v4_','');
+        if(existingSlugs.has(s)) continue; // já existe, não sobrescrever
         try{
           const d=JSON.parse(localStorage.getItem(k)||'{}');
           await _sb.from('client_data').upsert({slug:s,advisor_id:user.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true});
@@ -5403,14 +5420,14 @@ async function renderClientScreen(){
   // Clientes do Supabase (somente se logada como advisor)
   let sbClients=[];
   if(_sb && _sbUser && _sbRole==='advisor'){
-    const {data}=await _sb.from('client_data').select('slug,data').eq('advisor_id',_sbUser.id);
+    const {data}=await _sb.from('client_data').select('slug,data');
     if(data) sbClients=data.map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' ')}));
   }
   // Merge: evita duplicatas por slug
   const localSlugs=new Set(localClients.map(c=>c.slug));
   const allClients=[
     ...localClients,
-    ...sbClients.filter(c=>!localSlugs.has(c.slug)).map(c=>({slug:c.slug,name:c.slug.replace(/_/g,' ')}))
+    ...sbClients.filter(c=>!localSlugs.has(c.slug))
   ];
   if(!allClients.length){el.innerHTML='<div class="cs-empty">Nenhum cliente cadastrado ainda.</div>';updateBackupStatus();return;}
   const isAdvisor=_sbUser&&_sbRole==='advisor';
