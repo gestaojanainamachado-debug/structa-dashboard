@@ -62,6 +62,40 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .save-indicator.saving{display:block;color:#a06820}
 .save-indicator.saved{display:block;color:#3d6b4f}
 
+/* ACOMPANHAMENTO ANUAL */
+.acomp-section{margin-top:28px;border-top:2px solid var(--lilac);padding-top:22px}
+.acomp-title{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.acomp-subtitle{font-size:12px;color:var(--muted);margin-bottom:18px}
+.acomp-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:640px){.acomp-cards{grid-template-columns:1fr}}
+.acomp-card{background:#fff;border-radius:12px;padding:16px 18px;border:1.5px solid var(--border)}
+.acomp-card-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:10px}
+.acomp-card-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.acomp-card-tag{font-size:10px;color:var(--muted);background:var(--s2);border-radius:4px;padding:2px 6px}
+.acomp-card-val{font-size:16px;font-weight:700;color:var(--text)}
+.acomp-card-delta{font-size:12px;font-weight:600;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.acomp-delta-pos{color:var(--ok)}
+.acomp-delta-neg{color:var(--bad)}
+.acomp-delta-div-pos{color:var(--ok)} /* dívida caiu = positivo */
+.acomp-delta-div-neg{color:var(--bad)} /* dívida subiu = negativo */
+.acomp-goals{background:#fff;border-radius:12px;padding:16px 18px;border:1.5px solid var(--border);margin-bottom:16px}
+.acomp-goal-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--s2);font-size:13px}
+.acomp-goal-item:last-child{border-bottom:none}
+.acomp-goal-badge{background:var(--ok-bg);color:var(--ok);font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px;white-space:nowrap}
+.acomp-achievements{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-family:inherit;font-size:13px;color:var(--text);background:#fff;resize:vertical;min-height:90px;outline:none;transition:border-color .15s;margin-bottom:16px}
+.acomp-achievements:focus{border-color:var(--lilac)}
+.acomp-btns{display:flex;gap:10px;flex-wrap:wrap}
+.acomp-btn{padding:9px 18px;border-radius:8px;border:none;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.acomp-btn-primary{background:var(--primary);color:var(--bg)}
+.acomp-btn-primary:hover{background:var(--p2)}
+.acomp-btn-outline{background:#fff;color:var(--primary);border:1.5px solid var(--primary)}
+.acomp-btn-outline:hover{background:var(--s2)}
+.acomp-btn-pdf{background:#c7c3db;color:var(--primary)}
+.acomp-btn-pdf:hover{opacity:.85}
+@media print{
+  body > *:not(#print-acomp){display:none!important}
+  #print-acomp{display:block!important;position:fixed;inset:0;background:#fff;padding:32px 40px;font-family:Inter,sans-serif;color:#2a1510}
+}
 /* TABS */
 .tab-bar{background:#c7c3db;display:flex;padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:1px solid rgba(56,28,23,.1);scrollbar-width:none}
 .tab-bar::-webkit-scrollbar{display:none}
@@ -1730,6 +1764,17 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       </div>
     </div>
   </div>
+
+  <!-- ══ ACOMPANHAMENTO ANUAL ══════════════════════════════════════════════════ -->
+  <div class="acomp-section">
+    <div class="acomp-title">📊 Acompanhamento da Consultoria</div>
+    <div class="acomp-subtitle" id="acomp-subtitle">Registre o ponto de partida e acompanhe a evolução do cliente ao longo do tempo.</div>
+    <div id="acomp-content"></div>
+    <div class="acomp-btns" style="margin-top:4px">
+      <button class="acomp-btn acomp-btn-outline" onclick="saveBaseline()">📍 Salvar ponto de partida agora</button>
+      <button class="acomp-btn acomp-btn-pdf" onclick="printAcompanhamento()" id="acomp-pdf-btn" style="display:none">🖨️ Gerar PDF / Imprimir</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══════ CONVERSOR OVERLAY ══════════════════════════════════════════════════ -->
@@ -2568,6 +2613,8 @@ function freshState(){
     pgtoEntries:[],  // {id,desc,dia,tipo,valor,recorrente}
     contas:[],       // {id,nome,tipo} — contas/cartões cadastrados, só pra rastrear origem do lançamento
     goals:[],        // {id,nome,icone,meta,acumulado,dataInicio,dataFim,aporte,taxa}
+    baseline:null,   // {savedAt,patrimonio,investimentos,dividas} — ponto de partida da consultoria
+    achievements:'', // texto livre com as principais conquistas do período
     irPago:{fonte:0,carneLeao:0,outros:0},
     seguros:freshSeguros(),
     dividas:[],        // {id,tipo,inst,valorCont,taxaMes,dataCont,nParc,valorParc,dataUltParc,obs}
@@ -3218,6 +3265,155 @@ function renderPatrimonio(){
   setText('pat-total-passivos',fmt(totalPassivos));
   const liqEl=document.getElementById('pat-liquido');
   if(liqEl){liqEl.textContent=fmt(liquido);liqEl.className='pat-net-val'+(liquido>=0?' ok':' bad');}
+  renderAcompanhamento();
+}
+
+// ── ACOMPANHAMENTO ANUAL ────────────────────────────────────────────────────
+function patCurrentValues(){
+  const totalBens=S.ativos.reduce((s,a)=>s+(a.valor||0),0);
+  const inv=S.investimentos.reduce((s,i)=>s+(i.valorAtual||0),0);
+  const div=S.dividas.reduce((s,d)=>s+calcDividaStats(d).saldoAberto,0);
+  const pat=(totalBens+inv)-div;
+  return {patrimonio:pat, investimentos:inv, dividas:div};
+}
+function saveBaseline(){
+  const cur=patCurrentValues();
+  const label=S.baseline?'Atualizar ponto de partida? O anterior será substituído.':'Salvar o estado financeiro atual como ponto de partida da consultoria?';
+  if(!confirm(label))return;
+  S.baseline={savedAt:new Date().toISOString(),...cur};
+  save();
+  renderAcompanhamento();
+}
+function renderAcompanhamento(){
+  const el=document.getElementById('acomp-content');
+  const sub=document.getElementById('acomp-subtitle');
+  const pdfBtn=document.getElementById('acomp-pdf-btn');
+  if(!el)return;
+  if(!S.baseline){
+    el.innerHTML='';
+    if(sub)sub.textContent='Registre o ponto de partida e acompanhe a evolução do cliente ao longo do tempo.';
+    if(pdfBtn)pdfBtn.style.display='none';
+    return;
+  }
+  if(pdfBtn)pdfBtn.style.display='inline-flex';
+  const b=S.baseline;
+  const cur=patCurrentValues();
+  const startDate=new Date(b.savedAt).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  if(sub)sub.textContent=`Acompanhamento desde ${startDate}`;
+  function deltaCard(lbl,base,agora,invertido){
+    const diff=agora-base;
+    const pctDiff=base!==0?Math.round(Math.abs(diff)/Math.abs(base)*100):null;
+    const positivo=invertido?(diff<0):(diff>0);
+    const cls=diff===0?'':'acomp-delta-'+(invertido?(diff<0?'div-pos':'div-neg'):(diff>0?'pos':'neg'));
+    const sinal=diff>0?'+':'';
+    const pctStr=pctDiff!==null?` (${sinal}${invertido&&diff<0?'-':''}${pctDiff}%)`:'';
+    const arrow=diff===0?'→':diff>0?'↑':'↓';
+    return `<div class="acomp-card">
+      <div class="acomp-card-lbl">${lbl}</div>
+      <div class="acomp-card-row"><span class="acomp-card-tag">Início</span><span class="acomp-card-val">${fmt(base)}</span></div>
+      <div class="acomp-card-row"><span class="acomp-card-tag" style="background:var(--ok-bg);color:var(--ok)">Agora</span><span class="acomp-card-val">${fmt(agora)}</span></div>
+      <div class="acomp-card-delta ${cls}">${arrow} ${sinal}${fmt(diff)}${pctStr}</div>
+    </div>`;
+  }
+  const goalsConc=(S.goals||[]).filter(g=>g.meta>0&&goalAcumulado(g)>=g.meta);
+  const goalsHtml=goalsConc.length?`
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">🏆 Metas Atingidas</div>
+      <div class="acomp-goals">
+        ${goalsConc.map(g=>`<div class="acomp-goal-item">
+          <span style="font-size:18px">${g.icone||'🎯'}</span>
+          <span style="flex:1;font-weight:600">${esc(g.nome)}</span>
+          <span class="acomp-goal-badge">${fmt(g.meta)} ✓</span>
+        </div>`).join('')}
+      </div>
+    </div>`:'';
+  el.innerHTML=`
+    <div class="acomp-cards">
+      ${deltaCard('Patrimônio Líquido',b.patrimonio,cur.patrimonio,false)}
+      ${deltaCard('Investimentos',b.investimentos,cur.investimentos,false)}
+      ${deltaCard('Dívidas',b.dividas,cur.dividas,true)}
+    </div>
+    ${goalsHtml}
+    <div style="margin-bottom:6px">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">✍️ Principais Conquistas</div>
+      <textarea class="acomp-achievements" id="acomp-achievements-txt"
+        placeholder="Ex: Cliente eliminou 3 dívidas, aumentou reserva de emergência de 2 para 6 meses, iniciou investimento mensal de R$ 1.000..."
+        oninput="S.achievements=this.value;save()">${(S.achievements||'').replace(/</g,'&lt;')}</textarea>
+    </div>`;
+}
+function printAcompanhamento(){
+  const b=S.baseline;
+  if(!b){alert('Salve o ponto de partida primeiro.');return;}
+  const cur=patCurrentValues();
+  const startDate=new Date(b.savedAt).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+  const today=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  function deltaRow(lbl,base,agora,inv){
+    const diff=agora-base;
+    const pct=base!==0?Math.round(Math.abs(diff)/Math.abs(base)*100):0;
+    const ok=inv?(diff<=0):(diff>=0);
+    const sinal=diff>0?'+':'';
+    const color=diff===0?'#555':(ok?'#3d6b4f':'#b03030');
+    return `<tr>
+      <td style="padding:10px 12px;font-weight:600;color:#2a1510">${lbl}</td>
+      <td style="padding:10px 12px;text-align:right;color:#555">${fmt(base)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:#2a1510">${fmt(agora)}</td>
+      <td style="padding:10px 12px;text-align:right;font-weight:700;color:${color}">${sinal}${fmt(diff)} ${pct?'('+pct+'%)':''}</td>
+    </tr>`;
+  }
+  const goalsConc=(S.goals||[]).filter(g=>g.meta>0&&goalAcumulado(g)>=g.meta);
+  const ach=(S.achievements||'').trim();
+  const old=document.getElementById('print-acomp');
+  if(old)old.remove();
+  const div=document.createElement('div');
+  div.id='print-acomp';
+  div.style.cssText='display:none;position:fixed;inset:0;background:#fff;padding:40px 48px;font-family:Inter,sans-serif;color:#2a1510;z-index:99999';
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #c7c3db">
+      <svg viewBox="0 0 270 56" height="40" xmlns="http://www.w3.org/2000/svg">
+        <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
+        <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
+        <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
+        <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
+      </svg>
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:700;color:#381c17">Relatório de Acompanhamento</div>
+        <div style="font-size:12px;color:#8a7068;margin-top:2px">${esc(S.name||'Cliente')} · Início: ${startDate} · Emitido em ${today}</div>
+      </div>
+    </div>
+    <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a7068;margin-bottom:10px">Evolução Patrimonial</div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:28px;font-size:13px">
+      <thead>
+        <tr style="background:#f4ede4">
+          <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7068">Indicador</th>
+          <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7068">Início</th>
+          <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7068">Agora</th>
+          <th style="padding:8px 12px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8a7068">Variação</th>
+        </tr>
+      </thead>
+      <tbody style="border:1.5px solid #d8cfc6;border-radius:8px">
+        ${deltaRow('Patrimônio Líquido',b.patrimonio,cur.patrimonio,false)}
+        ${deltaRow('Total de Investimentos',b.investimentos,cur.investimentos,false)}
+        ${deltaRow('Total de Dívidas',b.dividas,cur.dividas,true)}
+      </tbody>
+    </table>
+    ${goalsConc.length?`
+    <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a7068;margin-bottom:10px">🏆 Metas Atingidas</div>
+    <div style="background:#e2f0e8;border-radius:10px;padding:14px 18px;margin-bottom:28px">
+      ${goalsConc.map(g=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(61,107,79,.15)">
+        <span style="font-size:18px">${g.icone||'🎯'}</span>
+        <span style="flex:1;font-weight:600;color:#2a1510">${esc(g.nome)}</span>
+        <span style="background:#3d6b4f;color:#fff;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:700">${fmt(g.meta)} ✓</span>
+      </div>`).join('')}
+    </div>`:''}
+    ${ach?`
+    <div style="font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a7068;margin-bottom:10px">✍️ Principais Conquistas</div>
+    <div style="background:#f4ede4;border-radius:10px;padding:16px 20px;font-size:13px;line-height:1.7;color:#2a1510;white-space:pre-wrap">${esc(ach)}</div>`:''}
+    <div style="margin-top:36px;padding-top:14px;border-top:1.5px solid #d8cfc6;font-size:10px;color:#8a7068;text-align:center">
+      Structa Consultoria em Gestão · Documento gerado em ${today}
+    </div>`;
+  document.body.appendChild(div);
+  window.print();
+  setTimeout(()=>div.remove(),1000);
 }
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
