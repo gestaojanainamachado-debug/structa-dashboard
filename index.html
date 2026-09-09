@@ -57,6 +57,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .hdr-date{font-size:10px;opacity:.45;margin-top:2px}
 .client-logout-btn{display:none;margin-top:6px;background:transparent;border:1px solid rgba(56,28,23,.3);color:#381c17;font-size:10px;padding:2px 8px;border-radius:4px;cursor:pointer;opacity:.6}
 .client-logout-btn:hover{opacity:1;background:rgba(56,28,23,.08)}
+.save-indicator{display:none;font-size:10px;margin-top:3px;opacity:.6;transition:.3s}
+.save-indicator.saving{display:block;color:#a06820}
+.save-indicator.saved{display:block;color:#3d6b4f}
 
 /* TABS */
 .tab-bar{background:#c7c3db;display:flex;padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:1px solid rgba(56,28,23,.1);scrollbar-width:none}
@@ -911,6 +914,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="hdr-right">
     <input type="text" id="clientName" placeholder="Nome do cliente" oninput="S.name=this.value;save()">
     <div class="hdr-date" id="hDate"></div>
+    <div class="save-indicator" id="save-indicator"></div>
     <button class="client-logout-btn" id="client-logout-btn" onclick="sbLogout()">🔓 Sair</button>
   </div>
 </div>
@@ -2377,7 +2381,6 @@ async function sbLoadData(user) {
 
 async function sbSaveNow() {
   if(!_sb || !_sbUser) return;
-  // Determina slug de destino
   const slug = (_sbRole === 'advisor' && _cid) ? _cid
              : (_sbRole === 'client' && _sbSlug) ? _sbSlug
              : null;
@@ -2386,8 +2389,23 @@ async function sbSaveNow() {
     const payload = { slug, data: S, updated_at: new Date().toISOString() };
     if(_sbRole === 'advisor') payload.advisor_id = _sbUser.id;
     await _sb.from('client_data').upsert(payload, { onConflict: 'slug' });
-  } catch(e) { console.warn('Supabase save error:', e); }
+    _sbDirty=false;
+    setSaveIndicator('saved');
+  } catch(e) {
+    console.warn('Supabase save error:', e);
+    setSaveIndicator('');
+  }
 }
+
+// Aviso ao fechar página com save pendente
+window.addEventListener('beforeunload', e => {
+  if(_sbDirty){
+    clearTimeout(_sbSaveTimer);
+    sbSaveNow(); // tenta salvar (best-effort)
+    e.preventDefault();
+    return (e.returnValue='Há dados não salvos. Aguarde um instante antes de fechar.');
+  }
+});
 
 async function sbLogout() {
   if(_sb) await _sb.auth.signOut();
@@ -4268,11 +4286,23 @@ function sumF(arr,k){return arr.reduce((a,c)=>a+(c[k]||0),0);}
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
 function save(){
   try{localStorage.setItem(SKEY,JSON.stringify(S));}catch(_){}
-  // Sync to Supabase with 3s debounce (evita requisições a cada tecla)
+  // Sync to Supabase with 800ms debounce
   if(_sb&&_sbUser){
+    _sbDirty=true;
     clearTimeout(_sbSaveTimer);
-    _sbSaveTimer=setTimeout(sbSaveNow,3000);
+    setSaveIndicator('saving');
+    _sbSaveTimer=setTimeout(sbSaveNow,800);
   }
+}
+let _sbDirty=false;
+function setSaveIndicator(state){
+  const el=document.getElementById('save-indicator');
+  if(!el)return;
+  if(state==='saving'){el.className='save-indicator saving';el.textContent='⏳ salvando...';}
+  else if(state==='saved'){
+    el.className='save-indicator saved';el.textContent='✓ salvo';
+    setTimeout(()=>{el.className='save-indicator';},3000);
+  } else {el.className='save-indicator';}
 }
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
