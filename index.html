@@ -5555,7 +5555,7 @@ function csSlug(name){
 function csMigrateHyphenKeys(){
   // One-time migration: old slugs used hyphens, new ones use underscores.
   // If a hyphenated key has no underscore equivalent, rename it.
-  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('structa_v4_'))keys.push(k);}
+  const keys=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith('structa_v4_')&&!k.endsWith('_ts'))keys.push(k);}
   keys.forEach(k=>{
     const slug=k.replace('structa_v4_','');
     if(slug.includes('-')){
@@ -5577,7 +5577,7 @@ function csAllClients(){
   const clients=[];
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
-    if(k&&k.startsWith('structa_v4_')){
+    if(k&&k.startsWith('structa_v4_')&&!k.endsWith('_ts')){
       const slug=k.replace('structa_v4_','');
       try{const d=JSON.parse(localStorage.getItem(k));clients.push({slug,name:d.name||slug});}catch(_){clients.push({slug,name:slug});}
     }
