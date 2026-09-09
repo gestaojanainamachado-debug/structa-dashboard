@@ -899,10 +899,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
     <button class="abar-btn" onclick="exportData()">⬇ Exportar JSON</button>
-    <button class="abar-btn" onclick="forceSyncLocalToCloud()" title="Envia dados salvos neste navegador para a nuvem — use para recuperar lançamentos perdidos">🔄 Sync local→nuvem</button>
     <button class="abar-btn danger" onclick="clearAllTransactions()" title="Apaga só os lançamentos de todos os meses — mantém orçamento, metas, diagnóstico etc.">🗑 Limpar Lançamentos</button>
     <button class="abar-btn danger" onclick="clearData()">🗑 Limpar dados</button>
     <button class="abar-btn" onclick="location.href=location.pathname">↩ Trocar cliente</button>
+    <button class="abar-btn" onclick="forceSyncLocalToCloud()" title="Envia dados salvos neste navegador para a nuvem — use para recuperar lançamentos perdidos">🔄 Sync local→nuvem</button>
     <button class="abar-btn" onclick="sbLogout()" title="Sair da conta Supabase">🔓 Sair</button>
   </div>
 </div>
@@ -922,8 +922,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="hdr-right">
     <input type="text" id="clientName" placeholder="Nome do cliente" oninput="S.name=this.value;save()">
     <div class="hdr-date" id="hDate"></div>
-    <div class="save-indicator" id="save-indicator"></div>
     <button class="client-logout-btn" id="client-logout-btn" onclick="sbLogout()">🔓 Sair</button>
+    <div class="save-indicator" id="save-indicator"></div>
   </div>
 </div>
 
@@ -1241,6 +1241,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="ir-sec">
         <div class="ir-sec-title">Deduções — Declaração Completa</div>
         <div class="ir-fld"><label>Nº de dependentes</label><input type="number" id="ir-dep" placeholder="0" min="0" max="20" oninput="irCalc()"></div>
+        <div class="ir-fld"><label>Valor da dedução com dependentes (R$) <span class="teto">opcional — usa o valor real da declaração no lugar do cálculo automático</span></label><input type="number" id="ir-dep-valor" placeholder="calculado automaticamente" min="0" step="0.01" oninput="irCalc()"></div>
         <div class="ir-fld"><label>Gastos com saúde / médico (R$) <span class="teto">sem limite</span></label><input type="number" id="ir-saude" placeholder="0" min="0" step="100" oninput="irCalc()"></div>
         <div class="ir-fld"><label>Gastos com educação (R$) <span class="teto">teto R$ 3.561,50/pessoa</span></label><input type="number" id="ir-educ" placeholder="0" min="0" step="100" oninput="irCalc()"></div>
         <div class="ir-fld"><label>Pensão alimentícia judicial (R$)</label><input type="number" id="ir-pensao" placeholder="0" min="0" step="100" oninput="irCalc()"></div>
@@ -2444,26 +2445,23 @@ async function sbLoadData(user) {
   // Também carimba advisor_id em registros antigos que não tinham o campo
   if(_sbRole === 'advisor'){
     (async()=>{
-      // 1. Pegar todos os registros existentes no Supabase (sem filtro de advisor_id)
       let existingSlugs = new Set();
       try {
         const {data:existing} = await _sb.from('client_data').select('slug,advisor_id');
         if(existing) {
           for(const row of existing){
             existingSlugs.add(row.slug);
-            // Registros sem advisor_id: carimbar agora
             if(!row.advisor_id){
               await _sb.from('client_data').update({advisor_id:user.id}).eq('slug',row.slug);
             }
           }
         }
       } catch(_){}
-      // 2. Upsert clientes locais que não existem na nuvem
       for(let i=0;i<localStorage.length;i++){
         const k=localStorage.key(i);
         if(!k||!k.startsWith('structa_v4_'))continue;
         const s=k.replace('structa_v4_','');
-        if(existingSlugs.has(s)) continue; // já existe, não sobrescrever
+        if(existingSlugs.has(s)) continue;
         try{
           const d=JSON.parse(localStorage.getItem(k)||'{}');
           await _sb.from('client_data').upsert({slug:s,advisor_id:user.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true});
@@ -2474,7 +2472,7 @@ async function sbLoadData(user) {
   // Se cliente logado sem slug na URL → redireciona para seu dashboard
   if(_sbRole === 'client' && _sbSlug && !_cid) {
     location.href = location.pathname + '?c=' + _sbSlug;
-    return; // aguarda redirect
+    return;
   }
   // Slug a carregar: advisor usa _cid da URL; cliente usa seu próprio slug
   const loadSlug = (_sbRole === 'advisor' && _cid) ? _cid
@@ -2491,16 +2489,13 @@ async function sbLoadData(user) {
     const localRaw = localStorage.getItem(SKEY);
     const localData = localRaw ? (() => { try{return JSON.parse(localRaw);}catch(_){return null;} })() : null;
     if(localTs > sbTs + 5000 && localData && Object.keys(localData).length > 3) {
-      // Dado local é mais de 5s mais novo que Supabase → usa local e sincroniza
       S = { ...freshState(), ...localData };
-      console.log('[Structa] Dados locais mais recentes detectados — sincronizando com nuvem...');
       _sbDirty = true;
       setTimeout(sbSaveNow, 1500);
     } else if(data?.data && typeof data.data === 'object') {
       S = { ...freshState(), ...data.data };
     }
   }
-  // localStorage mirror para acesso offline
   try {
     localStorage.setItem(SKEY, JSON.stringify(S));
     localStorage.setItem(SKEY+'_ts', Date.now().toString());
@@ -2524,12 +2519,10 @@ async function sbSaveNow() {
     setSaveIndicator('');
   }
 }
-
-// Aviso ao fechar página com save pendente
 window.addEventListener('beforeunload', e => {
   if(_sbDirty){
     clearTimeout(_sbSaveTimer);
-    sbSaveNow(); // tenta salvar (best-effort)
+    sbSaveNow();
     e.preventDefault();
     return (e.returnValue='Há dados não salvos. Aguarde um instante antes de fechar.');
   }
@@ -4795,7 +4788,6 @@ function save(){
     localStorage.setItem(SKEY,JSON.stringify(S));
     localStorage.setItem(SKEY+'_ts',Date.now().toString());
   }catch(_){}
-  // Sync to Supabase with 800ms debounce
   if(_sb&&_sbUser){
     _sbDirty=true;
     clearTimeout(_sbSaveTimer);
@@ -4850,10 +4842,13 @@ function initCalcPanelsPersistence(){
   restoreCalcFields('panel-irpgbl');
   restoreCalcFields('panel-aposent');
   restoreCalcFields('panel-simulador');
+  // Recalcula tudo com os valores restaurados para os quadros/tabelas já
+  // aparecerem preenchidos, sem esperar o usuário digitar algo.
   try{irCalc();}catch(e){}
   try{aposCalc();}catch(e){}
   try{simCalc();}catch(e){}
 }
+
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
   localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
@@ -5516,6 +5511,21 @@ async function sbSendInvite(slug){
 }
 function csOpen(slug){location.href=location.pathname+'?c='+slug;}
 function csOpenAdmin(slug){location.href=location.pathname+'?c='+slug+'&admin=1';}
+async function forceSyncLocalToCloud(){
+  if(!_sb||!_sbUser){alert('Você precisa estar autenticada para sincronizar.');return;}
+  const localRaw=localStorage.getItem(SKEY);
+  if(!localRaw){alert('Nenhum dado local encontrado neste navegador.');return;}
+  let localData;
+  try{localData=JSON.parse(localRaw);}catch(_){alert('Dado local corrompido.');return;}
+  const localTs=parseInt(localStorage.getItem(SKEY+'_ts')||'0');
+  const localDate=localTs?new Date(localTs).toLocaleString('pt-BR'):'data desconhecida';
+  const txCount=(localData.transactions||[]).length;
+  if(!confirm(`Dados locais deste navegador:\n• ${txCount} lançamentos\n• Salvo em: ${localDate}\n\nSubstituir os dados da nuvem por estes?`))return;
+  S={...freshState(),...localData};
+  await sbSaveNow();
+  renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();renderSeguranca();renderDividas();renderInvestimentos();renderPatrimonio();renderContasBar();
+  alert('✓ Dados sincronizados com a nuvem com sucesso!');
+}
 async function csDelete(slug){
   if(!confirm('Excluir cliente "'+slug+'"? Dados serão apagados permanentemente.'))return;
   localStorage.removeItem('structa_v4_'+slug);
@@ -5619,21 +5629,6 @@ function exportData(){
   a.href=URL.createObjectURL(blob);
   a.download='structa-'+(_cid||'cliente')+'.json';
   a.click();
-}
-async function forceSyncLocalToCloud(){
-  if(!_sb||!_sbUser){alert('Você precisa estar autenticado para sincronizar.');return;}
-  const localRaw=localStorage.getItem(SKEY);
-  if(!localRaw){alert('Nenhum dado local encontrado neste navegador.');return;}
-  let localData;
-  try{localData=JSON.parse(localRaw);}catch(_){alert('Dado local corrompido.');return;}
-  const localTs=parseInt(localStorage.getItem(SKEY+'_ts')||'0');
-  const localDate=localTs?new Date(localTs).toLocaleString('pt-BR'):'data desconhecida';
-  const txCount=(localData.transactions||[]).length;
-  if(!confirm(`Dados locais deste navegador:\n• ${txCount} lançamentos\n• Salvo em: ${localDate}\n\nSubstituir os dados da nuvem por estes?`))return;
-  S={...freshState(),...localData};
-  await sbSaveNow();
-  renderAll();buildCatSelect();buildPgtoSelect();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();renderSeguranca();renderDividas();renderInvestimentos();renderPatrimonio();renderContasBar();
-  alert('✓ Dados sincronizados com a nuvem com sucesso!');
 }
 
 // ── PERMISSÕES ────────────────────────────────────────────────────────────────
@@ -6016,6 +6011,11 @@ function irCalc(){
   const bruto=parseFloat(document.getElementById('ir-bruto').value)||0;
   const inss=parseFloat(document.getElementById('ir-inss').value)||0;
   const ndep=parseInt(document.getElementById('ir-dep').value)||0;
+  // Valor exato informado (ex: direto da declaração já entregue) tem prioridade
+  // sobre o cálculo automático (nº de dependentes × valor legal por dependente),
+  // já que o valor real pode diferir um pouco por arredondamento/regras específicas.
+  const depValorManual=parseFloat(document.getElementById('ir-dep-valor').value)||0;
+  const depDeducao=depValorManual>0?depValorManual:ndep*DEP_DEDUCAO;
   const saude=parseFloat(document.getElementById('ir-saude').value)||0;
   const educ=Math.min(parseFloat(document.getElementById('ir-educ').value)||0, EDUC_TETO*(ndep+1));
   const pensao=parseFloat(document.getElementById('ir-pensao').value)||0;
@@ -6038,9 +6038,9 @@ function irCalc(){
   const irSimp=calcIR(baseSimp);
 
   // Completo s/ PGBL
-  const dedComp=inss+ndep*DEP_DEDUCAO+saude+educ+pensao+outros;
+  const dedComp=inss+depDeducao+saude+educ+pensao+outros;
   const dedCompTotal=dedComp-inss-pensao; // inss and pensao already subtracted in baseBruta
-  const baseComp=Math.max(0,baseBruta-(ndep*DEP_DEDUCAO+saude+educ+outros));
+  const baseComp=Math.max(0,baseBruta-(depDeducao+saude+educ+outros));
   const irComp=calcIR(baseComp);
 
   // Completo c/ PGBL (valor digitado)
@@ -6070,7 +6070,7 @@ function irCalc(){
     {lbl:'(−) INSS', simp:inss, comp:inss, pgblV:inss, pgblMax:inss, neg:true},
     {lbl:'(−) Pensão alimentícia', simp:pensao, comp:pensao, pgblV:pensao, pgblMax:pensao, neg:true, hide:!pensao},
     {lbl:'(−) Desconto simplificado (20%, teto R$ 16.754)', simp:dedSimp, comp:null, pgblV:null, pgblMax:null, neg:true},
-    {lbl:'(−) Dependentes ('+ndep+' × R$ 2.275)', simp:null, comp:ndep*DEP_DEDUCAO, pgblV:ndep*DEP_DEDUCAO, pgblMax:ndep*DEP_DEDUCAO, neg:true, hide:!ndep},
+    {lbl:depValorManual>0?'(−) Dependentes (valor informado)':'(−) Dependentes ('+ndep+' × R$ 2.275)', simp:null, comp:depDeducao, pgblV:depDeducao, pgblMax:depDeducao, neg:true, hide:!depDeducao},
     {lbl:'(−) Saúde', simp:null, comp:saude, pgblV:saude, pgblMax:saude, neg:true, hide:!saude},
     {lbl:'(−) Educação (aplicado teto)', simp:null, comp:educ, pgblV:educ, pgblMax:educ, neg:true, hide:!educ},
     {lbl:'(−) Outras deduções', simp:null, comp:outros, pgblV:outros, pgblMax:outros, neg:true, hide:!outros},
@@ -6129,7 +6129,7 @@ function irCalc(){
   const economiaCompPGBL=irSimp-irCompPGBL;
   const economiaComp=irSimp-irComp;
   if(isSimpMelhor){
-    recom=`<strong>Declaração Simplificada</strong> é a melhor opção. Suas deduções totais (${fmtIR(ndep*DEP_DEDUCAO+saude+educ+outros)}) ficaram abaixo do desconto padrão de ${fmtIR(dedSimp)}.<br><br>`;
+    recom=`<strong>Declaração Simplificada</strong> é a melhor opção. Suas deduções totais (${fmtIR(depDeducao+saude+educ+outros)}) ficaram abaixo do desconto padrão de ${fmtIR(dedSimp)}.<br><br>`;
     recom+=`Como o simplificado é mais vantajoso, o <strong>PGBL não compensa</strong> — use <strong>VGBL</strong> para investir em previdência (IR só sobre os rendimentos no resgate).`;
     cls='warn';
   } else if(isCompPGBLMelhor&&pgbl>0){
