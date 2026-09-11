@@ -1834,8 +1834,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="conv-hide-income" onchange="convApplyFilters()"> Ocultar receitas</label>
       <label style="font-size:13px;display:flex;align-items:center;gap:5px" title="Aplica essa data de vencimento a todos os lançamentos visíveis na tabela">
         Venc. fatura (todos): <input type="date" id="conv-venc-global" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px">
-        <button class="btn btn-o" style="padding:3px 10px;font-size:12px" onclick="convApplyVencAll()">Aplicar</button>
-      </label>
+      </label><button class="btn btn-o" style="padding:3px 10px;font-size:12px" onclick="convApplyVencAll()">Aplicar</button>
       <label style="font-size:13px;display:flex;align-items:center;gap:5px" title="Aplicada a todos os lançamentos deste extrato, pra saber depois de onde veio cada um">
         Conta/cartão de origem: <select id="conv-conta-batch" style="border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:12px"><option value="">— não informado —</option></select>
       </label>
@@ -2220,7 +2219,7 @@ const KW={
   f_cel:      ['tim movel','claro movel','vivo movel','oi movel','tim pos','telefonia','tim*tim'],
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
-  f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude'],
+  f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude','valem administradora'],
   f_med_cont: ['medicamento cont','tratamento cont','farmacia cont'],
   // FIXAS — 4. Bem-Estar e Esporte
   f_terapia:  ['psicolog','psicoterapi','terapia '],
@@ -2245,7 +2244,7 @@ const KW={
   f_app:      ['canva ','chatgpt','openai','claude.ai','anthropic','melimais','meli+'],
   f_clube:    ['clube benefit','clube de beneficio'],
   // FIXAS — 14. Servicos de Terceiros
-  f_terccons: ['consultoria ','honorario cons','salu gestao estrategica'],
+  f_terccons: ['consultoria ','honorario cons','salu gestao estrategica','salu gestao estrategi'],
   f_contab:   ['contabilidade ','escritorio contab'],
   // FIXAS — 15. Seguros
   f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg','bbseguros'],
@@ -2361,7 +2360,7 @@ const KW={
   r_docenc:   ['palestra ','honorarios aula','curso ministrado'],
   r_prolabore:['pro-labore pj','prolabore pj'],
   r_alug_im:  ['aluguel recebido','locacao recebida'],
-  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup','rendimento','rend'],
+  r_rend:     ['juros poup','remuneracao poup','rendimento poup','rendimento aplic','juro apl','remuner basica poup','rendimento','rend','rentab'],
   r_resgate:  ['resgate aplic','resgate investimento','resgate cdb'],
   r_sal:      ['remuneracao/salario','remuneracao salario','credito salario','credito em conta','credito prod','fernandes melo oftalmologia'],
   r_pix:      ['cred recebimento pix','recebimento pix','pix recebido'],
@@ -7532,6 +7531,10 @@ const MERCHANT_SEEDS={
   'hospital':'v_consulta','diagnosticos':'v_consulta',
   // Educação
   'coursera':'v_curso','udemy':'v_curso','alura':'v_curso',
+  // Saúde — Plano
+  'valem administradora':'f_plano',
+  // Serviços Recorrentes
+  'salu gestao estrategi':'f_terccons',
 };
 
 // Nomes de exibição "limpos" para os mesmos estabelecimentos comuns acima.
@@ -7570,6 +7573,8 @@ const MERCHANT_DISPLAY_SEEDS={
   'laboratorio':'Laboratório','clinica':'Clínica','consultorio':'Consultório',
   'hospital':'Hospital','diagnosticos':'Diagnósticos',
   'coursera':'Coursera','udemy':'Udemy','alura':'Alura',
+  'valem administradora':'Valem Administradora',
+  'salu gestao estrategi':'Salu Gestão Estratégica',
 };
 
 // Popula S.merchants com seeds que ainda não foram sobrescritos pelo usuário
