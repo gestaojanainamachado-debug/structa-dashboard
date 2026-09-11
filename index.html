@@ -4536,7 +4536,7 @@ function recalc(){
   setText('kpi-saldo',fmt(slR));setText('kpi-saldo-o',fmt(slO));
   const ki=document.getElementById('kpi-inv');
   if(ki){
-    if(rendaReal>0){
+    if(rendaReal>=1){
       const ip=tIr/rendaReal;
       ki.textContent=pct(tIr,rendaReal);
       ki.className='kpi-val '+(ip>=.15?'ok':ip>=.08?'warn':'bad');
@@ -4557,7 +4557,7 @@ function recalc(){
   // logo abaixo, que também é % sobre a renda) — antes usava orçado como base
   // (comprometido/orçado), o que dava um número sem relação com os % da legenda
   // e confundia (ex: "228%" no centro vs. fatias que somam 100% na legenda).
-  setText('donut-c',rendaReal>0?pct(tDr,rendaReal):'—');
+  setText('donut-c',rendaReal>=1?pct(tDr,rendaReal):'—');
 
   updateDonut([tCr,tFr,tVr,tIr,slR]);
   updateBar([tCo,tFo,tVo,tIo],[tCr,tFr,tVr,tIr]);
