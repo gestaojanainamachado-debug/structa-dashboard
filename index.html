@@ -2504,13 +2504,22 @@ async function sbLoadData(user) {
           }
         }
       } catch(_){}
+      // Limpa rows fantasma com slug terminando em _ts (bug antigo de sync)
+      try{
+        const tsRows=(existingSlugs?[...existingSlugs]:[]).filter(s=>s.endsWith('_ts'));
+        for(const bad of tsRows){
+          await _sb.from('client_data').delete().eq('slug',bad);
+          existingSlugs.delete(bad);
+        }
+      }catch(_){}
       for(let i=0;i<localStorage.length;i++){
         const k=localStorage.key(i);
-        if(!k||!k.startsWith('structa_v4_'))continue;
+        if(!k||!k.startsWith('structa_v4_')||k.endsWith('_ts'))continue; // ignora chaves de timestamp
         const s=k.replace('structa_v4_','');
         if(existingSlugs.has(s)) continue;
         try{
           const d=JSON.parse(localStorage.getItem(k)||'{}');
+          if(typeof d!=='object'||d===null)continue; // ignora valores não-objeto (ex: timestamps)
           await _sb.from('client_data').upsert({slug:s,advisor_id:user.id,data:d,updated_at:new Date().toISOString()},{onConflict:'slug',ignoreDuplicates:true});
         }catch(_){}
       }
@@ -5609,7 +5618,7 @@ async function renderClientScreen(){
   let sbClients=[];
   if(_sb && _sbUser && _sbRole==='advisor'){
     const {data}=await _sb.from('client_data').select('slug,data');
-    if(data) sbClients=data.map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' ')}));
+    if(data) sbClients=data.filter(c=>!c.slug.endsWith('_ts')).map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' ')}));
   }
   // Merge: evita duplicatas por slug
   const localSlugs=new Set(localClients.map(c=>c.slug));
