@@ -1302,9 +1302,12 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
             <select id="pv-aliq" onchange="irCalc()">
               <option value="0.275">27,5% — progressiva</option>
               <option value="0.225">22,5% — progressiva</option>
-              <option value="0.15" selected>15% — regressivo 10+ anos</option>
-              <option value="0.125">12,5% — regressivo 8-10 anos</option>
-              <option value="0.10">10% — regressivo 4-8 anos</option>
+              <option value="0.35">35% — regressivo 0-2 anos</option>
+              <option value="0.30">30% — regressivo 2-4 anos</option>
+              <option value="0.25">25% — regressivo 4-6 anos</option>
+              <option value="0.20">20% — regressivo 6-8 anos</option>
+              <option value="0.15" selected>15% — regressivo 8-10 anos</option>
+              <option value="0.10">10% — regressivo 10+ anos</option>
             </select>
           </div>
         </div>
@@ -7513,6 +7516,8 @@ const MERCHANT_SEEDS={
   // Vestuário
   'renner':'v_vestu','riachuelo':'v_vestu','c&a':'v_vestu',
   'marisa':'v_vestu','hering':'v_vestu','le biscuit':'v_vestu',
+  'centauro':'v_vestu','decathlon':'v_vestu','netshoes':'v_vestu',
+  'nike':'v_vestu','adidas':'v_vestu','arezzo':'v_vestu',
   // Compras para casa
   'americanas':'v_compras','shopee':'v_compras','magazine luiza':'v_compras',
   'casas bahia':'v_compras','submarino':'v_compras','leroy merlin':'v_compras',
@@ -7554,6 +7559,8 @@ const MERCHANT_DISPLAY_SEEDS={
   'google play':'Google Play','apple app store':'App Store','microsoft store':'Microsoft Store',
   'renner':'Renner','riachuelo':'Riachuelo','c&a':'C&A',
   'marisa':'Marisa','hering':'Hering','le biscuit':'Le Biscuit',
+  'centauro':'Centauro','decathlon':'Decathlon','netshoes':'Netshoes',
+  'nike':'Nike','adidas':'Adidas','arezzo':'Arezzo',
   'americanas':'Americanas','shopee':'Shopee','magazine luiza':'Magazine Luiza',
   'casas bahia':'Casas Bahia','submarino':'Submarino','leroy merlin':'Leroy Merlin',
   'tok stok':'Tok&Stok','ikea':'Ikea',
