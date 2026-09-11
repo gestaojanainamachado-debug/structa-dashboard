@@ -93,8 +93,8 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .acomp-btn-pdf{background:#c7c3db;color:var(--primary)}
 .acomp-btn-pdf:hover{opacity:.85}
 @media print{
-  body > *:not(#print-acomp){display:none!important}
-  #print-acomp{display:block!important;position:fixed;inset:0;background:#fff;padding:32px 40px;font-family:Inter,sans-serif;color:#2a1510}
+  body.printing-acomp > *:not(#print-acomp){display:none!important}
+  body.printing-acomp #print-acomp{display:block!important;position:fixed;inset:0;background:#fff;padding:32px 40px;font-family:Inter,sans-serif;color:#2a1510}
 }
 /* TABS */
 .tab-bar{background:#c7c3db;display:flex;padding:0 20px;overflow-x:auto;-webkit-overflow-scrolling:touch;border-top:1px solid rgba(56,28,23,.1);scrollbar-width:none}
@@ -3414,8 +3414,9 @@ function printAcompanhamento(){
       Structa Consultoria em Gestão · Documento gerado em ${today}
     </div>`;
   document.body.appendChild(div);
+  document.body.classList.add('printing-acomp');
   window.print();
-  setTimeout(()=>div.remove(),1000);
+  setTimeout(()=>{div.remove();document.body.classList.remove('printing-acomp');},1000);
 }
 
 // ── BOOT ─────────────────────────────────────────────────────────────────────
