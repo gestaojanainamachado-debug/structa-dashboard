@@ -7490,7 +7490,10 @@ function convNorm(s){return(s||'').toLowerCase().normalize('NFD').replace(/[̀-�
 const LEARN_KEY='structa_conv_learned'; // legado — mantido para migração
 let _learned=null;
 function learnKeyOf(desc){
-  return convNorm(desc).replace(/\d[\d.,\/-]*/g,' ').replace(/\s+/g,' ').trim();
+  // Remove parentético final antes de normalizar — fatura Bradesco acrescenta
+  // "(Nome do Titular)" ao fim do histórico; sem isso a chave ficaria
+  // "fairfax (mariana alvim)" e não bateria com o que foi ensinado ("fairfax").
+  return convNorm(desc).replace(/\s*\([^)]*\)\s*$/,'').replace(/\d[\d.,\/-]*/g,' ').replace(/\s+/g,' ').trim();
 }
 
 // Estabelecimentos pré-populados comuns no Brasil
@@ -7551,10 +7554,10 @@ const MERCHANT_SEEDS={
   // Transporte — Estacionamento
   'rotativos':'v_estac',
   // Viagem
-  'pousada':'v_viagem','saritur':'v_viagem','gol linhas':'v_viagem','latam air':'v_viagem',
+  'pousada':'v_viagem','saritur':'v_viagem','gol linhas':'v_viagem','latam air':'v_viagem','latam':'v_viagem',
   // Vestuário
   'track e field':'v_vestu','voga':'v_vestu','live roupas':'v_vestu',
-  'shein':'v_vestu',
+  'shein':'v_vestu','arezzo':'v_vestu','netshoes':'v_vestu',
   // Academia
   'd2 fit':'f_acad',
   // Salão
@@ -7795,7 +7798,11 @@ function classifyTx(desc,value){
   const lk=learnKeyOf(desc),learned=getLearned();
   if(learned[lk]&&CAT[learned[lk]])return learned[lk];
   // 2º: nome do próprio cliente na descrição = transferência entre contas
-  if(clientNameMatches(d))return 'n_transf';
+  // Remove parentético final "(Titular)" antes de checar — fatura Bradesco
+  // adiciona o nome do portador ao fim (ex: "Fairfax (Mariana Alvim)"),
+  // o que fazia o clientNameMatches disparar em toda compra do cartão.
+  const dNoHolder=d.replace(/\s*\([^)]*\)\s*$/,'').trim();
+  if(clientNameMatches(dNoHolder))return 'n_transf';
   // Neutral first
   for(const cat of NEUTRAL_CATS){
     if(KW[cat]&&KW[cat].some(k=>kwHit(k,d)))return cat;
