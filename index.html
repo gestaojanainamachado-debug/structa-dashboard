@@ -166,6 +166,9 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .tot-row span:first-child{text-align:left}
 .renda-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:5px 0 8px}
 .renda-row .rl{font-size:12px;font-weight:600;color:var(--primary)}
+.renda-sub-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:2px 0}
+.renda-sub-row .rsl{font-size:11px;color:var(--muted);padding-left:10px}
+.renda-sub-row .rsv{font-size:11px;color:var(--text);text-align:right}
 .sec-sep{height:1px;background:var(--s2);margin:12px 0 8px}
 .sec-name{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 
@@ -813,8 +816,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   .pat-row{grid-template-columns:80px 1fr 90px 24px!important}
   .pat-ativos-hdr{grid-template-columns:80px 1fr 90px 24px!important}
   /* Orçamento — remove coluna variação, ajusta grid */
-  .col-hdr,.cat-row,.tot-row,.renda-row,.parent-grp-hdr{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
-  .cat-row .var-cell,.tot-row .var-cell,.renda-row .var-cell{display:none!important}
+  .col-hdr,.cat-row,.tot-row,.renda-row,.renda-sub-row,.parent-grp-hdr{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
+  .cat-row .var-cell,.tot-row .var-cell,.renda-row .var-cell,.renda-sub-row .var-cell{display:none!important}
   .col-hdr>*:nth-child(4){display:none!important}
   .parent-grp-hdr>*:nth-child(4){display:none!important}
   .cat-grid{min-width:0!important}
@@ -1015,6 +1018,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           <input class="inp real" type="number" id="rendaReal" min="0" placeholder="0" oninput="S.rendaReal=+this.value||0;recalc();save()">
           <div class="var-cell neutral" id="var-renda">—</div><div></div>
         </div>
+        <div id="renda-detail"></div>
         <div class="sec-sep"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div class="sec-name" style="margin-bottom:0">Custos com Trabalho</div>
@@ -4476,6 +4480,17 @@ function getTxRenda(yr,mo){
     return d.getFullYear()===yr&&d.getMonth()===mo&&t.grp==='receita';
   }).reduce((a,t)=>a+t.amount,0);
 }
+function getTxRendaMap(yr,mo){
+  yr=yr!==undefined?yr:orcViewYear; mo=mo!==undefined?mo:orcViewMonth;
+  const m={};
+  S.transactions.forEach(t=>{
+    const effDate=t.dataPgto||t.date;if(!effDate)return;
+    const d=new Date(effDate+'T00:00:00');
+    if(d.getFullYear()!==yr||d.getMonth()!==mo||t.grp!=='receita')return;
+    m[t.catId]=(m[t.catId]||0)+t.amount;
+  });
+  return m;
+}
 
 function recalc(){
   const txMap=getTxMap(orcViewYear,orcViewMonth),txRenda=getTxRenda(orcViewYear,orcViewMonth),hasTx=S.transactions.length>0;
@@ -4493,6 +4508,16 @@ function recalc(){
   // tx indicators
   const ri=document.getElementById('renda-tx-ind');if(ri)ri.textContent=txRenda>0?' ●':'';
   if(hasTx&&txRenda>0){const el=document.getElementById('rendaReal');if(el)el.value=txRenda;}
+
+  // Income breakdown by category
+  const rdEl=document.getElementById('renda-detail');
+  if(rdEl){
+    const rdMap=getTxRendaMap(orcViewYear,orcViewMonth);
+    const rdCats=(DEFS.receita||[]).filter(c=>rdMap[c.id]>0);
+    rdEl.innerHTML=rdCats.length>0
+      ?rdCats.map(c=>`<div class="renda-sub-row"><div class="rsl">${c.lbl}</div><div></div><div class="rsv">${fmt(rdMap[c.id])}</div><div class="var-cell neutral"></div><div></div></div>`).join('')
+      :'';
+  }
 
   // per-cat
   (S.cats.ct||[]).forEach(c=>{
