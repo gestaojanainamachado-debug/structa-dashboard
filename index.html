@@ -1072,7 +1072,21 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
       <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
     </svg>
-    <div style="font-size:12px;color:#a09080;letter-spacing:.04em;margin-bottom:32px">Dashboard Financeiro</div>
+    <div style="font-size:12px;color:#a09080;letter-spacing:.04em;margin-bottom:16px">Dashboard Financeiro</div>
+
+    <!-- Aviso: dados locais não sincronizados -->
+    <div id="auth-local-data-warn" style="display:none;background:#fff8e6;border:1.5px solid #e8a020;border-radius:10px;padding:14px 16px;margin-bottom:20px">
+      <div style="font-weight:700;font-size:13px;color:#8a5500;margin-bottom:5px">⚠️ Você tem dados salvos aqui</div>
+      <div style="font-size:12px;color:#7a6a60;line-height:1.55;margin-bottom:10px">
+        Encontramos <b id="auth-local-tx-count">0</b> lançamentos neste dispositivo.<br>
+        <b>Exporte antes de entrar</b> para não perder nada.
+      </div>
+      <button onclick="authExportLocalData()"
+        style="width:100%;padding:9px;background:#381c17;color:#f4ede4;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif">
+        ⬇ Exportar meus dados agora
+      </button>
+    </div>
+
     <div id="auth-form-wrap">
       <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">E-mail</label>
       <input id="auth-email" type="email" placeholder="seu@email.com"
@@ -3038,7 +3052,24 @@ async function sbVerifyOtp() {
 
 function sbShowAuthOverlay() {
   const o = document.getElementById('auth-overlay');
-  if(o) o.style.display = 'flex';
+  if(!o) return;
+  // Verifica se há dados locais não sincronizados para avisar a cliente
+  try {
+    const localRaw = localStorage.getItem(SKEY);
+    const localData = localRaw ? JSON.parse(localRaw) : null;
+    const txCount = (localData?.transactions||[]).length;
+    const warn = document.getElementById('auth-local-data-warn');
+    const countEl = document.getElementById('auth-local-tx-count');
+    if(warn) {
+      if(txCount > 0 && _cid) {
+        if(countEl) countEl.textContent = txCount;
+        warn.style.display = 'block';
+      } else {
+        warn.style.display = 'none';
+      }
+    }
+  } catch(_) {}
+  o.style.display = 'flex';
 }
 
 function sbHideAuthOverlay() {
@@ -3131,6 +3162,13 @@ async function sbLoadData(user) {
     const localData = localRaw ? (() => { try{return JSON.parse(localRaw);}catch(_){return null;} })() : null;
     const hasSbData  = data?.data && typeof data.data === 'object';
     const hasLocalData = localData && Object.keys(localData).length > 3;
+    const localTxCount = (localData?.transactions||[]).length;
+    const sbTxCount    = (data?.data?.transactions||[]).length;
+    // Auto-backup: se há transações locais a mais do que no Supabase, baixa
+    // um Excel silenciosamente ANTES de fazer o merge — segurança total.
+    if(hasLocalData && localTxCount > sbTxCount) {
+      try { autoBackupLocalData(localData, loadSlug); } catch(_) {}
+    }
     if(hasSbData && hasLocalData) {
       // Merge: usa a fonte mais recente para configurações, mas mantém TODAS as
       // transações de ambas as fontes (dedup por id) — nunca descarta lançamentos.
@@ -5022,6 +5060,56 @@ function exportTxExcel(){
   const clientName=(S.name||'cliente').replace(/[^a-z0-9]+/gi,'_');
   XLSX.writeFile(wb,`lancamentos_${clientName}_${MESES_PT[txViewMonth].toLowerCase()}_${txViewYear}.xlsx`);
 }
+// Exporta dados locais do localStorage — usada ANTES do login, quando S ainda não está carregado.
+// Fallback para JSON se XLSX não estiver disponível.
+function authExportLocalData(){
+  const localRaw=localStorage.getItem(SKEY);
+  const localData=localRaw?(() => {try{return JSON.parse(localRaw);}catch(_){return null;}})():null;
+  const all=(localData?.transactions||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const slug=_cid||'dados';
+  const hoje=new Date().toISOString().slice(0,10);
+  if(!all.length){alert('Nenhum lançamento encontrado para exportar.');return;}
+  if(typeof XLSX==='undefined'){
+    // Fallback: baixa JSON completo
+    const blob=new Blob([JSON.stringify(localData,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`backup_${slug}_${hoje}.json`;a.click();return;
+  }
+  const TIPO_LBL={receita:'Receita',fixas:'Despesa Fixa',var:'Despesa Variável',inv:'Investimento',ct:'Custo Profissional',neutro:'Neutro'};
+  const rows=all.map(tx=>({
+    'Data':(tx.dataPgto||tx.date)?new Date((tx.dataPgto||tx.date)+'T00:00:00').toLocaleDateString('pt-BR'):'',
+    'Descrição':tx.desc||'',
+    'Tipo':TIPO_LBL[tx.grp]||tx.grp||'',
+    'Valor (R$)':(tx.grp==='receita'?1:-1)*(tx.creditoNaCategoria?-1:1)*Math.abs(tx.amount),
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:11},{wch:36},{wch:18},{wch:13}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Lançamentos');
+  XLSX.writeFile(wb,`backup_${slug}_${hoje}.xlsx`);
+}
+
+// Auto-backup silencioso chamado no primeiro login quando há dados locais
+// que ainda não chegaram ao Supabase (localTxCount > sbTxCount).
+function autoBackupLocalData(localData, slug){
+  if(typeof XLSX==='undefined') return;
+  const all=(localData?.transactions||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!all.length) return;
+  const TIPO_LBL={receita:'Receita',fixas:'Despesa Fixa',var:'Despesa Variável',inv:'Investimento',ct:'Custo Profissional',neutro:'Neutro'};
+  const rows=all.map(tx=>({
+    'Data':(tx.dataPgto||tx.date)?new Date((tx.dataPgto||tx.date)+'T00:00:00').toLocaleDateString('pt-BR'):'',
+    'Descrição':tx.desc||'',
+    'Tipo':TIPO_LBL[tx.grp]||tx.grp||'',
+    'Valor (R$)':(tx.grp==='receita'?1:-1)*(tx.creditoNaCategoria?-1:1)*Math.abs(tx.amount),
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:11},{wch:36},{wch:18},{wch:13}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Backup Automático');
+  const hoje=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`backup_automatico_${slug||'dados'}_${hoje}.xlsx`);
+}
+
 // Exporta TODOS os lançamentos (todos os meses) em Excel — visível no topbar
 function exportAllTxExcel(){
   if(typeof XLSX==='undefined'){alert('Não foi possível carregar o gerador de Excel agora — verifique a conexão e tente de novo.');return;}
