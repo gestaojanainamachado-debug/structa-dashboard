@@ -830,12 +830,13 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 
 /* ── APP SHELL & SIDEBAR ──────────────────────────────────────────────────── */
 .app-shell{display:flex;align-items:flex-start}
-.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199}
 .sb-overlay.sb-open{display:block}
 
 .sidebar{
-  width:232px;flex-shrink:0;
-  background:#381c17;
+  width:216px;flex-shrink:0;
+  background:#f4ede4;
+  border-right:1px solid var(--border);
   position:sticky;top:0;height:100vh;
   display:flex;flex-direction:column;
   overflow-y:auto;scrollbar-width:none;
@@ -843,53 +844,54 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 }
 .sidebar::-webkit-scrollbar{display:none}
 
-.sb-logo-area{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo-area{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
 
 .sb-sec{
-  font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  color:rgba(244,237,228,.3);padding:14px 20px 5px;
+  font-size:9px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;
+  color:rgba(56,28,23,.32);padding:14px 18px 4px;
 }
 
 .sb-item{
-  display:flex;align-items:center;gap:10px;
-  padding:9px 14px 9px 20px;font-size:13px;font-weight:500;
-  color:rgba(244,237,228,.55);cursor:pointer;
-  border-radius:8px;margin:1px 8px;transition:.15s;user-select:none;
+  display:flex;align-items:center;gap:9px;
+  padding:8px 12px 8px 18px;font-size:13px;font-weight:500;
+  color:rgba(56,28,23,.55);cursor:pointer;
+  border-radius:8px;margin:1px 8px;transition:.12s;user-select:none;
 }
-.sb-item:hover{background:rgba(255,255,255,.08);color:rgba(244,237,228,.9)}
-.sb-item.active{background:rgba(199,195,219,.18);color:#f4ede4;font-weight:600}
-.sb-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0;line-height:1}
+.sb-item:hover{background:rgba(56,28,23,.06);color:rgba(56,28,23,.9)}
+.sb-item.active{background:#381c17;color:#f4ede4;font-weight:600}
+.sb-icon{font-size:14px;width:20px;text-align:center;flex-shrink:0;line-height:1}
 
 .sb-profile{
-  margin-top:auto;padding:14px 20px;border-top:1px solid rgba(255,255,255,.1);
+  margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);
   display:flex;align-items:center;gap:10px;min-width:0;
 }
 .sb-avatar{
   width:34px;height:34px;border-radius:50%;flex-shrink:0;
-  background:rgba(199,195,219,.3);
+  background:#c7c3db;
   display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#f4ede4;letter-spacing:.02em;
+  font-size:11px;font-weight:700;color:#381c17;letter-spacing:.02em;
 }
-.sb-cname{font-size:12px;font-weight:600;color:#f4ede4;flex:1;
+.sb-cname{font-size:12px;font-weight:600;color:#381c17;flex:1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sb-csub{font-size:10px;color:rgba(244,237,228,.4);margin-top:1px;
+.sb-csub{font-size:10px;color:rgba(56,28,23,.42);margin-top:1px;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sb-client-info{flex:1;min-width:0}
-.sb-logout-icon{background:none;border:none;color:rgba(244,237,228,.35);
+.sb-logout-icon{background:none;border:none;color:rgba(56,28,23,.3);
   cursor:pointer;font-size:13px;padding:3px;border-radius:4px;transition:.15s;flex-shrink:0}
-.sb-logout-icon:hover{color:rgba(244,237,228,.8);background:rgba(255,255,255,.1)}
+.sb-logout-icon:hover{color:rgba(56,28,23,.8);background:rgba(56,28,23,.07)}
 
 /* Content area */
-.app-content{flex:1;min-width:0;display:flex;flex-direction:column}
+.app-content{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
 
-/* Desktop topbar (replaces hdr on desktop) */
+/* Desktop topbar */
 .topbar{
   background:var(--bg);border-bottom:1px solid var(--border);
-  padding:10px 24px;display:flex;align-items:center;gap:12px;
+  padding:9px 24px;display:flex;align-items:center;gap:10px;
   position:sticky;top:0;z-index:99;
 }
-.topbar-section{font-size:12px;color:var(--muted)}
-.topbar-section strong{color:var(--primary);font-weight:600}
+.topbar-crumb{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.topbar-crumb .crumb-sep{opacity:.4}
+.topbar-crumb .crumb-cur{color:var(--primary);font-weight:600}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
 .topbar-indicator{font-size:10px;color:var(--muted)}
 .topbar-indicator.saving{color:#a06820}
@@ -1041,10 +1043,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <nav class="sidebar" id="sidebar">
   <div class="sb-logo-area">
     <svg viewBox="0 0 270 56" style="width:126px" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#f4ede4"/>
-      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#f4ede4"/>
-      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#f4ede4">Structa</text>
-      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#f4ede4" opacity="0.5">Consultoria Financeira</text>
+      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
+      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
+      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
+      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.5">Consultoria Financeira</text>
     </svg>
   </div>
 
@@ -1083,7 +1085,11 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <!-- Desktop topbar -->
 <div class="topbar" id="topbar">
   <button class="sb-hamburger" onclick="sbToggle()">☰</button>
-  <div class="topbar-section"><strong id="topbar-tab-name">Orçamento</strong></div>
+  <div class="topbar-crumb">
+    <span>Meu espaço</span>
+    <span class="crumb-sep">/</span>
+    <span class="crumb-cur" id="topbar-tab-name">Orçamento</span>
+  </div>
   <div class="topbar-right">
     <div class="topbar-indicator" id="topbar-indicator"></div>
   </div>
