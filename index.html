@@ -385,8 +385,10 @@ canvas{max-width:100%}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{background:#fff;margin:0}
   /* Dashboard print: só painel ativo */
-  #client-screen,#report-overlay,.admin-bar,.tab-bar,.fab,.backdrop,.abar{display:none!important}
+  #client-screen,#report-overlay,.admin-bar,.tab-bar,.fab,.backdrop,.abar,.sidebar,.topbar,.sb-overlay{display:none!important}
   .hdr,.main{display:block!important}
+  .app-shell{display:block!important}
+  .app-content{display:block!important}
   .panel{display:none!important}
   .panel.active{display:block!important}
   /* Report print: esconde tudo, mostra só o relatório */
@@ -825,6 +827,95 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   .diag-kpis{grid-template-columns:1fr 1fr!important}
   .diag-card{min-width:0!important;word-break:break-word}
 }
+
+/* ── APP SHELL & SIDEBAR ──────────────────────────────────────────────────── */
+.app-shell{display:flex;align-items:flex-start}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199}
+.sb-overlay.sb-open{display:block}
+
+.sidebar{
+  width:232px;flex-shrink:0;
+  background:#381c17;
+  position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+  overflow-y:auto;scrollbar-width:none;
+  z-index:200;
+}
+.sidebar::-webkit-scrollbar{display:none}
+
+.sb-logo-area{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+
+.sb-sec{
+  font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(244,237,228,.3);padding:14px 20px 5px;
+}
+
+.sb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px 9px 20px;font-size:13px;font-weight:500;
+  color:rgba(244,237,228,.55);cursor:pointer;
+  border-radius:8px;margin:1px 8px;transition:.15s;user-select:none;
+}
+.sb-item:hover{background:rgba(255,255,255,.08);color:rgba(244,237,228,.9)}
+.sb-item.active{background:rgba(199,195,219,.18);color:#f4ede4;font-weight:600}
+.sb-icon{font-size:15px;width:22px;text-align:center;flex-shrink:0;line-height:1}
+
+.sb-profile{
+  margin-top:auto;padding:14px 20px;border-top:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;gap:10px;min-width:0;
+}
+.sb-avatar{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
+  background:rgba(199,195,219,.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:#f4ede4;letter-spacing:.02em;
+}
+.sb-cname{font-size:12px;font-weight:600;color:#f4ede4;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-csub{font-size:10px;color:rgba(244,237,228,.4);margin-top:1px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-client-info{flex:1;min-width:0}
+.sb-logout-icon{background:none;border:none;color:rgba(244,237,228,.35);
+  cursor:pointer;font-size:13px;padding:3px;border-radius:4px;transition:.15s;flex-shrink:0}
+.sb-logout-icon:hover{color:rgba(244,237,228,.8);background:rgba(255,255,255,.1)}
+
+/* Content area */
+.app-content{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* Desktop topbar (replaces hdr on desktop) */
+.topbar{
+  background:var(--bg);border-bottom:1px solid var(--border);
+  padding:10px 24px;display:flex;align-items:center;gap:12px;
+  position:sticky;top:0;z-index:99;
+}
+.topbar-section{font-size:12px;color:var(--muted)}
+.topbar-section strong{color:var(--primary);font-weight:600}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.topbar-indicator{font-size:10px;color:var(--muted)}
+.topbar-indicator.saving{color:#a06820}
+.topbar-indicator.saved{color:#3d6b4f}
+.sb-hamburger{display:none;background:none;border:none;cursor:pointer;
+  color:var(--primary);font-size:20px;padding:2px 6px;line-height:1;border-radius:6px}
+.sb-hamburger:hover{background:var(--s2)}
+
+/* ── MOBILE SIDEBAR ADJUSTMENTS ── */
+@media(max-width:768px){
+  .app-shell{display:block}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;
+    transform:translateX(-240px);
+    transition:transform .25s cubic-bezier(.4,0,.2,1);
+    height:100%;
+  }
+  .sidebar.sb-open{transform:translateX(0)}
+  .topbar{display:none}
+  .sb-hamburger{display:flex;align-items:center;justify-content:center}
+}
+@media(min-width:769px){
+  .hdr{display:none!important}
+  .tab-bar{display:none!important}
+  .main{padding-bottom:32px}
+}
 </style>
 <!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -944,7 +1035,61 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   </div>
 </div>
 
-<!-- HEADER -->
+<!-- ── SIDEBAR NAVIGATION ─────────────────────────────────────────────────── -->
+<div class="sb-overlay" id="sb-overlay" onclick="sbClose()"></div>
+<div class="app-shell">
+<nav class="sidebar" id="sidebar">
+  <div class="sb-logo-area">
+    <svg viewBox="0 0 270 56" style="width:126px" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#f4ede4"/>
+      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#f4ede4"/>
+      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#f4ede4">Structa</text>
+      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#f4ede4" opacity="0.5">Consultoria Financeira</text>
+    </svg>
+  </div>
+
+  <div class="sb-sec">Financeiro</div>
+  <div class="sb-item active" data-tab="orcamento"     onclick="sbNav(this)"><span class="sb-icon">📊</span>Orçamento</div>
+  <div class="sb-item"        data-tab="lancamentos"   onclick="sbNav(this)"><span class="sb-icon">💸</span>Lançamentos</div>
+  <div class="sb-item"        data-tab="fluxopgto"     onclick="sbNav(this)"><span class="sb-icon">💳</span>Fluxo de Pgto</div>
+
+  <div class="sb-sec">Análise</div>
+  <div class="sb-item"        data-tab="diagnostico"   onclick="sbNav(this)"><span class="sb-icon">🔍</span>Diagnóstico</div>
+  <div class="sb-item"        data-tab="projecao"      onclick="sbNav(this)"><span class="sb-icon">📈</span>Projeção 12M</div>
+
+  <div class="sb-sec">Planejamento</div>
+  <div class="sb-item"        data-tab="objetivos"     onclick="sbNav(this)"><span class="sb-icon">🎯</span>Objetivos</div>
+  <div class="sb-item"        data-tab="simulador"     onclick="sbNav(this)"><span class="sb-icon">🧮</span>Simulador</div>
+  <div class="sb-item"        data-tab="aposent"       onclick="sbNav(this)"><span class="sb-icon">🏖️</span>Aposentadoria</div>
+  <div class="sb-item"        data-tab="irpgbl"        onclick="sbNav(this)"><span class="sb-icon">📋</span>IR / PGBL</div>
+  <div class="sb-item"        data-tab="seguranca"     onclick="sbNav(this)"><span class="sb-icon">🛡️</span>Segurança</div>
+
+  <div class="sb-sec">Ativos</div>
+  <div class="sb-item"        data-tab="dividas"       onclick="sbNav(this)"><span class="sb-icon">💰</span>Dívidas</div>
+  <div class="sb-item"        data-tab="investimentos" onclick="sbNav(this)"><span class="sb-icon">📉</span>Investimentos</div>
+  <div class="sb-item"        data-tab="patrimonio"    onclick="sbNav(this)"><span class="sb-icon">🏠</span>Patrimônio</div>
+
+  <div class="sb-profile" id="sb-profile">
+    <div class="sb-avatar" id="sb-avatar">—</div>
+    <div class="sb-client-info">
+      <div class="sb-cname" id="sb-cname">—</div>
+      <div class="sb-csub" id="sb-csub">Dashboard Financeiro</div>
+    </div>
+    <button class="sb-logout-icon" id="sb-logout-icon" onclick="sbLogout()" title="Sair">↩</button>
+  </div>
+</nav>
+<div class="app-content">
+
+<!-- Desktop topbar -->
+<div class="topbar" id="topbar">
+  <button class="sb-hamburger" onclick="sbToggle()">☰</button>
+  <div class="topbar-section"><strong id="topbar-tab-name">Orçamento</strong></div>
+  <div class="topbar-right">
+    <div class="topbar-indicator" id="topbar-indicator"></div>
+  </div>
+</div>
+
+<!-- HEADER (mobile only) -->
 <div class="hdr">
   <div class="logo-wrap">
     <svg class="logo-svg" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg" aria-label="Structa">
@@ -2072,7 +2217,9 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
 
   </div>
-</div>
+</div><!-- /.main -->
+</div><!-- /.app-content -->
+</div><!-- /.app-shell -->
 
 <script>
 // ── DEFAULTS ─────────────────────────────────────────────────────────────────
@@ -3573,6 +3720,7 @@ function renderAll(){
   document.getElementById('rendaOrc').value=getOrcRendaOrc()||'';
   document.getElementById('rendaReal').value=S.rendaReal||'';
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  sbUpdateProfile();
 }
 function grpSumId(grp,nome){return 'grpsum-'+grp+'-'+(nome||'').replace(/[^a-z0-9]/gi,'_').toLowerCase();}
 function renderDespesas(){
@@ -5013,6 +5161,49 @@ function switchTab(el){
     if(c&&!c.value)c.value=S.irPago.carneLeao||0;
     if(o&&!o.value)o.value=S.irPago.outros||0;
   }
+  // Sync sidebar active state
+  const tab=el.dataset.tab;
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i.dataset.tab===tab));
+  const names={orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
+    diagnostico:'Diagnóstico',projecao:'Projeção 12M',objetivos:'Objetivos',
+    simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',
+    seguranca:'Segurança',dividas:'Dívidas',investimentos:'Investimentos',patrimonio:'Patrimônio'};
+  const tn=document.getElementById('topbar-tab-name');
+  if(tn)tn.textContent=names[tab]||tab;
+}
+
+// ── SIDEBAR NAV ───────────────────────────────────────────────────────────────
+function sbNav(el){
+  // Find the matching tab-bar element and delegate to switchTab
+  const tab=el.dataset.tab;
+  const tabEl=document.querySelector('#tab-bar [data-tab="'+tab+'"]');
+  if(tabEl)switchTab(tabEl);
+  else{
+    // Fallback: update panels directly
+    document.querySelectorAll('.panel:not(#panel-conversor)').forEach(p=>p.classList.remove('active'));
+    const panel=document.getElementById('panel-'+tab);
+    if(panel)panel.classList.add('active');
+    document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i===el));
+  }
+  sbClose();
+}
+function sbToggle(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sb-overlay');
+  if(sb){sb.classList.toggle('sb-open');ov&&ov.classList.toggle('sb-open',sb.classList.contains('sb-open'));}
+}
+function sbClose(){
+  const sb=document.getElementById('sidebar');
+  const ov=document.getElementById('sb-overlay');
+  if(sb){sb.classList.remove('sb-open');ov&&ov.classList.remove('sb-open');}
+}
+function sbUpdateProfile(){
+  const name=S.name||'Cliente';
+  const initials=name.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'—';
+  const av=document.getElementById('sb-avatar');
+  const cn=document.getElementById('sb-cname');
+  if(av)av.textContent=initials;
+  if(cn)cn.textContent=name;
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -5035,12 +5226,17 @@ function save(){
 let _sbDirty=false;
 function setSaveIndicator(state){
   const el=document.getElementById('save-indicator');
-  if(!el)return;
-  if(state==='saving'){el.className='save-indicator saving';el.textContent='⏳ salvando...';}
-  else if(state==='saved'){
-    el.className='save-indicator saved';el.textContent='✓ salvo';
-    setTimeout(()=>{el.className='save-indicator';},3000);
-  } else {el.className='save-indicator';}
+  const ti=document.getElementById('topbar-indicator');
+  if(state==='saving'){
+    if(el){el.className='save-indicator saving';el.textContent='⏳ salvando...';}
+    if(ti){ti.className='topbar-indicator saving';ti.textContent='salvando…';}
+  } else if(state==='saved'){
+    if(el){el.className='save-indicator saved';el.textContent='✓ salvo';setTimeout(()=>{el.className='save-indicator';},3000);}
+    if(ti){ti.className='topbar-indicator saved';ti.textContent='✓ salvo';setTimeout(()=>{ti.className='topbar-indicator';ti.textContent='';},3000);}
+  } else {
+    if(el)el.className='save-indicator';
+    if(ti){ti.className='topbar-indicator';ti.textContent='';}
+  }
 }
 // ── Persistência genérica dos campos das "calculadoras" (IR/PGBL,
 // Aposentadoria, Simulador) — cada cliente guarda os próprios valores, que
