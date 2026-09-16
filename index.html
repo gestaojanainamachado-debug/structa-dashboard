@@ -918,6 +918,69 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   .tab-bar{display:none!important}
   .main{padding-bottom:32px}
 }
+
+/* ── SIDEBAR SVG ICONS ── */
+.sb-icon{display:flex;align-items:center;justify-content:center;width:20px;flex-shrink:0}
+.sb-icon svg{display:block;width:15px;height:15px;opacity:.65;transition:.12s}
+.sb-item.active .sb-icon svg,.sb-item:hover .sb-icon svg{opacity:1}
+
+/* ── PANEL: INÍCIO ── */
+.panel-inicio-wrap{padding:28px 32px;max-width:920px}
+@media(max-width:768px){.panel-inicio-wrap{padding:20px 18px}}
+.inicio-eyebrow{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.inicio-h1{font-size:26px;font-weight:700;color:var(--primary);line-height:1.2;margin-bottom:8px;letter-spacing:-.3px}
+.inicio-sub{font-size:14px;color:var(--muted);margin-bottom:18px}
+.inicio-ask-btn{display:inline-flex;align-items:center;gap:7px;background:none;border:1.5px solid var(--border);color:var(--primary);font-family:inherit;font-size:13px;font-weight:500;padding:8px 16px;border-radius:20px;cursor:pointer;transition:.15s;margin-bottom:26px}
+.inicio-ask-btn:hover{background:var(--s2);border-color:rgba(56,28,23,.35)}
+/* Structa Intelligence Banner */
+.si-banner{background:#edeaf5;border-radius:12px;padding:16px 20px;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:28px;border:1px solid rgba(199,195,219,.6)}
+.si-banner-text{flex:1;min-width:0}
+.si-label{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6b5fa0;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.si-msg{font-size:14px;font-weight:600;color:#381c17;margin-bottom:3px}
+.si-detail{font-size:12px;color:rgba(56,28,23,.55)}
+.si-cta{background:#381c17;color:#f4ede4;border:none;font-family:inherit;font-size:12px;font-weight:600;padding:9px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:.15s;flex-shrink:0;margin-top:2px}
+.si-cta:hover{background:#5a2e27}
+/* KPI section */
+.inicio-sec-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.inicio-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+@media(max-width:640px){.inicio-kpis{grid-template-columns:1fr}}
+.inicio-kpi{background:#fff;border-radius:12px;padding:18px 20px;border:1.5px solid var(--border)}
+.kpi-arrow{font-size:16px;margin-bottom:8px;opacity:.4}
+.kpi-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px}
+.kpi-val{font-size:22px;font-weight:700;color:var(--primary);margin-bottom:4px}
+.kpi-val.ok{color:var(--ok)}.kpi-val.bad{color:var(--bad)}
+.kpi-sub{font-size:11px;color:var(--muted)}
+/* Bottom grid */
+.inicio-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:28px}
+@media(max-width:640px){.inicio-bottom-grid{grid-template-columns:1fr}}
+.inicio-card{background:#fff;border-radius:12px;border:1.5px solid var(--border);overflow:hidden}
+.inicio-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.inicio-card-link{font-size:11px;color:var(--muted);cursor:pointer;text-decoration:none;letter-spacing:0;font-weight:500;text-transform:none}
+.inicio-card-link:hover{color:var(--primary)}
+.inicio-card-body{padding:16px 18px}
+.inicio-marco-empty{font-size:15px;font-weight:600;color:var(--primary);margin-bottom:5px}
+.inicio-marco-sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+.inicio-marco-btn{background:none;border:none;color:var(--primary);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:0;opacity:.7;text-decoration:underline;text-underline-offset:3px}
+.inicio-marco-btn:hover{opacity:1}
+.marco-goal-name{font-size:14px;font-weight:600;color:var(--primary);margin-bottom:10px}
+.marco-progress-bar{height:5px;background:var(--s2);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.marco-progress-fill{height:100%;background:var(--primary);border-radius:3px}
+.marco-goal-meta{font-size:11px;color:var(--muted);margin-bottom:12px}
+.inicio-conta-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);gap:12px}
+.inicio-conta-row:last-child{border-bottom:none}
+.conta-desc{font-size:13px;font-weight:500;color:var(--text)}
+.conta-dia{font-size:10px;color:var(--muted)}
+.conta-val{font-size:13px;font-weight:600;color:var(--primary);white-space:nowrap}
+.inicio-empty{font-size:12px;color:var(--muted);font-style:italic}
+/* Meu Ecossistema */
+.inicio-eco{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:32px}
+@media(max-width:768px){.inicio-eco{grid-template-columns:repeat(2,1fr)}}
+.inicio-eco-item{background:#fff;border-radius:10px;border:1.5px solid var(--border);padding:14px 16px;cursor:pointer;transition:.15s}
+.inicio-eco-item:hover{border-color:rgba(56,28,23,.3);background:var(--s2)}
+.eco-icon-wrap{width:30px;height:30px;border-radius:8px;background:var(--s2);display:flex;align-items:center;justify-content:center;margin-bottom:9px}
+.eco-icon-wrap svg{width:14px;height:14px;color:var(--primary)}
+.eco-label{font-size:12px;font-weight:600;color:var(--primary);margin-bottom:2px}
+.eco-sub{font-size:10px;color:var(--muted);line-height:1.4}
 </style>
 <!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1050,26 +1113,28 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </svg>
   </div>
 
+  <div class="sb-item" data-tab="inicio" onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>Início</div>
+
   <div class="sb-sec">Financeiro</div>
-  <div class="sb-item active" data-tab="orcamento"     onclick="sbNav(this)"><span class="sb-icon">📊</span>Orçamento</div>
-  <div class="sb-item"        data-tab="lancamentos"   onclick="sbNav(this)"><span class="sb-icon">💸</span>Lançamentos</div>
-  <div class="sb-item"        data-tab="fluxopgto"     onclick="sbNav(this)"><span class="sb-icon">💳</span>Fluxo de Pgto</div>
+  <div class="sb-item active" data-tab="orcamento"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></span>Orçamento</div>
+  <div class="sb-item"        data-tab="lancamentos"   onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16l4-2 4 2 4-2 4 2V4a2 2 0 0 0-2-2z"/><line x1="16" y1="8" x2="8" y2="8"/><line x1="16" y1="12" x2="8" y2="12"/></svg></span>Lançamentos</div>
+  <div class="sb-item"        data-tab="fluxopgto"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg></span>Fluxo de Pgto</div>
 
   <div class="sb-sec">Análise</div>
-  <div class="sb-item"        data-tab="diagnostico"   onclick="sbNav(this)"><span class="sb-icon">🔍</span>Diagnóstico</div>
-  <div class="sb-item"        data-tab="projecao"      onclick="sbNav(this)"><span class="sb-icon">📈</span>Projeção 12M</div>
+  <div class="sb-item"        data-tab="diagnostico"   onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>Diagnóstico</div>
+  <div class="sb-item"        data-tab="projecao"      onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>Projeção 12M</div>
 
   <div class="sb-sec">Planejamento</div>
-  <div class="sb-item"        data-tab="objetivos"     onclick="sbNav(this)"><span class="sb-icon">🎯</span>Objetivos</div>
-  <div class="sb-item"        data-tab="simulador"     onclick="sbNav(this)"><span class="sb-icon">🧮</span>Simulador</div>
-  <div class="sb-item"        data-tab="aposent"       onclick="sbNav(this)"><span class="sb-icon">🏖️</span>Aposentadoria</div>
-  <div class="sb-item"        data-tab="irpgbl"        onclick="sbNav(this)"><span class="sb-icon">📋</span>IR / PGBL</div>
-  <div class="sb-item"        data-tab="seguranca"     onclick="sbNav(this)"><span class="sb-icon">🛡️</span>Segurança</div>
+  <div class="sb-item"        data-tab="objetivos"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>Objetivos</div>
+  <div class="sb-item"        data-tab="simulador"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>Simulador</div>
+  <div class="sb-item"        data-tab="aposent"       onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>Aposentadoria</div>
+  <div class="sb-item"        data-tab="irpgbl"        onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>IR / PGBL</div>
+  <div class="sb-item"        data-tab="seguranca"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Segurança</div>
 
   <div class="sb-sec">Ativos</div>
-  <div class="sb-item"        data-tab="dividas"       onclick="sbNav(this)"><span class="sb-icon">💰</span>Dívidas</div>
-  <div class="sb-item"        data-tab="investimentos" onclick="sbNav(this)"><span class="sb-icon">📉</span>Investimentos</div>
-  <div class="sb-item"        data-tab="patrimonio"    onclick="sbNav(this)"><span class="sb-icon">🏠</span>Patrimônio</div>
+  <div class="sb-item"        data-tab="dividas"       onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>Dívidas</div>
+  <div class="sb-item"        data-tab="investimentos" onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span>Investimentos</div>
+  <div class="sb-item"        data-tab="patrimonio"    onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="9" y1="2" x2="9" y2="22"/></svg></span>Patrimônio</div>
 
   <div class="sb-profile" id="sb-profile">
     <div class="sb-avatar" id="sb-avatar">—</div>
@@ -1136,6 +1201,128 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <button class="fab" id="fab-add" onclick="fabAddTx()" title="Lançar despesa">＋</button>
 
 <div class="main">
+
+<!-- ═══════ INÍCIO ═══════════════════════════════════════════════════════════ -->
+<div class="panel" id="panel-inicio">
+<div class="panel-inicio-wrap">
+
+  <!-- Hero -->
+  <div class="inicio-eyebrow">SEU ESPAÇO FINANCEIRO</div>
+  <h1 class="inicio-h1">Seu próximo passo, com clareza.</h1>
+  <p class="inicio-sub" id="inicio-greeting">Acompanhe seu dinheiro e organize o próximo passo.</p>
+  <button class="inicio-ask-btn" onclick="sbNav(document.querySelector('[data-tab=diagnostico]'))">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Pergunte à Structa sobre seu planejamento
+  </button>
+
+  <!-- Structa Intelligence Banner -->
+  <div class="si-banner" id="si-banner">
+    <div class="si-banner-text">
+      <div class="si-label">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px;opacity:.7"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        STRUCTA INTELLIGENCE
+      </div>
+      <div class="si-msg" id="si-msg">O primeiro passo é conhecer seu mês.</div>
+      <div class="si-detail" id="si-detail">Registre receitas e despesas ou importe um extrato para começar.</div>
+    </div>
+    <button class="si-cta" onclick="sbNav(document.querySelector('[data-tab=orcamento]'))">Entender meu mês →</button>
+  </div>
+
+  <!-- KPIs do mês -->
+  <div class="inicio-sec-label" id="inicio-month-label">INDICADORES DO MÊS</div>
+  <div class="inicio-kpis">
+    <div class="inicio-kpi">
+      <div class="kpi-arrow">↑</div>
+      <div class="kpi-label">Entradas do mês</div>
+      <div class="kpi-val" id="inicio-entradas">R$ 0</div>
+      <div class="kpi-sub">Valor informado no orçamento</div>
+    </div>
+    <div class="inicio-kpi">
+      <div class="kpi-arrow">↓</div>
+      <div class="kpi-label">Saídas do mês</div>
+      <div class="kpi-val" id="inicio-saidas">R$ 0</div>
+      <div class="kpi-sub">Despesas pessoais e profissionais</div>
+    </div>
+    <div class="inicio-kpi">
+      <div class="kpi-arrow">⊟</div>
+      <div class="kpi-label">Resultado do mês</div>
+      <div class="kpi-val" id="inicio-resultado">R$ 0</div>
+      <div class="kpi-sub">Após despesas e aportes</div>
+    </div>
+  </div>
+
+  <!-- Próximo Marco + Próximas Contas -->
+  <div class="inicio-bottom-grid">
+    <div class="inicio-card">
+      <div class="inicio-card-hdr">
+        <span>SEU PRÓXIMO MARCO</span>
+        <span class="inicio-card-link" id="inicio-reserva" onclick="sbNav(document.querySelector('[data-tab=objetivos]'))" style="cursor:pointer">Ver objetivos →</span>
+      </div>
+      <div class="inicio-card-body" id="inicio-marco-body">
+        <div class="inicio-marco-empty">Mais clareza para chegar lá.</div>
+        <div class="inicio-marco-sub">Seus objetivos aparecem aqui assim que cadastrados.</div>
+        <button class="inicio-marco-btn" onclick="sbNav(document.querySelector('[data-tab=objetivos]'))">Planejar próximo passo →</button>
+      </div>
+    </div>
+    <div class="inicio-card">
+      <div class="inicio-card-hdr">
+        <span>PRÓXIMAS CONTAS</span>
+        <span class="inicio-card-link" onclick="sbNav(document.querySelector('[data-tab=fluxopgto]'))" style="cursor:pointer">Ver fluxo completo ↗</span>
+      </div>
+      <div class="inicio-card-body">
+        <div class="inicio-marco-sub" style="margin-bottom:10px">Compromissos deste mês, por dia de vencimento</div>
+        <div id="inicio-contas-list"><span class="inicio-empty">Nenhuma conta cadastrada no fluxo de pagamentos.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meu Ecossistema -->
+  <div class="inicio-sec-label">MEU ECOSSISTEMA</div>
+  <div class="inicio-eco">
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=orcamento]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg></div>
+      <div class="eco-label">Orçamento</div>
+      <div class="eco-sub">Receitas e despesas do mês</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=diagnostico]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <div class="eco-label">Diagnóstico</div>
+      <div class="eco-sub">Perfil e visão estratégica</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=objetivos]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+      <div class="eco-label">Objetivos</div>
+      <div class="eco-sub">Metas com prazo e progresso</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=projecao]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+      <div class="eco-label">Projeção 12M</div>
+      <div class="eco-sub">Cenários para o próximo ano</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=investimentos]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+      <div class="eco-label">Investimentos</div>
+      <div class="eco-sub">Carteira e rendimentos</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=seguranca]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <div class="eco-label">Segurança</div>
+      <div class="eco-sub">Reservas e proteção</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=simulador]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
+      <div class="eco-label">Simulador</div>
+      <div class="eco-sub">Cenários e projeções livres</div>
+    </div>
+    <div class="inicio-eco-item" onclick="sbNav(document.querySelector('[data-tab=irpgbl]'))">
+      <div class="eco-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="eco-label">IR / PGBL</div>
+      <div class="eco-sub">Planejamento tributário</div>
+    </div>
+  </div>
+
+</div><!-- /.panel-inicio-wrap -->
+</div><!-- /#panel-inicio -->
 
 <!-- ═══════ ORÇAMENTO ════════════════════════════════════════════════════════ -->
 <div class="panel active" id="panel-orcamento">
@@ -3721,12 +3908,101 @@ function bootApp(){
 }
 
 // ── RENDER CATS ───────────────────────────────────────────────────────────────
+function renderInicio(){
+  // Greeting
+  const firstName=(S.name||'').split(' ')[0]||'';
+  const grEl=document.getElementById('inicio-greeting');
+  if(grEl)grEl.textContent=firstName?'Olá, '+firstName+'. Acompanhe seu dinheiro e organize o próximo passo.':'Acompanhe seu dinheiro e organize o próximo passo.';
+
+  // Month label
+  const MESES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const mlEl=document.getElementById('inicio-month-label');
+  if(mlEl)mlEl.textContent='INDICADORES DE '+(MESES[orcViewMonth]||'').toUpperCase()+' DE '+orcViewYear;
+
+  // KPIs
+  const entradas=S.rendaReal||(getOrcRendaOrc?getOrcRendaOrc():0)||0;
+  const txMap=typeof getTxMap==='function'?getTxMap():{};
+  let saidas=0;
+  ['ct','fixas','var'].forEach(g=>{
+    (S.cats[g]||[]).forEach(cat=>{
+      const ft=txMap[cat.id]!==undefined;
+      saidas+=ft?(txMap[cat.id]||0):(cat.real||0);
+    });
+  });
+  let aportes=0;
+  (S.cats.inv||[]).forEach(cat=>{
+    const ft=txMap[cat.id]!==undefined;
+    aportes+=ft?(txMap[cat.id]||0):(cat.real||0);
+  });
+  const resultado=entradas-saidas-aportes;
+  const eEl=document.getElementById('inicio-entradas');
+  const sEl=document.getElementById('inicio-saidas');
+  const rEl=document.getElementById('inicio-resultado');
+  if(eEl)eEl.textContent=fmt(entradas);
+  if(sEl)sEl.textContent=fmt(saidas+aportes);
+  if(rEl){rEl.textContent=fmt(resultado);rEl.className='kpi-val'+(resultado<0?' bad':resultado>0?' ok':'');}
+
+  // Structa Intelligence banner
+  const siMsg=document.getElementById('si-msg');
+  const siDet=document.getElementById('si-detail');
+  if(siMsg&&siDet){
+    if(!entradas&&!saidas){
+      siMsg.textContent='O primeiro passo é conhecer seu mês.';
+      siDet.textContent='Registre receitas e despesas ou importe um extrato para começar.';
+    } else if(resultado<-100){
+      siMsg.textContent='Este mês as saídas superaram as entradas.';
+      siDet.textContent='Revise suas despesas para identificar onde é possível reequilibrar.';
+    } else if(resultado>=0){
+      siMsg.textContent='Seu mês está estruturado.';
+      siDet.textContent='Continue acompanhando e registrando suas transações.';
+    } else {
+      siMsg.textContent='Atenção ao equilíbrio do mês.';
+      siDet.textContent='Pequenas variações ainda são gerenciáveis com ajustes pontuais.';
+    }
+  }
+
+  // Goals — próximo marco
+  const goals=S.goals||[];
+  const marcoEl=document.getElementById('inicio-marco-body');
+  const reservaEl=document.getElementById('inicio-reserva');
+  if(reservaEl){
+    const total=goals.reduce((s,g)=>s+(g.acumulado||0),0);
+    reservaEl.textContent=total>0?fmt(total)+' acumulado →':'Ver objetivos →';
+  }
+  if(marcoEl){
+    if(!goals.length){
+      marcoEl.innerHTML='<div class="inicio-marco-empty">Mais clareza para chegar lá.</div><div class="inicio-marco-sub">Seus objetivos aparecem aqui assim que cadastrados.</div><button class="inicio-marco-btn" onclick="sbNav(document.querySelector(\'[data-tab=objetivos]\'))">Planejar próximo passo →</button>';
+    } else {
+      const g=goals[0];
+      const p=g.meta>0?Math.min(100,Math.round((g.acumulado||0)/g.meta*100)):0;
+      marcoEl.innerHTML='<div class="marco-goal-name">'+esc(g.icone||'🎯')+' '+esc(g.nome)+'</div>'
+        +'<div class="marco-progress-bar"><div class="marco-progress-fill" style="width:'+p+'%"></div></div>'
+        +'<div class="marco-goal-meta">'+fmt(g.acumulado||0)+' de '+fmt(g.meta)+' · '+p+'%</div>'
+        +(goals.length>1?'<div class="inicio-marco-sub">+'+( goals.length-1)+' outro(s) objetivo(s)</div>':'')
+        +'<button class="inicio-marco-btn" onclick="sbNav(document.querySelector(\'[data-tab=objetivos]\'))">Ver todos os objetivos →</button>';
+    }
+  }
+
+  // Próximas contas
+  const contas=(S.pgtoEntries||[]).filter(c=>c.dia&&c.valor);
+  const contasEl=document.getElementById('inicio-contas-list');
+  if(contasEl){
+    const today=new Date().getDate();
+    const upcoming=contas.filter(c=>c.dia>=today).sort((a,b)=>a.dia-b.dia).slice(0,5);
+    if(!upcoming.length){
+      contasEl.innerHTML='<span class="inicio-empty">Nenhuma conta próxima cadastrada.</span>';
+    } else {
+      contasEl.innerHTML=upcoming.map(c=>'<div class="inicio-conta-row"><div><div class="conta-desc">'+esc(c.desc)+'</div><div class="conta-dia">dia '+c.dia+'</div></div><div class="conta-val">'+fmt(c.valor)+'</div></div>').join('');
+    }
+  }
+}
 function renderAll(){
   document.getElementById('clientName').value=S.name||'';
   document.getElementById('rendaOrc').value=getOrcRendaOrc()||'';
   document.getElementById('rendaReal').value=S.rendaReal||'';
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   sbUpdateProfile();
+  renderInicio();
 }
 function grpSumId(grp,nome){return 'grpsum-'+grp+'-'+(nome||'').replace(/[^a-z0-9]/gi,'_').toLowerCase();}
 function renderDespesas(){
@@ -5170,7 +5446,7 @@ function switchTab(el){
   // Sync sidebar active state
   const tab=el.dataset.tab;
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i.dataset.tab===tab));
-  const names={orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
+  const names={inicio:'Início',orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
     diagnostico:'Diagnóstico',projecao:'Projeção 12M',objetivos:'Objetivos',
     simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',
     seguranca:'Segurança',dividas:'Dívidas',investimentos:'Investimentos',patrimonio:'Patrimônio'};
@@ -5180,16 +5456,23 @@ function switchTab(el){
 
 // ── SIDEBAR NAV ───────────────────────────────────────────────────────────────
 function sbNav(el){
-  // Find the matching tab-bar element and delegate to switchTab
   const tab=el.dataset.tab;
   const tabEl=document.querySelector('#tab-bar [data-tab="'+tab+'"]');
   if(tabEl)switchTab(tabEl);
   else{
-    // Fallback: update panels directly
     document.querySelectorAll('.panel:not(#panel-conversor)').forEach(p=>p.classList.remove('active'));
     const panel=document.getElementById('panel-'+tab);
     if(panel)panel.classList.add('active');
     document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i===el));
+    // Update topbar breadcrumb
+    const names={inicio:'Início',orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
+      diagnostico:'Diagnóstico',projecao:'Projeção 12M',objetivos:'Objetivos',
+      simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',
+      seguranca:'Segurança',dividas:'Dívidas',investimentos:'Investimentos',patrimonio:'Patrimônio'};
+    const tn=document.getElementById('topbar-tab-name');
+    if(tn)tn.textContent=names[tab]||tab;
+    // Refresh Início panel on navigation
+    if(tab==='inicio')renderInicio();
   }
   sbClose();
 }
