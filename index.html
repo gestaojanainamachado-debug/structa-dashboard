@@ -5935,6 +5935,9 @@ async function sbSetPassword() {
 function generateReport(){
   const clientName=S.name||_rawCid||'Cliente';
   const today=new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  // Mês de referência = mês visível no Orçamento, não a data de hoje
+  const refMonthDate=new Date(orcViewYear,orcViewMonth,1);
+  const refMonth=refMonthDate.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
 
   // ── Orçamento summary
   // Mesma lógica de cálculo que recalc() usa pra preencher a tela do Orçamento
@@ -6046,7 +6049,7 @@ function generateReport(){
     <div class="rpt-meta">
       <div class="rpt-client-name">${clientName}</div>
       <div>Planejamento Financeiro</div>
-      <div>${today}</div>
+      <div>${refMonth.charAt(0).toUpperCase()+refMonth.slice(1)}</div>
     </div>
   </div>
 
