@@ -5950,10 +5950,11 @@ function generateReport(){
   const rptHasTx=S.transactions.length>0;
   function rptRealOf(cats){return(cats||[]).reduce((s,c)=>s+(rptTxMap[c.id]!==undefined?rptTxMap[c.id]:c.real||0),0);}
   // usa sumOrc (lê de S.monthlyBudgets) para bater com o que aparece na tela de Orçamento
+  const totalOrcC=sumOrc(S.cats.ct||[],orcViewYear,orcViewMonth), totalRealC=rptRealOf(S.cats.ct);
   const totalOrcF=sumOrc(S.cats.fixas,orcViewYear,orcViewMonth), totalRealF=rptRealOf(S.cats.fixas);
   const totalOrcV=sumOrc(S.cats.var,orcViewYear,orcViewMonth),   totalRealV=rptRealOf(S.cats.var);
   const totalOrcI=sumOrc(S.cats.inv,orcViewYear,orcViewMonth),   totalRealI=rptRealOf(S.cats.inv);
-  const totalOrc=totalOrcF+totalOrcV+totalOrcI, totalReal=totalRealF+totalRealV+totalRealI;
+  const totalOrc=totalOrcC+totalOrcF+totalOrcV+totalOrcI, totalReal=totalRealC+totalRealF+totalRealV+totalRealI;
   const rendaReal=rptHasTx&&rptTxRenda>0?rptTxRenda:(S.rendaReal||0);
   const saldo=rendaReal-totalReal;
   const txPoupanca=rendaReal?Math.round(totalRealI/rendaReal*100):0;
@@ -6076,6 +6077,7 @@ function generateReport(){
     <table class="rpt-table">
       <thead><tr><th>Categoria</th><th class="num">Orçado</th><th class="num">Realizado</th><th class="num">% Renda</th></tr></thead>
       <tbody>
+        <tr><td><b>Custos com Trabalho</b></td><td class="num">${fmt(totalOrcC)}</td><td class="num">${fmt(totalRealC)}</td><td class="num">${rendaReal?Math.round(totalRealC/rendaReal*100)+'%':'—'}</td></tr>
         <tr><td><b>Despesas Fixas</b></td><td class="num">${fmt(totalOrcF)}</td><td class="num">${fmt(totalRealF)}</td><td class="num">${rendaReal?Math.round(totalRealF/rendaReal*100)+'%':'—'}</td></tr>
         <tr><td><b>Despesas Variáveis</b></td><td class="num">${fmt(totalOrcV)}</td><td class="num">${fmt(totalRealV)}</td><td class="num">${rendaReal?Math.round(totalRealV/rendaReal*100)+'%':'—'}</td></tr>
         <tr style="background:#f0eef8"><td><b>Investimentos</b></td><td class="num">${fmt(totalOrcI)}</td><td class="num">${fmt(totalRealI)}</td><td class="num ${txPoupanca>=10?'ok':'warn'}">${txPoupanca}%</td></tr>
