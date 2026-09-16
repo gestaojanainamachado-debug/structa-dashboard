@@ -896,6 +896,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .topbar-indicator{font-size:10px;color:var(--muted)}
 .topbar-indicator.saving{color:#a06820}
 .topbar-indicator.saved{color:#3d6b4f}
+.topbar-export-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:7px;border:1.5px solid var(--border);background:#fff;color:var(--primary);cursor:pointer;font-family:inherit;transition:.12s}
+.topbar-export-btn:hover{background:var(--primary);color:#f4ede4;border-color:var(--primary)}
 .sb-hamburger{display:none;background:none;border:none;cursor:pointer;
   color:var(--primary);font-size:20px;padding:2px 6px;line-height:1;border-radius:6px}
 .sb-hamburger:hover{background:var(--s2)}
@@ -1232,6 +1234,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   </div>
   <div class="topbar-right">
     <div class="topbar-indicator" id="topbar-indicator"></div>
+    <button class="topbar-export-btn" id="topbar-export-btn" onclick="exportAllTxExcel()" title="Exportar todos os lançamentos em Excel" style="display:none">⬇ Exportar</button>
   </div>
 </div>
 
@@ -3126,12 +3129,28 @@ async function sbLoadData(user) {
     const localTs = parseInt(localStorage.getItem(SKEY+'_ts')||'0');
     const localRaw = localStorage.getItem(SKEY);
     const localData = localRaw ? (() => { try{return JSON.parse(localRaw);}catch(_){return null;} })() : null;
-    if(localTs > sbTs + 5000 && localData && Object.keys(localData).length > 3) {
+    const hasSbData  = data?.data && typeof data.data === 'object';
+    const hasLocalData = localData && Object.keys(localData).length > 3;
+    if(hasSbData && hasLocalData) {
+      // Merge: usa a fonte mais recente para configurações, mas mantém TODAS as
+      // transações de ambas as fontes (dedup por id) — nunca descarta lançamentos.
+      const base = localTs >= sbTs ? localData : data.data;
+      S = { ...freshState(), ...base };
+      const allTx = [...(localData.transactions||[]), ...(data.data.transactions||[])];
+      const seenIds = new Set();
+      S.transactions = allTx.filter(t => {
+        if(!t || !t.id || seenIds.has(t.id)) return false;
+        seenIds.add(t.id);
+        return true;
+      });
+      _sbDirty = true;
+      setTimeout(sbSaveNow, 1500);
+    } else if(hasSbData) {
+      S = { ...freshState(), ...data.data };
+    } else if(hasLocalData) {
       S = { ...freshState(), ...localData };
       _sbDirty = true;
       setTimeout(sbSaveNow, 1500);
-    } else if(data?.data && typeof data.data === 'object') {
-      S = { ...freshState(), ...data.data };
     }
   }
   try {
@@ -3141,18 +3160,25 @@ async function sbLoadData(user) {
 }
 
 async function sbSaveNow() {
-  if(!_sb || !_sbUser) return;
-  const slug = (_sbRole === 'advisor' && _cid) ? _cid
-             : (_sbRole === 'client' && _sbSlug) ? _sbSlug
-             : null;
+  if(!_sb) return;
+  let slug = null;
+  if(_sbUser) {
+    slug = (_sbRole === 'advisor' && _cid) ? _cid
+         : (_sbRole === 'client' && _sbSlug) ? _sbSlug
+         : null;
+  } else {
+    // Cliente anon via URL ?c=slug — tenta salvar com anon key
+    slug = _cid || null;
+  }
   if(!slug) return;
   try {
     const payload = { slug, data: S, updated_at: new Date().toISOString() };
-    if(_sbRole === 'advisor') payload.advisor_id = _sbUser.id;
+    if(_sbUser && _sbRole === 'advisor') payload.advisor_id = _sbUser.id;
     await _sb.from('client_data').upsert(payload, { onConflict: 'slug' });
     _sbDirty=false;
     setSaveIndicator('saved');
   } catch(e) {
+    // Anon save pode falhar por RLS — silencioso, dados estão no localStorage
     console.warn('Supabase save error:', e);
     setSaveIndicator('');
   }
@@ -4085,6 +4111,11 @@ function bootApp(){
   if(sbClientMode){
     document.getElementById('client-logout-btn').style.display='inline-block';
   }
+  // Botão de exportar no topbar (visível para clientes, oculto para advisor)
+  if(!_isAdmin || sbClientMode){
+    const expBtn=document.getElementById('topbar-export-btn');
+    if(expBtn) expBtn.style.display='inline-flex';
+  }
   // Carrega dados do localStorage se não veio do Supabase
   if(!_sbUser){
     try{const sv=localStorage.getItem(SKEY);if(sv)S=JSON.parse(sv);}catch(_){}
@@ -4990,6 +5021,30 @@ function exportTxExcel(){
   XLSX.utils.book_append_sheet(wb,ws,'Lançamentos');
   const clientName=(S.name||'cliente').replace(/[^a-z0-9]+/gi,'_');
   XLSX.writeFile(wb,`lancamentos_${clientName}_${MESES_PT[txViewMonth].toLowerCase()}_${txViewYear}.xlsx`);
+}
+// Exporta TODOS os lançamentos (todos os meses) em Excel — visível no topbar
+function exportAllTxExcel(){
+  if(typeof XLSX==='undefined'){alert('Não foi possível carregar o gerador de Excel agora — verifique a conexão e tente de novo.');return;}
+  const all=(S.transactions||[]).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!all.length){alert('Nenhum lançamento encontrado.');return;}
+  const TIPO_LBL={receita:'Receita',fixas:'Despesa Fixa',var:'Despesa Variável',inv:'Investimento',ct:'Custo Profissional',neutro:'Neutro'};
+  const rows=all.map(tx=>({
+    'Data':(tx.dataPgto||tx.date)?new Date((tx.dataPgto||tx.date)+'T00:00:00').toLocaleDateString('pt-BR'):'',
+    'Descrição':tx.desc||'',
+    'Categoria':getCatLbl(tx.catId,tx.grp),
+    'Tipo':TIPO_LBL[tx.grp]||tx.grp||'',
+    'Conta/Cartão/Forma de Pgto':getPgtoLbl(tx),
+    'Parcela':tx.parcela||'',
+    'Reembolso/Estorno':tx.creditoNaCategoria?'Sim':'',
+    'Valor (R$)':(tx.grp==='receita'?1:-1)*(tx.creditoNaCategoria?-1:1)*Math.abs(tx.amount),
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:11},{wch:34},{wch:22},{wch:16},{wch:26},{wch:9},{wch:14},{wch:13}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Todos os Lançamentos');
+  const clientName=(S.name||'cliente').replace(/[^a-z0-9]+/gi,'_');
+  const hoje=new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb,`lancamentos_${clientName}_todos_${hoje}.xlsx`);
 }
 function renderTxList(){
   // Update month label
@@ -6041,7 +6096,8 @@ function save(){
     localStorage.setItem(SKEY,JSON.stringify(S));
     localStorage.setItem(SKEY+'_ts',Date.now().toString());
   }catch(_){}
-  if(_sb&&_sbUser){
+  // Sincroniza com Supabase se logado OU se cliente via slug (anon key)
+  if(_sb&&(_sbUser||_cid)){
     _sbDirty=true;
     clearTimeout(_sbSaveTimer);
     setSaveIndicator('saving');
