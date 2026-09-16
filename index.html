@@ -2687,11 +2687,13 @@ function sumOrc(cats,y,m){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id,y,m)|
 
 function orcPrevMonth(){
   orcViewMonth--;if(orcViewMonth<0){orcViewMonth=11;orcViewYear--;}
-  renderOrcMonth();
+  txViewYear=orcViewYear;txViewMonth=orcViewMonth; // mantém tabs sincronizadas
+  renderOrcMonth();renderTxList();
 }
 function orcNextMonth(){
   orcViewMonth++;if(orcViewMonth>11){orcViewMonth=0;orcViewYear++;}
-  renderOrcMonth();
+  txViewYear=orcViewYear;txViewMonth=orcViewMonth; // mantém tabs sincronizadas
+  renderOrcMonth();renderTxList();
 }
 const ORC_MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 function renderOrcMonth(){
@@ -3840,6 +3842,7 @@ function addTx(){
   recalc();renderTxList();renderFluxoPgto();save();
 }
 function delTx(id){
+  if(!confirm('Excluir este lançamento?'))return;
   S.transactions=S.transactions.filter(t=>t.id!==id);
   ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
@@ -3914,8 +3917,8 @@ function saveTxEdit(){
 }
 
 // ── RENDER TX LIST ────────────────────────────────────────────────────────────
-function txPrevMonth(){if(txViewMonth===0){txViewMonth=11;txViewYear--;}else txViewMonth--;renderTxList();recalc();}
-function txNextMonth(){if(txViewMonth===11){txViewMonth=0;txViewYear++;}else txViewMonth++;renderTxList();recalc();}
+function txPrevMonth(){if(txViewMonth===0){txViewMonth=11;txViewYear--;}else txViewMonth--;orcViewYear=txViewYear;orcViewMonth=txViewMonth;renderTxList();renderOrcMonth();}
+function txNextMonth(){if(txViewMonth===11){txViewMonth=0;txViewYear++;}else txViewMonth++;orcViewYear=txViewYear;orcViewMonth=txViewMonth;renderTxList();renderOrcMonth();}
 function toggleTxForm(){
   const f=document.getElementById('tx-manual-form');const btn=document.getElementById('tx-form-toggle');
   const open=f.style.display==='none';f.style.display=open?'':'none';btn.textContent=open?'✕ Fechar':'＋ Manual';
@@ -5918,9 +5921,10 @@ function generateReport(){
   const rptTxRenda=getTxRenda(orcViewYear,orcViewMonth);
   const rptHasTx=S.transactions.length>0;
   function rptRealOf(cats){return(cats||[]).reduce((s,c)=>s+(rptTxMap[c.id]!==undefined?rptTxMap[c.id]:c.real||0),0);}
-  const totalOrcF=sumF(S.cats.fixas,'orc'), totalRealF=rptRealOf(S.cats.fixas);
-  const totalOrcV=sumF(S.cats.var,'orc'),   totalRealV=rptRealOf(S.cats.var);
-  const totalOrcI=sumF(S.cats.inv,'orc'),   totalRealI=rptRealOf(S.cats.inv);
+  // usa sumOrc (lê de S.monthlyBudgets) para bater com o que aparece na tela de Orçamento
+  const totalOrcF=sumOrc(S.cats.fixas,orcViewYear,orcViewMonth), totalRealF=rptRealOf(S.cats.fixas);
+  const totalOrcV=sumOrc(S.cats.var,orcViewYear,orcViewMonth),   totalRealV=rptRealOf(S.cats.var);
+  const totalOrcI=sumOrc(S.cats.inv,orcViewYear,orcViewMonth),   totalRealI=rptRealOf(S.cats.inv);
   const totalOrc=totalOrcF+totalOrcV+totalOrcI, totalReal=totalRealF+totalRealV+totalRealI;
   const rendaReal=rptHasTx&&rptTxRenda>0?rptTxRenda:(S.rendaReal||0);
   const saldo=rendaReal-totalReal;
@@ -6027,7 +6031,7 @@ function generateReport(){
     <div class="rpt-kpi-row">
       <div class="rpt-kpi">
         <div class="rpt-kpi-label">Renda Mensal</div>
-        <div class="rpt-kpi-value">${fmt(rendaReal||S.rendaOrc)}</div>
+        <div class="rpt-kpi-value">${fmt(rendaReal||getOrcRendaOrc(orcViewYear,orcViewMonth))}</div>
         <div class="rpt-kpi-note">${rendaReal?'Realizada no mês':'Referência do planejamento'}</div>
       </div>
       <div class="rpt-kpi">
