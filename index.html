@@ -2490,6 +2490,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">Santander</span>
       <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">Banco do Brasil</span>
       <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">Inter</span>
+      <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">Mercado Pago</span>
       <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">InfinitePay</span>
       <span style="background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--muted)">Sicoob</span>
     </div>
@@ -9243,6 +9244,7 @@ const BANK_NAMES={
   bb_fatura:      'Banco do Brasil – Fatura Ourocard',
   visa_fatura:    'Fatura Cartão Visa',
   inter_fatura:   'Banco Inter – Fatura Cartão',
+  mp_fatura:      'Mercado Pago – Fatura Cartão',
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
   sicoob_fatura:  'Sicoob – Fatura Cartão',
@@ -9317,6 +9319,9 @@ function detectBank(lines){
      &&(t.includes('fatura')||t.includes('estabelecimento')))return'itau_fatura';
   if(t.includes('itaú')||t.includes('itau'))return'itau_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
+  // Fatura de cartão Mercado Pago — precisa do segundo termo pra não confundir
+  // com um extrato de conta Mercado Pago (se algum dia for suportado).
+  if(t.includes('mercado pago')&&(t.includes('cartão de crédito')||t.includes('essa é sua fatura')))return'mp_fatura';
   // Fatura de cartão Sicoob (Sicoobcard) — precisa vir antes do extrato SISBR,
   // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
   // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
@@ -10609,6 +10614,41 @@ function parseInterFatura(lines){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: MERCADO PAGO — FATURA CARTÃO DE CRÉDITO
+// Tabela "Detalhes de consumo": "DD/MM DESCRIÇÃO [Parcela N de M] R$ X.XXX,XX".
+// Ignora linhas de "Movimentações na fatura" que não são consumo novo (pagamento
+// da fatura anterior, crédito concedido, multa/juros/IOF do rotativo) — mesmo
+// critério de "ruído de fatura" usado nos demais parsers de cartão.
+// As linhas não trazem ano — infere pelo mês de emissão ("Emitida em: DD/MM/AAAA"):
+// mês da transação maior que o mês de emissão = ano anterior (ex.: parcela antiga
+// datada de dezembro numa fatura emitida em agosto → dezembro do ano anterior).
+// ═══════════════════════════════════════════════════════════════════════════════
+function parseMPFatura(lines,allText){
+  const txns=[];
+  let year=new Date().getFullYear(),refMonth=null;
+  const em=(allText||'').match(/emitida em:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(em){refMonth=parseInt(em[2]);year=parseInt(em[3]);}
+  const re=/^(\d{2})\/(\d{2})\s+(.+?)(?:\s+Parcela\s+(\d{1,2})\s+de\s+(\d{1,3}))?\s+R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})$/i;
+  const skipDesc=/cr[ée]dito concedido|pagamento da fatura|multa por atraso|iof do rotativo|juros do rotativo|juros de mora/i;
+  for(const l of lines){
+    const text=l.text.trim();
+    const m=text.match(re);
+    if(!m)continue;
+    let desc=m[3].trim();
+    if(skipDesc.test(desc))continue;
+    if(m[4]&&m[5])desc=`${desc} Parc. ${parseInt(m[4])}/${parseInt(m[5])}`;
+    const amt=convParseBR(m[6]);
+    if(amt===null||!desc)continue;
+    const value=-Math.abs(amt);
+    const mo=parseInt(m[2]);
+    const y=(refMonth&&mo>refMonth)?year-1:year;
+    const date=`${m[1]}/${m[2]}/${y}`;
+    txns.push({date,desc,value,cat:classifyTx(desc,value)});
+  }
+  return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PARSER: CARTÃO — DEMONSTRATIVO PRÓXIMA FATURA (app Cartões Caixa)
 // Par de linhas: "DD/MM 1.234,56" seguida da descrição ("APP COLAEDE 03 10" = Parc. 3/10)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -10913,6 +10953,7 @@ async function convProcessPDF(file){
       case'bb_fatura':       txns=parseBBFatura(lines,allText);break;
       case'visa_fatura':     txns=parseUnicredFatura(lines,allText);break;
       case'inter_fatura':    txns=parseInterFatura(lines);break;
+      case'mp_fatura':       txns=parseMPFatura(lines,allText);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
