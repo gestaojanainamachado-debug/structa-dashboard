@@ -299,7 +299,19 @@ canvas{max-width:100%}
   .fld-date,.fld-desc,.fld-cat,.fld-pgto{width:100%;min-width:0}
   .fld-val{width:calc(50% - 4px)}
   .form-row .btn{width:calc(50% - 4px)}
+  /* ── LANÇAMENTOS MOBILE ── */
   .tx-total-bar{grid-template-columns:1fr 1fr;gap:8px}
+  .tx-total{padding:10px 10px;overflow:hidden}
+  .tx-total .val{font-size:15px}
+  .tx-total-sub{font-size:9px;line-height:1.4;white-space:normal;overflow:hidden}
+  /* Barra de ações: botões de ícone+texto compactos */
+  .tx-action-bar{gap:6px}
+  .tx-btn-lbl-hide{display:none}
+  /* Filtros: busca full width, depois 2 selects lado a lado */
+  #panel-lancamentos .tx-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  #tx-search{width:100%!important;min-width:0!important;flex:none}
+  #tx-filter-cat,#tx-filter-grp{flex:1;min-width:0!important;font-size:12px}
+  #tx-filter-val-min,#tx-filter-val-max{width:calc(50% - 22px)!important;min-width:0}
   .timeline-row,.tl-header{grid-template-columns:36px 1fr auto 88px}
   .tl-header span:last-child,.timeline-row .tl-saldo{display:none}
   .tl-day{font-size:16px}
@@ -1058,6 +1070,74 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .pat-evol-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
 .pat-snap-btn{padding:7px 14px;border-radius:7px;font-size:11px;font-weight:600;background:var(--primary);color:#f4ede4;border:none;cursor:pointer;font-family:inherit}
 .pat-snap-btn:hover{background:var(--p2)}
+
+/* ── VISUAL REFRESH: cantos, sombras, foco e microinterações mais fluidas ── */
+:root{
+  --rad:16px;--rad-sm:12px;
+  --shadow-card:0 2px 4px -1px rgba(56,28,23,.06),0 12px 24px -10px rgba(56,28,23,.16);
+  --shadow-elevated:0 8px 16px -4px rgba(56,28,23,.14),0 28px 52px -18px rgba(56,28,23,.30);
+  --ease:cubic-bezier(.4,0,.2,1);
+}
+*{scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted-2)}
+:is(button,a,input,select,textarea):focus-visible{outline:2.5px solid var(--lilac);outline-offset:2px;border-radius:4px}
+
+/* números financeiros alinhados e com largura fixa por dígito */
+.kpi-val,.gc-footer-val,.gc-val-row .val,.gc-inv-val,.tx-total .val,.r,.tl-val,.tl-saldo,.ir-big,.ir-table td:last-child,
+.expat-kpi-val,.rpt-kpi-value,.csvr-amt,.acomp-card-val,.donut-big,.month-label,.tx-month-label{font-variant-numeric:tabular-nums}
+
+/* elevação nos cartões-base: sombra assume a separação, borda vira só um fio */
+.card,.kpi,.tx-form,.tx-total,.goal-card,.ir-inputs,.ir-compare-card,.ir-recom,.pgbl-compare,.apos-inputs,
+.apos-timeline,.fases-card,.apos-chart-card,.sim-shared,.sim-card,.sim-compare,.seg-reserva-card,.seg-seg-card,
+.pat-section,.acomp-card,.acomp-goals,.goal-icon-btn,.card-chip,.cs-item{
+  border-color:rgba(56,28,23,.07);
+  box-shadow:var(--shadow-card);
+  transition:border-color .18s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease);
+}
+.card:hover,.kpi:hover,.tx-form:hover,.tx-total:hover,.ir-inputs:hover,.ir-compare-card:hover,.ir-recom:hover,
+.pgbl-compare:hover,.apos-inputs:hover,.apos-timeline:hover,.fases-card:hover,.apos-chart-card:hover,
+.sim-shared:hover,.sim-card:hover,.sim-compare:hover,.seg-reserva-card:hover,.pat-section:hover,
+.acomp-card:hover,.acomp-goals:hover,.card-chip:hover,.cs-item:hover{box-shadow:var(--shadow-elevated)}
+.goal-card:hover,.seg-seg-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-elevated)}
+.modal,.catmgr,#conv-overlay-inner{box-shadow:var(--shadow-elevated)}
+.backdrop{backdrop-filter:blur(3px)}
+
+/* botões: cantos mais macios, feedback de toque e outline neutro no secundário */
+.btn{border-radius:var(--rad-sm);transition:background-color .15s var(--ease),border-color .15s var(--ease),transform .1s var(--ease),box-shadow .15s var(--ease)}
+.btn-p{box-shadow:0 6px 16px -8px rgba(56,28,23,.45)}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 10px 22px -8px rgba(56,28,23,.5)}
+.btn-o{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-o:hover{background:var(--s2);border-color:var(--muted-2)}
+.btn:active{transform:scale(.98)}
+
+/* campos: foco com glow suave em vez de troca seca de cor */
+.inp,.fld input,.fld select,.ir-fld input,.ir-fld select,.cs-new input,.apos-fld input,.apos-fld select{
+  transition:border-color .15s var(--ease),box-shadow .15s var(--ease);
+}
+.inp{border-radius:8px}
+.inp:focus,.fld input:focus,.fld select:focus,.ir-fld input:focus,.ir-fld select:focus{box-shadow:0 0 0 3px rgba(199,195,219,.35)}
+
+/* abas: destaque em pílula na aba ativa (desktop) */
+.tab{transition:color .15s var(--ease),background-color .15s var(--ease),border-color .15s var(--ease)}
+@media(min-width:601px){
+  .hdr{box-shadow:0 1px 0 rgba(56,28,23,.06)}
+  .tab-bar{box-shadow:0 8px 20px -18px rgba(56,28,23,.35)}
+  .tab{border-radius:10px 10px 0 0}
+  .tab.active{background:rgba(255,255,255,.35)}
+}
+
+/* barra lateral e topo (desktop): profundidade e transições macias */
+.sidebar{box-shadow:8px 0 28px -18px rgba(56,28,23,.4)}
+.sb-item{min-height:44px;border-radius:11px;transition:background-color .15s var(--ease),color .15s var(--ease),transform .12s var(--ease),box-shadow .15s var(--ease)}
+.sb-item:hover{transform:translateX(2px)}
+.sb-item.active{box-shadow:0 8px 20px -10px rgba(56,28,23,.55);transform:translateX(1px)}
+.sb-avatar{box-shadow:0 0 0 2px var(--bg),0 0 0 3px var(--border)}
+.sb-logout-icon{transition:background-color .15s var(--ease),color .15s var(--ease)}
+.topbar{box-shadow:0 1px 0 var(--border),0 6px 18px -16px rgba(56,28,23,.3)}
+.topbar-export-btn{border-radius:var(--rad-sm);transition:background-color .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
 </style>
 <!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1554,7 +1634,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <div class="panel" id="panel-lancamentos">
 
   <!-- Barra superior: navegação de mês + ações -->
-  <div class="abar" style="flex-wrap:wrap;gap:8px">
+  <div class="abar tx-action-bar" style="flex-wrap:wrap;gap:8px">
     <div class="tx-month-nav">
       <button onclick="txPrevMonth()">←</button>
       <span class="tx-month-label" id="tx-month-label">—</span>
@@ -1562,10 +1642,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
     <span class="tx-month-info" id="tx-month-info"></span>
     <div class="sp"></div>
-    <button class="btn btn-p btn-sm" onclick="openConvOverlay()">📄 Importar Extrato</button>
-    <button class="btn btn-o btn-sm" id="tx-form-toggle" onclick="toggleTxForm()">＋ Manual</button>
-    <button class="btn btn-o btn-sm" onclick="openContasModal()">🏦 Contas/Cartões</button>
-    <button class="btn btn-o btn-sm" onclick="exportTxExcel()">📊 Exportar Excel</button>
+    <button class="btn btn-p btn-sm tx-btn-import" onclick="openConvOverlay()"><span class="tx-btn-ico">📄</span><span class="tx-btn-lbl"> Importar Extrato</span></button>
+    <button class="btn btn-o btn-sm" id="tx-form-toggle" onclick="toggleTxForm()"><span class="tx-btn-ico">＋</span><span class="tx-btn-lbl"> Manual</span></button>
+    <button class="btn btn-o btn-sm tx-btn-contas" onclick="openContasModal()"><span class="tx-btn-ico">🏦</span><span class="tx-btn-lbl tx-btn-lbl-hide"> Contas/Cartões</span></button>
+    <button class="btn btn-o btn-sm tx-btn-xls" onclick="exportTxExcel()"><span class="tx-btn-ico">📊</span><span class="tx-btn-lbl tx-btn-lbl-hide"> Excel</span></button>
   </div>
 
   <!-- Formulário manual (colapsável) -->
@@ -1600,7 +1680,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   </div>
 
   <!-- Barra de busca e filtros -->
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+  <div class="tx-filters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
     <input type="text" id="tx-search" placeholder="🔍 Buscar descrição..." oninput="renderTxList()"
       style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none">
     <select id="tx-filter-cat" onchange="renderTxList()"
