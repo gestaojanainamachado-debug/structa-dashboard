@@ -322,14 +322,15 @@ canvas{max-width:100%}
   .card-form-grid{grid-template-columns:1fr 72px 72px}
   /* TX table cards on mobile */
   .tx-table{display:block}.tx-table thead{display:none}.tx-table tbody{display:block}
-  .tx-table tr{display:grid;grid-template-columns:1fr auto;gap:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-sm);padding:10px 12px;margin-bottom:8px}
+  .tx-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-sm);padding:10px 12px;margin-bottom:8px;max-width:100%}
   .tx-table tr:last-child{border-bottom:1px solid var(--border)}
-  .tx-table td{border:none;padding:0}
-  .tx-table .td-date{grid-column:1;grid-row:1;color:var(--muted);font-size:11px}
-  .tx-table .td-desc{grid-column:1;grid-row:2;font-weight:600;font-size:13px}
-  .tx-table .td-cat{grid-column:1;grid-row:3}
-  .tx-table .td-pgto{grid-column:1;grid-row:4;font-size:11px;color:var(--muted)}
-  .tx-table .td-amt{grid-column:2;grid-row:1/5;display:flex;align-items:center;font-size:15px;font-weight:700;justify-content:flex-end}
+  .tx-table td{border:none;padding:0;min-width:0}
+  .tx-table .td-date{grid-column:1;grid-row:1;color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tx-table .td-desc{grid-column:1;grid-row:2;font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tx-table .td-cat{grid-column:1;grid-row:3;overflow:hidden}
+  .tx-table .td-cat .badge{white-space:normal;max-width:100%;display:inline-block;overflow:hidden;text-overflow:ellipsis}
+  .tx-table .td-pgto{grid-column:1;grid-row:4;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tx-table .td-amt{grid-column:2;grid-row:1/5;display:flex;align-items:center;font-size:13px;font-weight:700;justify-content:flex-end;white-space:nowrap;max-width:110px}
   .tx-table .td-chk{display:none}
   .tx-table .td-del{grid-column:1/-1;grid-row:5;display:flex;align-items:center;gap:8px;padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
   .tx-table .edit-btn{flex:1;min-height:40px;background:rgba(56,28,23,.07);color:var(--primary);border-radius:6px;font-size:12px;font-weight:600}
