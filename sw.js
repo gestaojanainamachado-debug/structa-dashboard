@@ -1,4 +1,4 @@
-const CACHE = 'structa-v16';
+const CACHE = 'structa-v17';
 const ASSETS = [
   '/',
   '/index.html',

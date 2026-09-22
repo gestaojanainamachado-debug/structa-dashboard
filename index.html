@@ -62,6 +62,7 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .save-indicator{display:none;font-size:10px;margin-top:3px;opacity:.6;transition:.3s}
 .save-indicator.saving{display:block;color:#a06820}
 .save-indicator.saved{display:block;color:#3d6b4f}
+.save-indicator.error{display:block;color:#c0392b;opacity:1}
 
 /* ACOMPANHAMENTO ANUAL */
 .acomp-section{margin-top:28px;border-top:2px solid var(--lilac);padding-top:22px}
@@ -914,6 +915,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .topbar-indicator{font-size:10px;color:var(--muted)}
 .topbar-indicator.saving{color:#a06820}
 .topbar-indicator.saved{color:#3d6b4f}
+.topbar-indicator.error{color:#c0392b;font-weight:600}
 .topbar-export-btn{font-size:11px;font-weight:600;padding:5px 12px;border-radius:7px;border:1.5px solid var(--border);background:#fff;color:var(--primary);cursor:pointer;font-family:inherit;transition:.12s}
 .topbar-export-btn:hover{background:var(--primary);color:#f4ede4;border-color:var(--primary)}
 .sb-hamburger{display:none;background:none;border:none;cursor:pointer;
@@ -3260,7 +3262,13 @@ async function sbLoadData(user) {
     if(hasLocalData && localTxCount > sbTxCount) {
       try { autoBackupLocalData(localData, loadSlug); } catch(_) {}
     }
-    if(hasSbData && hasLocalData) {
+    const storedBase = shouldUseLocal ? sbReadBase() : null;
+    if(hasSbData && hasLocalData && storedBase) {
+      // Merge 3-vias: compara local e nuvem com o último estado sincronizado.
+      // Mantém inclusões/edições feitas em qualquer aparelho e respeita exclusões.
+      S = { ...freshState(), ...sbMerge3(storedBase, localData, data.data) };
+      if(!sbEq(S, data.data)) { _sbDirty = true; setTimeout(sbSaveNow, 1500); }
+    } else if(hasSbData && hasLocalData) {
       // Merge: usa a fonte mais recente para configurações, mas mantém TODAS as
       // transações de ambas as fontes (dedup por id) — nunca descarta lançamentos.
       const base = localTs >= sbTs ? localData : data.data;
@@ -3281,6 +3289,10 @@ async function sbLoadData(user) {
       _sbDirty = true;
       setTimeout(sbSaveNow, 1500);
     }
+    // Registra o estado da nuvem como "base" da sincronização
+    _sbBase   = hasSbData ? sbClone(data.data) : null;
+    _sbBaseTs = data?.updated_at || null;
+    sbWriteBase();
   }
   try {
     localStorage.setItem(SKEY, JSON.stringify(S));
@@ -3288,34 +3300,222 @@ async function sbLoadData(user) {
   } catch(_) {}
 }
 
-async function sbSaveNow() {
-  if(!_sb) return;
-  let slug = null;
-  if(_sbUser) {
-    slug = (_sbRole === 'advisor' && _cid) ? _cid
-         : (_sbRole === 'client' && _sbSlug) ? _sbSlug
-         : null;
-  } else {
-    // Cliente anon via URL ?c=slug — tenta salvar com anon key
-    slug = _cid || null;
+// ── SINCRONIZAÇÃO MULTI-DISPOSITIVO ─────────────────────────────────────────
+// Garante que lançamentos feitos no computador, no navegador do celular ou no
+// app instalado (PWA) cheguem ao registro único do cliente no Supabase e
+// apareçam no perfil da consultora:
+//  • confere o retorno do Supabase (antes, falhas eram silenciosas)
+//  • merge 3-vias antes de gravar: nunca sobrescreve o que outro aparelho enviou
+//  • gravação condicional (updated_at) — se alguém gravou no meio, refaz o merge
+//  • fila de reenvio automático (sem internet, erro, app fechado)
+//  • envia ao sair/minimizar o app (celular) e busca novidades a cada 20s
+let _sbBase = null, _sbBaseTs = null;
+let _sbSyncing = false, _sbPending = false, _sbRetry = 0, _sbRetryTimer = null;
+let _sbLoopStarted = false;
+
+function sbClone(o){ return o == null ? o : JSON.parse(JSON.stringify(o)); }
+function sbEq(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+function sbIsIdArr(a){ return Array.isArray(a) && a.length > 0 && a.every(x => x && typeof x === 'object' && x.id != null); }
+function sbIsObj(o){ return o && typeof o === 'object' && !Array.isArray(o); }
+
+function sbMerge3Arr(base, loc, rem){
+  base = base || []; loc = loc || []; rem = rem || [];
+  const bm = new Map(base.filter(x=>x&&x.id!=null).map(x => [String(x.id), x]));
+  const rm = new Map(rem.filter(x=>x&&x.id!=null).map(x => [String(x.id), x]));
+  const out = [], seen = new Set();
+  for(const x of loc){
+    if(!x || x.id == null){ out.push(x); continue; }
+    const id = String(x.id); if(seen.has(id)) continue; seen.add(id);
+    const b = bm.get(id), r = rm.get(id);
+    if(!r){
+      if(b && sbEq(x, b)) continue;      // excluído em outro aparelho
+      out.push(x);                       // novo aqui (ou editado aqui) → mantém
+    } else {
+      out.push(b && sbEq(x, b) ? r : x); // editado lá → remoto; editado aqui → local
+    }
   }
-  if(!slug) return;
+  for(const r of rem){
+    if(!r || r.id == null) continue;
+    const id = String(r.id); if(seen.has(id)) continue; seen.add(id);
+    const b = bm.get(id);
+    if(b && sbEq(r, b)) continue;        // excluído neste aparelho
+    out.push(r);                         // novo em outro aparelho → inclui
+  }
+  return out;
+}
+
+function sbMerge3(base, loc, rem){
+  base = sbIsObj(base) ? base : {}; loc = loc || {}; rem = rem || {};
+  const out = {};
+  const keys = new Set([...Object.keys(loc), ...Object.keys(rem)]);
+  for(const k of keys){
+    const b = base[k], l = loc[k], r = rem[k];
+    if(sbEq(l, r))      { if(l !== undefined) out[k] = l; }
+    else if(sbEq(l, b)) { if(r !== undefined) out[k] = r; }
+    else if(sbEq(r, b)) { if(l !== undefined) out[k] = l; }
+    else if(Array.isArray(l) && Array.isArray(r) && (sbIsIdArr(l) || sbIsIdArr(r) || sbIsIdArr(b)))
+      out[k] = sbMerge3Arr(b, l, r);
+    else if(sbIsObj(l) && sbIsObj(r))
+      out[k] = sbMerge3(sbIsObj(b) ? b : {}, l, r);
+    else if(l !== undefined) out[k] = l;   // conflito real: vale a ação deste aparelho
+    else out[k] = r;
+  }
+  return out;
+}
+
+function sbCurrentSlug(){
+  if(_sbUser) return (_sbRole === 'advisor' && _cid) ? _cid
+                   : (_sbRole === 'client' && _sbSlug) ? _sbSlug : null;
+  return _cid || null;
+}
+function sbPersistBase(){ return !(_isAdmin && _cid && _sbRole === 'advisor'); }
+function sbReadBase(){
+  try { const r = localStorage.getItem(SKEY+'_base'); return r ? JSON.parse(r) : null; } catch(_) { return null; }
+}
+function sbWriteBase(){
+  if(!sbPersistBase()) return;
   try {
-    const payload = { slug, data: S, updated_at: new Date().toISOString() };
-    if(_sbUser && _sbRole === 'advisor') payload.advisor_id = _sbUser.id;
-    await _sb.from('client_data').upsert(payload, { onConflict: 'slug' });
-    _sbDirty=false;
-    setSaveIndicator('saved');
+    if(_sbBase) localStorage.setItem(SKEY+'_base', JSON.stringify(_sbBase));
+    else localStorage.removeItem(SKEY+'_base');
+  } catch(_) { try { localStorage.removeItem(SKEY+'_base'); } catch(__) {} }
+}
+function sbPersistLocal(){
+  try {
+    localStorage.setItem(SKEY, JSON.stringify(S));
+    localStorage.setItem(SKEY+'_ts', Date.now().toString());
+  } catch(_) {}
+  sbWriteBase();
+}
+function sbUserIsEditing(){
+  const a = document.activeElement;
+  return !!(a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+}
+function sbRefreshUI(){
+  const fns = [()=>renderAll(),()=>buildCatSelect(),()=>buildPgtoSelect(),()=>buildContaSelects(),
+    ()=>recalc(),()=>renderTxList(),()=>renderFluxoPgto(),()=>renderGoals(),()=>renderOrcMonth(),
+    ()=>renderSeguranca(),()=>renderDividas(),()=>renderInvestimentos(),()=>renderPatrimonio(),
+    ()=>renderPerfil(),()=>renderPassos(),()=>renderPatEvol(),()=>renderSaudeFinanceira(),
+    ()=>sbUpdateProfile(),()=>applyPermissions()];
+  for(const f of fns){ try { f(); } catch(_) {} }
+}
+function sbScheduleRetry(){
+  clearTimeout(_sbRetryTimer);
+  const delay = Math.min(60000, 3000 * Math.pow(2, _sbRetry++));
+  _sbRetryTimer = setTimeout(() => sbSync({ push: true }), delay);
+}
+
+async function sbSync(opts = {}){
+  if(!_sb) return;
+  const slug = sbCurrentSlug();
+  if(!slug) return;
+  if(_sbSyncing){ _sbPending = true; return; }
+  _sbSyncing = true;
+  let ok = false;
+  try {
+    for(let attempt = 0; attempt < 4 && !ok; attempt++){
+      // 1. Lê o estado atual da nuvem
+      const { data: row, error: e1 } = await _sb.from('client_data')
+        .select('data,updated_at').eq('slug', slug).maybeSingle();
+      if(e1) throw e1;
+
+      // 2. Se outro aparelho gravou desde a última sincronização → merge
+      if(row && row.updated_at !== _sbBaseTs){
+        const merged = { ...freshState(), ...sbMerge3(_sbBase || {}, S, row.data || {}) };
+        const changed = !sbEq(merged, S);
+        S = merged;
+        _sbBase = sbClone(row.data || {});
+        _sbBaseTs = row.updated_at;
+        if(changed) sbRefreshUI();
+      }
+
+      // 3. Nada novo para enviar
+      if(row && sbEq(S, _sbBase)){
+        _sbDirty = false; ok = true; sbPersistLocal();
+        if(opts.push) setSaveIndicator('saved');
+        break;
+      }
+
+      // 4. Grava com checagem de concorrência
+      const snapshot = sbClone(S);
+      const now = new Date().toISOString();
+      let res;
+      if(row){
+        const upd = { data: snapshot, updated_at: now };
+        if(_sbUser && _sbRole === 'advisor') upd.advisor_id = _sbUser.id;
+        let q = _sb.from('client_data').update(upd).eq('slug', slug);
+        // Tentativas 1–3: grava só se ninguém gravou desde a leitura.
+        // Última tentativa: grava direto (o merge acabou de ser feito com a leitura fresca).
+        if(attempt < 3) q = row.updated_at ? q.eq('updated_at', row.updated_at) : q.is('updated_at', null);
+        res = await q.select('updated_at');
+        if(res.error) throw res.error;
+        if(!res.data || !res.data.length){
+          if(attempt < 3) continue; // alguém gravou no meio → relê, refaz o merge e tenta de novo
+          throw new Error('Gravação recusada pelo Supabase (verifique a permissão RLS de UPDATE).');
+        }
+      } else {
+        const payload = { slug, data: snapshot, updated_at: now };
+        if(_sbUser && _sbRole === 'advisor') payload.advisor_id = _sbUser.id;
+        res = await _sb.from('client_data').upsert(payload, { onConflict: 'slug' }).select('updated_at');
+        if(res.error) throw res.error;
+      }
+      _sbBase = snapshot;
+      _sbBaseTs = (res.data && res.data[0] && res.data[0].updated_at) || now;
+      _sbDirty = !sbEq(S, snapshot); // usuário pode ter editado durante o envio
+      sbPersistLocal();
+      ok = true;
+      _sbRetry = 0; clearTimeout(_sbRetryTimer);
+      setSaveIndicator('saved');
+    }
+    if(!ok) throw new Error('Não foi possível gravar após várias tentativas (conflito ou permissão).');
   } catch(e) {
-    // Anon save pode falhar por RLS — silencioso, dados estão no localStorage
-    console.warn('Supabase save error:', e);
-    setSaveIndicator('');
+    console.warn('Supabase sync error:', e);
+    sbPersistLocal(); // garante que nada se perde neste aparelho
+    if(_sbDirty){ setSaveIndicator('error'); sbScheduleRetry(); }
+  } finally {
+    _sbSyncing = false;
+    if(_sbPending){ _sbPending = false; setTimeout(() => sbSync({ push: true }), 300); }
+    else if(ok && _sbDirty){ setTimeout(() => sbSync({ push: true }), 800); }
   }
 }
+async function sbSaveNow(){ return sbSync({ push: true }); }
+
+// Verifica se há novidades na nuvem (leve: só o carimbo de data)
+async function sbCheckRemote(){
+  if(!_sb || _sbSyncing || document.visibilityState !== 'visible') return;
+  if(_sbDirty){ clearTimeout(_sbSaveTimer); sbSync({ push: true }); return; }
+  if(sbUserIsEditing()) return; // não atualiza a tela enquanto alguém digita
+  const slug = sbCurrentSlug(); if(!slug) return;
+  try {
+    const { data, error } = await _sb.from('client_data').select('updated_at').eq('slug', slug).maybeSingle();
+    if(error) return;
+    if(data && data.updated_at !== _sbBaseTs) sbSync({});
+  } catch(_) {}
+}
+
+function sbStartSyncLoop(){
+  if(_sbLoopStarted || !_sb || !sbCurrentSlug()) return;
+  _sbLoopStarted = true;
+  setInterval(sbCheckRemote, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'hidden'){
+      // Celular/app: ao minimizar ou trocar de app, envia na hora
+      if(_sbDirty){ clearTimeout(_sbSaveTimer); sbSync({ push: true }); }
+    } else {
+      sbCheckRemote();
+    }
+  });
+  window.addEventListener('pagehide', () => {
+    if(_sbDirty){ clearTimeout(_sbSaveTimer); sbSync({ push: true }); }
+  });
+  window.addEventListener('focus', sbCheckRemote);
+  window.addEventListener('online', () => { _sbRetry = 0; sbSync({ push: _sbDirty }); });
+  window.addEventListener('offline', () => { if(_sbDirty) setSaveIndicator('error'); });
+}
+
 window.addEventListener('beforeunload', e => {
   if(_sbDirty){
     clearTimeout(_sbSaveTimer);
-    sbSaveNow();
+    sbSync({ push: true });
     e.preventDefault();
     return (e.returnValue='Há dados não salvos. Aguarde um instante antes de fechar.');
   }
@@ -4180,6 +4380,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
         sbHideAuthOverlay();
         await sbLoadData(session.user);
         bootApp(); // continua o boot após login
+        sbStartSyncLoop();
       }
       if(event==='SIGNED_OUT'){
         _sbUser=null;
@@ -4199,6 +4400,7 @@ window.addEventListener('DOMContentLoaded', async ()=>{
   }
 
   bootApp();
+  sbStartSyncLoop();
 });
 
 function bootApp(){
@@ -6293,6 +6495,10 @@ function setSaveIndicator(state){
   } else if(state==='saved'){
     if(el){el.className='save-indicator saved';el.textContent='✓ salvo';setTimeout(()=>{el.className='save-indicator';},3000);}
     if(ti){ti.className='topbar-indicator saved';ti.textContent='✓ salvo';setTimeout(()=>{ti.className='topbar-indicator';ti.textContent='';},3000);}
+  } else if(state==='error'){
+    const msg=navigator.onLine===false?'sem internet — será enviado':'não sincronizado — tentando de novo';
+    if(el){el.className='save-indicator error';el.textContent='⚠ '+msg;}
+    if(ti){ti.className='topbar-indicator error';ti.textContent='⚠ '+msg;}
   } else {
     if(el)el.className='save-indicator';
     if(ti){ti.className='topbar-indicator';ti.textContent='';}
@@ -6344,7 +6550,7 @@ function initCalcPanelsPersistence(){
 
 function clearData(){
   if(!confirm('Limpar todos os dados de "'+_rawCid+'"? Esta ação não pode ser desfeita.'))return;
-  localStorage.removeItem(SKEY);S=freshState();renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
+  localStorage.removeItem(SKEY);localStorage.removeItem(SKEY+'_base');S=freshState();renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();recalc();renderTxList();renderFluxoPgto();renderGoals();renderOrcMonth();
 }
 
 // Apaga só os lançamentos (todos os meses de uma vez) — mantém orçamento,
