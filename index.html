@@ -379,6 +379,9 @@ canvas{max-width:100%}
   .form-row{flex-direction:column}
   .fld-val{width:100%}
   .form-row .btn{width:100%}
+  /* Evita que label com white-space:nowrap quebre layout */
+  #tx-manual-form label{white-space:normal!important}
+  #tx-manual-form .fld{max-width:100%;overflow:hidden}
 
   /* Header: esconde subtexto em telas muito pequenas */
   .hdr-right input{font-size:13px}
