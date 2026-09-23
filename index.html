@@ -290,9 +290,10 @@ tr:last-child td{border-bottom:none}
 canvas{max-width:100%}
 @media(max-width:900px){.g4{grid-template-columns:repeat(2,1fr)}.g2{grid-template-columns:1fr}}
 @media(max-width:600px){
-  html,body{overflow-x:hidden}
-  .hdr{padding:10px 14px}.logo-name{font-size:15px}.main{padding:12px 12px 80px;overflow-x:hidden}
-  #panel-lancamentos{overflow-x:hidden;max-width:100%}
+  html,body{overflow-x:hidden;width:100%;max-width:100vw}
+  .hdr{padding:10px 14px}.logo-name{font-size:15px}.main{padding:12px 12px 80px;overflow-x:hidden;width:100%;box-sizing:border-box}
+  #panel-lancamentos{overflow-x:hidden;max-width:100%;width:100%;box-sizing:border-box}
+  #panel-lancamentos .card{overflow-x:hidden;max-width:100%;box-sizing:border-box}
   .g4{grid-template-columns:repeat(2,1fr);gap:8px}
   .g3{grid-template-columns:1fr 1fr;gap:8px}
   .kpi{padding:11px 13px}.kpi-val{font-size:17px}
@@ -1693,13 +1694,13 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <!-- Barra de busca e filtros -->
   <div class="tx-filters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
     <input type="text" id="tx-search" placeholder="🔍 Buscar descrição..." oninput="renderTxList()"
-      style="flex:1;min-width:160px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none">
+      style="flex:1;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:13px;background:var(--bg);color:var(--text);outline:none">
     <select id="tx-filter-cat" onchange="renderTxList()"
-      style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;min-width:140px">
+      style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;min-width:0">
       <option value="">Todas as categorias</option>
     </select>
     <select id="tx-filter-grp" onchange="renderTxList()"
-      style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
+      style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;min-width:0">
       <option value="">Todos os tipos</option>
       <option value="receita">Receitas</option>
       <option value="fixas">Fixas</option>
@@ -1709,9 +1710,9 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <option value="neutro">Neutros</option>
     </select>
     <input type="number" id="tx-filter-val-min" placeholder="Valor mín." min="0" step="0.01" oninput="renderTxList()"
-      style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
+      style="width:auto;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
     <input type="number" id="tx-filter-val-max" placeholder="Valor máx." min="0" step="0.01" oninput="renderTxList()"
-      style="width:100px;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
+      style="width:auto;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
     <button class="btn btn-o btn-sm" onclick="clearTxFilters()" title="Limpar filtros">✕</button>
   </div>
 
