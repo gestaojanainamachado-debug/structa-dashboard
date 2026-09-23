@@ -324,8 +324,12 @@ canvas{max-width:100%}
   .tl-day{font-size:16px}
   .card-form-grid{grid-template-columns:1fr 72px 72px}
   /* TX table cards on mobile */
-  .tx-table{display:block}.tx-table thead{display:none}.tx-table tbody{display:block}
+  .tx-table{display:block;min-width:0!important;width:100%!important}.tx-table thead{display:none}.tx-table tbody{display:block}
+  #panel-lancamentos .card > div[style*="overflow-x"]{overflow-x:hidden!important}
   .tx-table tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-sm);padding:10px 12px;margin-bottom:8px;max-width:100%}
+  /* Modal de edição: coluna única no mobile */
+  .tx-edit-grid{grid-template-columns:1fr!important}
+  .tx-edit-grid .fld.full{grid-column:1}
   .tx-table tr:last-child{border-bottom:1px solid var(--border)}
   .tx-table td{border:none;padding:0;min-width:0}
   .tx-table .td-date{grid-column:1;grid-row:1;color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
