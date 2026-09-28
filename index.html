@@ -463,6 +463,15 @@ canvas{max-width:100%}
 .abar-btn.danger{border-color:rgba(220,80,80,.4);color:#ffaaaa}
 
 /* ── LOCKED TAB BANNER ── */
+.pessoa-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:16px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px}
+.pessoa-bar:empty{display:none}
+.pessoa-bar-lbl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.pessoa-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1.5px solid var(--border);border-radius:999px;background:var(--bg);color:var(--text);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+.pessoa-chip.active{background:#381c17;border-color:#381c17;color:#fff}
+.pessoa-chip .pc-act{opacity:.6;font-weight:400;padding:0 2px}
+.pessoa-chip .pc-act:hover{opacity:1}
+.pessoa-add{padding:5px 12px;border:1.5px dashed var(--border);border-radius:999px;background:transparent;color:var(--muted);font-family:inherit;font-size:12px;cursor:pointer}
+.pessoa-add:hover{color:var(--text);border-color:#381c17}
 .locked-banner{background:#f0eef8;border:1px solid #c7c3db;border-radius:8px;padding:10px 14px;display:flex;align-items:center;gap:8px;margin-bottom:16px;color:#4a3f6b;font-size:13px;font-weight:500}
 .locked-banner svg{flex-shrink:0;opacity:.7}
 
@@ -1362,7 +1371,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </svg>
   </div>
   <div class="hdr-right">
-    <input type="text" id="clientName" placeholder="Nome do cliente" oninput="S.name=this.value;save()">
+    <input type="text" id="clientName" placeholder="Nome do cliente" oninput="S.name=this.value;save();sbUpdateProfile()">
     <div class="hdr-date" id="hDate"></div>
     <button class="client-logout-btn" id="client-logout-btn" onclick="sbLogout()">🔓 Sair</button>
     <div class="save-indicator" id="save-indicator"></div>
@@ -1849,6 +1858,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     Análise de IR e PGBL configurada pela sua consultora Structa.
   </div>
+  <div class="pessoa-bar" id="pessoa-bar-irpgbl"></div>
   <div class="ir-layout">
 
     <!-- INPUTS -->
@@ -1952,6 +1962,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     Planejamento de aposentadoria configurado pela sua consultora Structa.
   </div>
+  <div class="pessoa-bar" id="pessoa-bar-aposent"></div>
 
   <!-- INPUTS -->
   <div class="apos-inputs">
@@ -6078,7 +6089,13 @@ const PERFIL_CAMPOS=[
   {id:'rg',            lbl:'RG',                span:1, type:'text'},
   {id:'estadoCivil',   lbl:'Estado Civil',      span:1, type:'text'},
   {id:'endereco',      lbl:'Endereço',          span:2, type:'text'},
-  {id:'nomeConjuge',   lbl:'Nome do cônjuge',   span:1, type:'text'},
+  {id:'_sepConj_',      lbl:'── Cônjuge ──',     span:2, type:'sep'},
+  {id:'nomeConjuge',   lbl:'Nome do cônjuge',   span:2, type:'text'},
+  {id:'cpfConjuge',    lbl:'CPF do cônjuge',    span:1, type:'text'},
+  {id:'dataNascConjuge',lbl:'Nascimento do cônjuge',span:1, type:'date'},
+  {id:'celularConjuge',lbl:'Telefone do cônjuge',span:1, type:'text'},
+  {id:'emailConjuge',  lbl:'E-mail do cônjuge', span:1, type:'email'},
+  {id:'_sepFam_',      lbl:'── Família e perfil ──', span:2, type:'sep'},
   {id:'filhos',        lbl:'Filhos',            span:1, type:'text'},
   {id:'profissao',     lbl:'Profissão',         span:1, type:'text'},
   {id:'regimeTrabalho',lbl:'Regime de Trabalho',span:1, type:'text'},
@@ -6107,6 +6124,7 @@ function savePerfil(campo,val){
   if(!S.diagnostico)S.diagnostico={perfilCampos:{},passos:[],pilaresStatus:[{s:'',n:''},{s:'',n:''},{s:'',n:''},{s:'',n:''}]};
   if(!S.diagnostico.perfilCampos)S.diagnostico.perfilCampos={};
   S.diagnostico.perfilCampos[campo]=val;save();
+  if(campo==='nomeCompleto'||campo==='nomeConjuge'){try{renderPessoaBars();}catch(e){}}
 }
 
 // ── PRÓXIMOS PASSOS ───────────────────────────────────────────────────────────
@@ -6474,6 +6492,24 @@ function sbUpdateProfile(){
   const cn=document.getElementById('sb-cname');
   if(av)av.textContent=initials;
   if(cn)cn.textContent=name;
+  // Consultora: clicar no nome permite editar (o campo do cabeçalho some no desktop)
+  const isAdvisorView=_isAdmin&&!(_sbUser&&_sbRole==='client');
+  const prof=document.getElementById('sb-profile');
+  if(prof&&cn){
+    if(isAdvisorView){
+      cn.style.cursor='pointer';cn.title='Clique para editar o nome do cliente';
+      cn.onclick=sbEditClientName;
+      if(!S.name)cn.textContent='✎ Definir nome do cliente';
+    }else{cn.style.cursor='';cn.title='';cn.onclick=null;}
+  }
+}
+function sbEditClientName(){
+  const novo=prompt('Nome do cliente (aparece no painel e nos relatórios):',S.name||'');
+  if(novo===null)return;
+  S.name=novo.trim();
+  const inp=document.getElementById('clientName');if(inp)inp.value=S.name;
+  save();sbUpdateProfile();
+  try{renderPessoaBars();}catch(e){}
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
@@ -6516,6 +6552,30 @@ function setSaveIndicator(state){
 // ── Persistência genérica dos campos das "calculadoras" (IR/PGBL,
 // Aposentadoria, Simulador) — cada cliente guarda os próprios valores, que
 // ficam salvos até serem alterados (nunca somem ao trocar de aba/cliente).
+// ── PESSOAS (casais): IR/PGBL e Aposentadoria podem ter uma simulação por
+// pessoa. A 1ª pessoa ('p1') continua usando S.calcInputs (compatível com os
+// dados já salvos); as demais guardam os campos em S.calcInputsP[id] e as
+// fases de aporte em S.fasesP[id]. Orçamento e lançamentos seguem únicos.
+const CALC_PESSOA_PANELS=['panel-irpgbl','panel-aposent'];
+let _calcPessoa={'panel-irpgbl':'p1','panel-aposent':'p1'};
+function getPessoas(){
+  if(!Array.isArray(S.pessoas)||!S.pessoas.length)S.pessoas=[{id:'p1',nome:''}];
+  return S.pessoas;
+}
+function pessoaNome(p,i){
+  if(p&&p.nome)return p.nome;
+  const pc=S.diagnostico?.perfilCampos||{};
+  if(i===0){const n=(pc.nomeCompleto||S.name||'').trim();return n?n.split(/\s+/)[0]:'Titular';}
+  if(i===1){const n=(pc.nomeConjuge||'').trim();return n?n.split(/\s+/)[0]:'Cônjuge';}
+  return 'Pessoa '+(i+1);
+}
+function calcStore(panelId){
+  const pid=_calcPessoa[panelId]||'p1';
+  if(!CALC_PESSOA_PANELS.includes(panelId)||pid==='p1'){if(!S.calcInputs)S.calcInputs={};return S.calcInputs;}
+  if(!S.calcInputsP)S.calcInputsP={};
+  if(!S.calcInputsP[pid])S.calcInputsP[pid]={};
+  return S.calcInputsP[pid];
+}
 function bindCalcPersistence(panelId){
   const panel=document.getElementById(panelId);
   if(!panel||panel._calcBound)return;
@@ -6523,30 +6583,93 @@ function bindCalcPersistence(panelId){
   panel.addEventListener('input',e=>{
     const el=e.target;
     if(!el||!el.id||(el.tagName!=='INPUT'&&el.tagName!=='SELECT'&&el.tagName!=='TEXTAREA'))return;
-    if(!S.calcInputs)S.calcInputs={};
-    S.calcInputs[el.id]=(el.type==='checkbox'||el.type==='radio')?el.checked:el.value;
+    calcStore(panelId)[el.id]=(el.type==='checkbox'||el.type==='radio')?el.checked:el.value;
     save();
   });
   panel.addEventListener('change',e=>{
     const el=e.target;
     if(!el||!el.id||el.tagName!=='SELECT')return;
-    if(!S.calcInputs)S.calcInputs={};
-    S.calcInputs[el.id]=el.value;
+    calcStore(panelId)[el.id]=el.value;
     save();
   });
 }
-function restoreCalcFields(panelId){
+// clear=true: campos sem valor salvo para a pessoa atual voltam ao padrão
+// (usado ao trocar de pessoa, para não herdar os números da outra).
+function restoreCalcFields(panelId,clear){
   const panel=document.getElementById(panelId);
-  if(!panel||!S.calcInputs)return;
+  if(!panel)return;
+  const store=calcStore(panelId);
   panel.querySelectorAll('input[id],select[id],textarea[id]').forEach(el=>{
-    const v=S.calcInputs[el.id];
-    if(v===undefined)return;
+    const v=store[el.id];
+    if(v===undefined){
+      if(!clear)return;
+      if(el.type==='checkbox'||el.type==='radio')el.checked=el.defaultChecked;
+      else if(el.tagName==='SELECT'){const d=[...el.options].find(o=>o.defaultSelected)||el.options[0];if(d)el.value=d.value;}
+      else el.value='';
+      return;
+    }
     if(el.type==='checkbox'||el.type==='radio')el.checked=!!v;
     else el.value=v;
   });
 }
+function setCalcPessoa(panelId,pid){
+  _calcPessoa[panelId]=pid;
+  restoreCalcFields(panelId,true);
+  if(panelId==='panel-aposent'){loadFases();renderFases();try{aposCalc();}catch(e){}}
+  else{try{irCalc();}catch(e){}}
+  renderPessoaBars();
+}
+function addPessoa(panelId){
+  const ps=getPessoas();
+  if(ps.length>=4){alert('Limite de 4 pessoas por cliente.');return;}
+  const sug=ps.length===1?pessoaNome({nome:''},1):'';
+  const nome=prompt('Nome da pessoa para as simulações individuais de IR e Aposentadoria:',sug==='Cônjuge'?'':sug);
+  if(nome===null)return;
+  const id='p'+Date.now();
+  ps.push({id,nome:nome.trim()});
+  save();
+  setCalcPessoa(panelId,id);
+}
+function renamePessoa(pid){
+  const ps=getPessoas();const i=ps.findIndex(p=>p.id===pid);if(i<0)return;
+  const nome=prompt('Nome desta pessoa nas simulações:',pessoaNome(ps[i],i));
+  if(nome===null)return;
+  ps[i].nome=nome.trim();save();renderPessoaBars();
+}
+function delPessoa(pid){
+  if(pid==='p1')return;
+  const ps=getPessoas();const i=ps.findIndex(p=>p.id===pid);if(i<0)return;
+  if(!confirm('Excluir as simulações de IR e Aposentadoria de "'+pessoaNome(ps[i],i)+'"? Esta ação não pode ser desfeita.'))return;
+  S.pessoas=ps.filter(p=>p.id!==pid);
+  if(S.calcInputsP)delete S.calcInputsP[pid];
+  if(S.fasesP)delete S.fasesP[pid];
+  save();
+  CALC_PESSOA_PANELS.forEach(pn=>{if(_calcPessoa[pn]===pid)setCalcPessoa(pn,'p1');});
+  renderPessoaBars();
+}
+function renderPessoaBars(){
+  const ps=getPessoas();
+  CALC_PESSOA_PANELS.forEach(panelId=>{
+    const bar=document.getElementById('pessoa-bar-'+panelId.replace('panel-',''));
+    if(!bar)return;
+    if(!ps.some(p=>p.id===_calcPessoa[panelId]))_calcPessoa[panelId]='p1';
+    const act=_calcPessoa[panelId];
+    let h='<span class="pessoa-bar-lbl">Simulação de</span>';
+    ps.forEach((p,i)=>{
+      const on=p.id===act;
+      h+=`<span class="pessoa-chip${on?' active':''}" onclick="setCalcPessoa('${panelId}','${p.id}')">${esc(pessoaNome(p,i))}`
+        +(on?`<span class="pc-act" title="Renomear" onclick="event.stopPropagation();renamePessoa('${p.id}')">✎</span>`:'')
+        +(on&&p.id!=='p1'?`<span class="pc-act" title="Excluir simulação" onclick="event.stopPropagation();delPessoa('${p.id}')">✕</span>`:'')
+        +'</span>';
+    });
+    if(ps.length<4)h+=`<button class="pessoa-add" onclick="addPessoa('${panelId}')">＋ ${ps.length===1?'Simular também para o cônjuge':'Adicionar pessoa'}</button>`;
+    bar.innerHTML=h;
+  });
+}
 function initCalcPanelsPersistence(){
   ['panel-irpgbl','panel-aposent','panel-simulador'].forEach(bindCalcPersistence);
+  getPessoas();renderPessoaBars();
+  loadFases();renderFases();
   restoreCalcFields('panel-irpgbl');
   restoreCalcFields('panel-aposent');
   restoreCalcFields('panel-simulador');
@@ -8002,20 +8125,33 @@ function simLinear(montante,pmt,poupanca,rRealAcc,nAccum){
   return pts;
 }
 
+function _fasesDefault(){return[{id:'f1',desc:'Fase 1',meses:120,aporte:2000},{id:'f2',desc:'Fase 2',meses:240,aporte:4000}];}
+function loadFases(){
+  const pid=(typeof _calcPessoa!=='undefined'&&_calcPessoa['panel-aposent'])||'p1';
+  const src=pid==='p1'?S.aposFases:(S.fasesP||{})[pid];
+  _fases=(Array.isArray(src)&&src.length)?JSON.parse(JSON.stringify(src)):_fasesDefault();
+}
+function saveFases(){
+  const pid=(typeof _calcPessoa!=='undefined'&&_calcPessoa['panel-aposent'])||'p1';
+  const copy=JSON.parse(JSON.stringify(_fases));
+  if(pid==='p1')S.aposFases=copy;
+  else{if(!S.fasesP)S.fasesP={};S.fasesP[pid]=copy;}
+  save();
+}
 function addFase(){
   const id='f_'+Date.now();
   _fases.push({id,desc:'Nova fase',meses:120,aporte:0});
-  renderFases();aposCalc();
+  saveFases();renderFases();aposCalc();
 }
 function delFase(id){
   if(_fases.length<=1){alert('Mantenha ao menos uma fase.');return;}
   _fases=_fases.filter(f=>f.id!==id);
-  renderFases();aposCalc();
+  saveFases();renderFases();aposCalc();
 }
 function setFase(id,campo,val){
   const f=_fases.find(x=>x.id===id);
   if(f){f[campo]=campo==='desc'?val:(parseFloat(val)||0);}
-  aposCalc();
+  saveFases();aposCalc();
 }
 
 function renderFases(){
