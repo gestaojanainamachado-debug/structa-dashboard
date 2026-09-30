@@ -9808,30 +9808,49 @@ function parseUnicredFatura(lines,allText){
   const ym=(allText||'').toLowerCase().match(/ref\.?:\s*([a-zç]{3})\w*\/(\d{4})/);
   if(ym){year=parseInt(ym[2]);refMonth=MO[ym[1]]||null;}
 
-  for(const line of lines){
-    if(shouldSkip(line.text))continue;
-    // Match: DD/mmm DESCRIÇÃO [-R$ or R$] AMOUNT
-    const m=line.text.match(/^(\d{1,2})\/([a-z]{3})\s+(.+?)\s+([-]?\s*R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2})\s*$/i);
-    if(!m)continue;
+  // Compras internacionais imprimem a descrição em 2 linhas ("HOTEL AT
+  // BOOKING.COM - USD 855.97" / "Conversão: USD 1 = R$ 5,16"), com data+valor
+  // colados numa linha do MEIO sem nenhuma descrição ("27/ago R$ 4.419,97") —
+  // o "R$" isolado batia como "descrição" de 2 caracteres no regex antigo e
+  // era descartado pelo shouldSkip (texto <3 chars), derrubando a linha
+  // inteira. Agora "R$" é literal obrigatório (não mais opcional) — uma linha
+  // sem descrição real não bate em mainRe — e cai em loneDateValRe, que usa a
+  // linha anterior (guardada em pendingDesc) como a descrição de verdade.
+  const loneDateValRe=/^(\d{1,2})\/([a-z]{3})\s*(-?)\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*$/i;
+  const mainRe=/^(\d{1,2})\/([a-z]{3})\s+(.+?)\s+(-?)\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*$/i;
+  let pendingDesc=null;
 
-    const day=m[1].padStart(2,'0');
-    const month=MO[m[2].toLowerCase()];
-    if(!month)continue;
-
-    const desc=m[3].trim();
-    if(/pagamento recebido|pagamento efetuado/i.test(desc))continue;
-    if(shouldSkip(desc))continue;
-
-    const rawAmt=convParseBR(m[4]);
-    if(rawAmt===null)continue;
-
+  const pushTxn=(day,mon,desc,sign,amtStr)=>{
+    const month=MO[mon.toLowerCase()];
+    if(!month)return;
+    desc=desc.trim();
+    if(/pagamento recebido|pagamento efetuado/i.test(desc))return;
+    if(shouldSkip(desc)||desc.length<3)return;
+    const rawAmt=convParseBR(amtStr);
+    if(rawAmt===null)return;
     // Compra de mês posterior ao mês de referência = ano anterior (parcelas antigas)
     const y=(refMonth&&month>refMonth)?year-1:year;
-    const date=`${day}/${String(month).padStart(2,'0')}/${y}`;
-    // Fatura: positive = expense → negate; negative (refund/bonus) → absolute (positive = income)
-    const value=rawAmt>0?-rawAmt:Math.abs(rawAmt);
-
+    const date=`${day.padStart(2,'0')}/${String(month).padStart(2,'0')}/${y}`;
+    // Fatura: linha positiva = despesa → nega; linha com "-" antes do R$
+    // (estorno/pagamento) = crédito → positivo
+    const value=sign==='-'?Math.abs(rawAmt):-Math.abs(rawAmt);
     txns.push({date,desc,value,cat:classifyTx(desc,value)});
+  };
+
+  for(const line of lines){
+    const text=line.text.trim();
+    if(shouldSkip(text))continue;
+
+    const lone=text.match(loneDateValRe);
+    if(lone){
+      if(pendingDesc){pushTxn(lone[1],lone[2],pendingDesc,lone[3],lone[4]);pendingDesc=null;}
+      continue;
+    }
+    const m=text.match(mainRe);
+    if(m){pushTxn(m[1],m[2],m[3],m[4],m[5]);pendingDesc=null;continue;}
+    // Não bateu em nada — pode ser a 1ª linha de uma descrição quebrada em 2,
+    // com data+valor vindo na próxima. Guarda como candidata.
+    if(text.length>=3)pendingDesc=text;
   }
   return txns;
 }
