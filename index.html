@@ -10299,7 +10299,72 @@ function parseGenerico(lines){
 // Formato: "DD/MM/AAAA DD/MM/AAAA 0000 LOTE HHH Histórico DOCUMENTO 1.234,56 D [saldo C]"
 // Linha seguinte = complemento (favorecido/detalhe), ex: "OI FIBRA ARBOR"
 // ═══════════════════════════════════════════════════════════════════════════════
+// ── Layout novo (2026): colunas "Dia | Lote | Documento | Histórico | Valor" ──────
+// Cada lançamento vem em até 3 pedaços (o pdf.js entrega cada um em linha própria):
+//   [tipo]  "Pix - Recebido" / "Pagto cartão crédito" / "Pagamento de Boleto"...
+//   [linha] "04/09/2026 14397 41530333692441 1.200,00 (+)"   ← data, lote, doc, valor com sinal
+//   [det.]  "04/09 15:30 08395824637 LEONARDO" (+ continuação "BARBO")
+// Valor vem como "1.200,00 (+)" / "(-)". Ignora: "BB Rende Fácil" (aplicação/resgate
+// automático diário), "Saldo do dia", "Saldo Anterior", cabeçalhos de página e o bloco
+// "Informações Adicionais / CET" no fim do PDF.
+function parseBBExtratoNovo(lines){
+  const rowRe=/^(\d{2}\/\d{2}\/\d{4})\s+(.*?)\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*\(\s*([+-])\s*\)\s*$/;
+  const titleRe=/^(pix\s*-|pagto\b|pagamento\b|ted\b|doc\b|dep\b|dep[oó]sito|bb rende|transfer|tarifa|compra|saque|cobran|estorno|d[eé]bito|cr[eé]dito|resgate|aplica|juros|iof|encargos|cheque|recebimento|rendimento|seguro)/i;
+  const noiseRe=/^(extrato de conta|cliente:|per[ií]odo:|lan[çc]amentos$|dia\s+lote|banco do brasil|ag[eê]ncia:)/i;
+  const txns=[];
+  let cur=null,pendTitle=null;
+  const flush=()=>{
+    if(!cur)return;
+    const c=cur;cur=null;
+    const all=(c.rest+' '+c.details.join(' ')).trim();
+    // sem histórico útil / saldos / aplicação automática = não é lançamento
+    if(/saldo/i.test(all)||/^s\s*a\s*l\s*d\s*o/i.test(all))return;
+    if(/rende f[aá]cil/i.test(all)||/rende f[aá]cil/i.test((c.title||'')))return;
+    if(/^\s*9903\s*$/.test(c.rest))return;
+    let d=all
+      .replace(/^(?:\d{3,}\s+){1,2}/,'')               // lote + nº documento
+      .replace(/^\d{2}\/\d{2}\s+\d{2}:\d{2}\s*/,'')   // "04/09 15:30 "
+      .replace(/^\d{3}\s+\d{4}\s+/,'')                 // banco + agência (TED)
+      .replace(/^\d{2,3}(?:\.\d{3})+\s+/,'')           // "41.207.001 "
+      .replace(/^\d{8,}\s*/,'')                        // CPF/CNPJ
+      .replace(/\s+/g,' ').trim();
+    let desc=((c.title?c.title+' ':'')+d).trim();
+    if(!desc)return;
+    let value=convParseBR(c.val);
+    if(value===null)return;
+    value=c.sign==='-'?-Math.abs(value):Math.abs(value);
+    txns.push({date:c.date,desc,value,cat:classifyTx(desc,value)});
+  };
+  for(const l of lines){
+    const text=l.text.trim();
+    if(/^informa[çc][õo]es (adicionais|complementares)/i.test(text)){flush();pendTitle=null;break;}
+    if(noiseRe.test(text))continue;
+    const m=text.match(rowRe);
+    if(m){
+      flush();
+      cur={date:m[1],rest:m[2].trim(),val:m[3],sign:m[4],title:pendTitle,details:[],closed:false};
+      pendTitle=null;
+      continue;
+    }
+    if(titleRe.test(text)){
+      if(cur)cur.closed=true;
+      pendTitle=text;
+      continue;
+    }
+    if(cur&&!cur.closed)cur.details.push(text);
+  }
+  flush();
+  return txns;
+}
+
 function parseBBExtrato(lines){
+  // Tenta primeiro o layout novo ("1.200,00 (+)"); se não achar nada, cai no antigo.
+  const novo=parseBBExtratoNovo(lines);
+  if(novo.length)return novo;
+  return parseBBExtratoLegado(lines);
+}
+
+function parseBBExtratoLegado(lines){
   const txns=[];let last=null;
   const txRe=/^(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+\d{4}\s+\d{3,6}\s+\d{3}\s+(.+)$/;
   const valRe=/(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])\b/;
