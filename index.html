@@ -5280,13 +5280,19 @@ function toggleTxForm(){
 }
 function clearTxMonth(){
   const lbl=new Date(txViewYear,txViewMonth).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
-  if(!confirm('Limpar todos os lançamentos de '+lbl+'?'))return;
-  S.transactions=S.transactions.filter(tx=>{
-    if(!tx.date)return true;
-    const d=new Date(tx.date+'T00:00:00');
-    return!(d.getFullYear()===txViewYear&&d.getMonth()===txViewMonth);
-  });
-  save();renderTxList();recalc();
+  // Mesma regra de getFilteredTx(): data efetiva = dataPgto (vencimento da fatura) ou date
+  const inMonth=tx=>{
+    const effDate=tx.dataPgto||tx.date;
+    if(!effDate)return false;
+    const d=new Date(effDate+'T00:00:00');
+    return d.getFullYear()===txViewYear&&d.getMonth()===txViewMonth;
+  };
+  const qtd=(S.transactions||[]).filter(inMonth).length;
+  if(!qtd){alert('Não há lançamentos em '+lbl+'.');return;}
+  if(!confirm('Limpar os '+qtd+' lançamentos de '+lbl+'?'))return;
+  S.transactions=S.transactions.filter(tx=>!inMonth(tx));
+  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  recalc();renderTxList();renderFluxoPgto();save();
 }
 
 let txSortKey='date', txSortDir=-1; // -1=desc, 1=asc
