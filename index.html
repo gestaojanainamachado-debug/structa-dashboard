@@ -9601,6 +9601,7 @@ const BANK_NAMES={
   bb_fatura:      'Banco do Brasil – Fatura Ourocard',
   visa_fatura:    'Fatura Cartão Visa',
   inter_fatura:   'Banco Inter – Fatura Cartão',
+  inter_extrato:  'Banco Inter – Extrato Conta Corrente',
   mp_fatura:      'Mercado Pago – Fatura Cartão',
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
@@ -9651,6 +9652,10 @@ function detectBank(lines){
   const t=lines.map(l=>l.text).join('\n').toLowerCase();
   // Nubank: precisa vir antes do Santander (txns Pix podem citar "BCO SANTANDER")
   if(t.includes('nubank.com.br')||t.includes('nu pagamentos s.a'))return'nubank_extrato';
+  // Extrato de conta Banco Inter (PF/PJ): cabeçalho "Instituição: Banco Inter" + blocos
+  // diários "DD de Mês de AAAA Saldo do dia: R$ X". Vem antes do Santander/BB porque as
+  // contrapartes dos Pix podem citar outros bancos no meio do texto.
+  if(/institui[çc][ãa]o:\s*banco inter/.test(t)&&t.includes('saldo do dia'))return'inter_extrato';
   if(t.includes('santander')){
     if(t.includes('extrato consolidado')||/^movimenta[çc][ãa]o$/m.test(t)
        ||t.includes('extrato de conta'))return'santander_extrato';
@@ -11031,6 +11036,51 @@ function parseNubankExtrato(lines){
   return txns;
 }
 
+// ── BANCO INTER – EXTRATO CONTA CORRENTE (PF/PJ) ─────────────────────────────
+// Cabeçalho do dia: "14 de Setembro de 2026 Saldo do dia: R$ 2.522,29"
+// Lançamento (1 linha): 'Pix recebido: "Cp :71163315-NOME" R$ 676,13 R$ 2.522,29'
+//   → 1º valor = movimento (negativo quando "-R$"), 2º valor = saldo após a transação.
+// Linhas sem aspas (ex.: "Tarifa R$ 10,00") também são lidas quando há data do dia.
+function parseInterExtrato(lines){
+  const txns=[];
+  const MO={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+  const dayRe=/^(\d{1,2})\s+de\s+([A-Za-zçÇ]+)\s+de\s+(\d{4})\s+Saldo do dia/i;
+  const NUM='\\d{1,3}(?:\\.\\d{3})*,\\d{2}';
+  const quotedRe=new RegExp('^(.+?):\\s*"(.+)"\\s+(-)?R\\$\\s*('+NUM+')(?:\\s+-?R\\$\\s*'+NUM+')?$');
+  const plainRe=new RegExp('^(.+?)\\s+(-)?R\\$\\s*('+NUM+')(?:\\s+-?R\\$\\s*'+NUM+')?$');
+  const skipRe=/^(saldo|solicitado|per[ií]odo|cpf\/cnpj|fale com|sac:|\(bloqueado)/i;
+  function cleanName(n){
+    return n.replace(/^Cp\s*:\s*\d+-/i,'')                 // prefixo do Pix "Cp :71163315-"
+            .replace(/^(?:\d[\d.\/-]*\s+)+/,'')              // banco/agência/conta ou CPF/CNPJ numérico
+            .replace(/\s+/g,' ').trim();
+  }
+  let curDate=null;
+  for(const l of lines){
+    const text=l.text.trim();
+    const dm=text.match(dayRe);
+    if(dm){
+      const mo=MO[dm[2].slice(0,3).toLowerCase()];
+      curDate=mo?`${dm[1].padStart(2,'0')}/${String(mo).padStart(2,'0')}/${dm[3]}`:null;
+      continue;
+    }
+    if(!curDate||skipRe.test(text))continue;
+    let tipo,nome,neg,val;
+    let m=text.match(quotedRe);
+    if(m){tipo=m[1];nome=cleanName(m[2]);neg=!!m[3];val=m[4];}
+    else{
+      m=text.match(plainRe);
+      if(!m||!/[a-zà-úç]/i.test(m[1]))continue;
+      tipo=m[1];nome='';neg=!!m[2];val=m[3];
+    }
+    const amt=convParseBR(val);
+    if(amt===null||isNaN(amt))continue;
+    const value=neg?-Math.abs(amt):Math.abs(amt);
+    const desc=(tipo.trim()+(nome?' '+nome:'')).trim();
+    txns.push({date:curDate,desc,value,cat:classifyTx(desc,value)});
+  }
+  return txns;
+}
+
 function parseInterFatura(lines){
   const txns=[];
   const MO={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
@@ -11394,6 +11444,7 @@ async function convProcessPDF(file){
       case'bb_fatura':       txns=parseBBFatura(lines,allText);break;
       case'visa_fatura':     txns=parseUnicredFatura(lines,allText);break;
       case'inter_fatura':    txns=parseInterFatura(lines);break;
+      case'inter_extrato':   txns=parseInterExtrato(lines);break;
       case'mp_fatura':       txns=parseMPFatura(lines,allText);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
