@@ -1325,6 +1325,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="sb-item"        data-tab="simulador"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>Simulador</div>
   <div class="sb-item"        data-tab="aposent"       onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></span>Aposentadoria</div>
   <div class="sb-item"        data-tab="irpgbl"        onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span>IR / PGBL</div>
+  <div class="sb-item"        data-tab="tributos"      onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>Tributos PJ</div>
   <div class="sb-item"        data-tab="seguranca"     onclick="sbNav(this)"><span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>Segurança</div>
 
   <div class="sb-sec">Ativos</div>
@@ -1389,6 +1390,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   <div class="tab"        data-tab="simulador"    onclick="switchTab(this)"><span class="tab-icon">🧮</span>Simulador</div>
   <div class="tab"        data-tab="aposent"      onclick="switchTab(this)"><span class="tab-icon">🏖️</span>Aposentadoria</div>
   <div class="tab"        data-tab="irpgbl"       onclick="switchTab(this)"><span class="tab-icon">📋</span>IR / PGBL</div>
+  <div class="tab"        data-tab="tributos"     onclick="switchTab(this)"><span class="tab-icon">🧾</span>Tributos PJ</div>
   <div class="tab"        data-tab="seguranca"    onclick="switchTab(this)"><span class="tab-icon">🛡️</span>Segurança</div>
   <div class="tab"        data-tab="dividas"      onclick="switchTab(this)"><span class="tab-icon">💰</span>Dívidas</div>
   <div class="tab"        data-tab="investimentos" onclick="switchTab(this)"><span class="tab-icon">📉</span>Investimentos</div>
@@ -1953,6 +1955,87 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       </div>
 
     </div>
+  </div>
+</div>
+
+<!-- ═══════ TRIBUTOS PJ (Simples Nacional / Lucro Presumido) ════════════════════ -->
+<div class="panel" id="panel-tributos">
+  <div class="locked-banner" id="banner-tributos" style="display:none">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    Calculadora tributária configurada pela sua consultora Structa.
+  </div>
+
+  <div class="sim-shared">
+    <div class="sim-shared-title">Regime Tributário</div>
+    <div class="sim-row" style="align-items:center">
+      <div class="sim-toggle" style="width:320px">
+        <button id="btn-trib-simples" class="active" onclick="setTribRegime('simples')">Simples Nacional</button>
+        <button id="btn-trib-presumido" onclick="setTribRegime('presumido')">Lucro Presumido</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);max-width:420px;align-self:center;padding-bottom:2px">
+        Estimativa para apoiar a conversa com o contador do cliente. Não substitui apuração oficial — ISS e ICMS variam por município/estado e não estão incluídos.
+      </div>
+    </div>
+  </div>
+
+  <div class="sim-grid" style="grid-template-columns:1fr">
+
+    <!-- SIMPLES NACIONAL -->
+    <div class="sim-card" id="sc-trib-simples">
+      <div class="sim-card-header">
+        <div class="sim-card-icon">🧾</div>
+        <div><div class="sim-card-title">Simples Nacional</div><div class="sim-card-sub">Alíquota efetiva por Anexo (I a V)</div></div>
+      </div>
+      <div class="sim-inputs">
+        <div class="sim-row">
+          <div class="sim-fld"><label>Anexo</label>
+            <select id="ts-anexo" onchange="tribCalc()">
+              <option value="1">Anexo I — Comércio</option>
+              <option value="2">Anexo II — Indústria</option>
+              <option value="3">Anexo III — Serviços (c/ CPP)</option>
+              <option value="4">Anexo IV — Serviços (s/ CPP — construção, vigilância, limpeza etc.)</option>
+              <option value="5">Anexo V — Serviços intelectuais/regulamentados</option>
+            </select>
+          </div>
+          <div class="sim-fld"><label>Folha de pagamento (12 meses, p/ Fator R)</label><input type="number" id="ts-folha" placeholder="0" min="0" step="1000" oninput="tribCalc()" title="Usado apenas se o Anexo escolhido for III ou V, para aplicar o Fator R"></div>
+        </div>
+        <div class="sim-row">
+          <div class="sim-fld"><label>Receita Bruta últimos 12 meses — RBT12 (R$)</label><input type="number" id="ts-rbt12" placeholder="600000" min="0" step="1000" oninput="tribCalc()"></div>
+          <div class="sim-fld"><label>Receita bruta do mês (R$)</label><input type="number" id="ts-mes" placeholder="50000" min="0" step="500" oninput="tribCalc()"></div>
+        </div>
+        <div id="ts-fator-r" style="display:none;border-radius:8px;padding:8px 12px;font-size:12px;line-height:1.5;margin:4px 10px 4px;background:#f0eef8;color:#4a3f6b"></div>
+      </div>
+      <div id="ts-result" class="sim-result"><div style="color:var(--muted);font-size:12px">Preencha os campos acima.</div></div>
+    </div>
+
+    <!-- LUCRO PRESUMIDO -->
+    <div class="sim-card" id="sc-trib-presumido" style="display:none">
+      <div class="sim-card-header">
+        <div class="sim-card-icon">📊</div>
+        <div><div class="sim-card-title">Lucro Presumido</div><div class="sim-card-sub">IRPJ, CSLL, PIS e COFINS (apuração trimestral)</div></div>
+      </div>
+      <div class="sim-inputs">
+        <div class="sim-row">
+          <div class="sim-fld" style="flex:1"><label>Atividade</label>
+            <select id="tp-ativ" onchange="tribCalc()">
+              <option value="comercio">Comércio / Indústria</option>
+              <option value="combustivel">Revenda de combustíveis</option>
+              <option value="transpcarga">Transporte de cargas</option>
+              <option value="transppass">Transporte (exceto cargas)</option>
+              <option value="hospitalar">Serviços hospitalares (equiparados)</option>
+              <option value="construcao">Construção civil (empreitada c/ material)</option>
+              <option value="servicos">Serviços em geral / profissionais / intermediação / locação</option>
+            </select>
+          </div>
+        </div>
+        <div class="sim-row">
+          <div class="sim-fld"><label>Receita bruta do trimestre (R$)</label><input type="number" id="tp-receita" placeholder="300000" min="0" step="1000" oninput="tribCalc()"></div>
+          <div class="sim-fld"><label>Receitas financeiras do trimestre (R$)</label><input type="number" id="tp-financeira" placeholder="0" min="0" step="100" oninput="tribCalc()" title="Somam-se integralmente à base de IRPJ/CSLL (100%), além do PIS/COFINS próprios"></div>
+        </div>
+      </div>
+      <div id="tp-result" class="sim-result"><div style="color:var(--muted);font-size:12px">Preencha os campos acima.</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -6453,7 +6536,7 @@ function switchTab(el){
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.toggle('active',i.dataset.tab===tab));
   const names={inicio:'Início',orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
     diagnostico:'Diagnóstico',projecao:'Projeção 12M',objetivos:'Objetivos',
-    simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',
+    simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',tributos:'Tributos PJ',
     seguranca:'Segurança',dividas:'Dívidas',investimentos:'Investimentos',patrimonio:'Patrimônio',expansao:'Expansão Patrimonial'};
   const tn=document.getElementById('topbar-tab-name');
   if(tn)tn.textContent=names[tab]||tab;
@@ -6472,7 +6555,7 @@ function sbNav(el){
     // Update topbar breadcrumb
     const names={inicio:'Início',orcamento:'Orçamento',lancamentos:'Lançamentos',fluxopgto:'Fluxo de Pgto',
       diagnostico:'Diagnóstico',projecao:'Projeção 12M',objetivos:'Objetivos',
-      simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',
+      simulador:'Simulador',aposent:'Aposentadoria',irpgbl:'IR / PGBL',tributos:'Tributos PJ',
       seguranca:'Segurança',dividas:'Dívidas',investimentos:'Investimentos',patrimonio:'Patrimônio',expansao:'Expansão Patrimonial'};
     const tn=document.getElementById('topbar-tab-name');
     if(tn)tn.textContent=names[tab]||tab;
@@ -6673,12 +6756,14 @@ function renderPessoaBars(){
   });
 }
 function initCalcPanelsPersistence(){
-  ['panel-irpgbl','panel-aposent','panel-simulador'].forEach(bindCalcPersistence);
+  ['panel-irpgbl','panel-aposent','panel-simulador','panel-tributos'].forEach(bindCalcPersistence);
   getPessoas();renderPessoaBars();
   loadFases();renderFases();
   restoreCalcFields('panel-irpgbl');
   restoreCalcFields('panel-aposent');
   restoreCalcFields('panel-simulador');
+  restoreCalcFields('panel-tributos');
+  try{tribCalc();}catch(e){}
   // Recalcula tudo com os valores restaurados para os quadros/tabelas já
   // aparecerem preenchidos, sem esperar o usuário digitar algo.
   try{irCalc();}catch(e){}
@@ -8356,6 +8441,117 @@ function aposCalc(){
 // ── SIMULADOR ────────────────────────────────────────────────────────────────
 let _simSistema='SAC', _simMeia=false, _simAmortVisible=false;
 let _simRes={fin:null,con:null,av:null};
+
+// ── TRIBUTOS PJ: Simples Nacional / Lucro Presumido ──────────────────────────
+const SIMPLES_ANEXOS={
+  1:{nome:'Anexo I — Comércio',faixas:[
+    [180000,0.04,0],[360000,0.073,5940],[720000,0.095,13860],
+    [1800000,0.107,22500],[3600000,0.143,87300],[4800000,0.19,378000]]},
+  2:{nome:'Anexo II — Indústria',faixas:[
+    [180000,0.045,0],[360000,0.078,5940],[720000,0.10,13860],
+    [1800000,0.112,22500],[3600000,0.147,85500],[4800000,0.30,720000]]},
+  3:{nome:'Anexo III — Serviços',faixas:[
+    [180000,0.06,0],[360000,0.112,9360],[720000,0.135,17640],
+    [1800000,0.16,35640],[3600000,0.21,125640],[4800000,0.33,648000]]},
+  4:{nome:'Anexo IV — Serviços',faixas:[
+    [180000,0.045,0],[360000,0.09,8100],[720000,0.102,12420],
+    [1800000,0.14,39780],[3600000,0.22,183780],[4800000,0.33,828000]]},
+  5:{nome:'Anexo V — Serviços',faixas:[
+    [180000,0.155,0],[360000,0.18,4500],[720000,0.195,9900],
+    [1800000,0.205,17100],[3600000,0.23,62100],[4800000,0.305,540000]]}
+};
+const LP_ATIVIDADES={
+  comercio:{nome:'Comércio / Indústria',irpj:0.08,csll:0.12},
+  combustivel:{nome:'Revenda de combustíveis',irpj:0.016,csll:0.12},
+  transpcarga:{nome:'Transporte de cargas',irpj:0.08,csll:0.12},
+  transppass:{nome:'Transporte (exceto cargas)',irpj:0.16,csll:0.12},
+  hospitalar:{nome:'Serviços hospitalares (equiparados)',irpj:0.08,csll:0.12},
+  construcao:{nome:'Construção civil (empreitada c/ material)',irpj:0.08,csll:0.12},
+  servicos:{nome:'Serviços em geral / profissionais / intermediação / locação',irpj:0.32,csll:0.32}
+};
+let _tribRegime='simples';
+function setTribRegime(r){
+  _tribRegime=r;
+  document.getElementById('btn-trib-simples').classList.toggle('active',r==='simples');
+  document.getElementById('btn-trib-presumido').classList.toggle('active',r==='presumido');
+  document.getElementById('sc-trib-simples').style.display=r==='simples'?'':'none';
+  document.getElementById('sc-trib-presumido').style.display=r==='presumido'?'':'none';
+  tribCalc();
+}
+function simplesNacionalCalc(rbt12,anexoId){
+  const anexo=SIMPLES_ANEXOS[anexoId];
+  if(!anexo||!(rbt12>0))return null;
+  let faixa=anexo.faixas[anexo.faixas.length-1];
+  for(const f of anexo.faixas){if(rbt12<=f[0]){faixa=f;break;}}
+  const [,aliqNominal,deducao]=faixa;
+  const aliqEfetiva=Math.max(0,((rbt12*aliqNominal)-deducao)/rbt12);
+  return {aliqNominal,deducao,aliqEfetiva,anexoNome:anexo.nome};
+}
+function tribCalc(){
+  const anexoSel=document.getElementById('ts-anexo');
+  if(!anexoSel)return; // painel ainda não renderizado
+  if(_tribRegime==='simples'){
+    const anexoId=+anexoSel.value;
+    const folha=+document.getElementById('ts-folha').value||0;
+    const rbt12=+document.getElementById('ts-rbt12').value||0;
+    const mes=+document.getElementById('ts-mes').value||0;
+    const fatorRBox=document.getElementById('ts-fator-r');
+    let anexoEfetivo=anexoId;
+    if(anexoId===3||anexoId===5){
+      const fatorR=rbt12>0?folha/rbt12:0;
+      anexoEfetivo=fatorR>=0.28?3:5;
+      fatorRBox.style.display='block';
+      fatorRBox.innerHTML='<b>Fator R:</b> '+(fatorR*100).toFixed(1)+'% — '
+        +(fatorR>=0.28?'≥ 28%, tributação pelo <b>Anexo III</b>.':'< 28%, tributação pelo <b>Anexo V</b>.');
+    } else {
+      fatorRBox.style.display='none';
+    }
+    const r=simplesNacionalCalc(rbt12,anexoEfetivo);
+    const box=document.getElementById('ts-result');
+    if(!r||!(rbt12>0)||!(mes>0)){
+      box.innerHTML='<div style="color:var(--muted);font-size:12px">Preencha a RBT12 e a receita do mês.</div>';
+      return;
+    }
+    const imposto=mes*r.aliqEfetiva;
+    box.innerHTML=
+      '<div class="sim-res-row"><span class="rl">Tributação efetiva</span><span class="rv">'+r.anexoNome+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">Alíquota nominal da faixa</span><span class="rv">'+(r.aliqNominal*100).toFixed(2)+'%</span></div>'
+      +'<div class="sim-res-row"><span class="rl">Parcela a deduzir</span><span class="rv">'+fmt(r.deducao)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">Alíquota efetiva</span><span class="rv">'+(r.aliqEfetiva*100).toFixed(2)+'%</span></div>'
+      +'<div class="sim-res-divider"></div>'
+      +'<div class="sim-res-total"><span>DAS estimado do mês</span><span>'+fmt(imposto)+'</span></div>';
+  } else {
+    const ativId=document.getElementById('tp-ativ').value;
+    const ativ=LP_ATIVIDADES[ativId];
+    const receita=+document.getElementById('tp-receita').value||0;
+    const financeira=+document.getElementById('tp-financeira').value||0;
+    const box=document.getElementById('tp-result');
+    if(!ativ||!(receita>0)){
+      box.innerHTML='<div style="color:var(--muted);font-size:12px">Preencha a receita bruta do trimestre.</div>';
+      return;
+    }
+    const baseIrpj=receita*ativ.irpj+financeira;
+    const baseCsll=receita*ativ.csll+financeira;
+    const limiteTrimestral=60000;
+    const irpjNormal=baseIrpj*0.15;
+    const irpjAdicional=Math.max(0,baseIrpj-limiteTrimestral)*0.10;
+    const irpjTotal=irpjNormal+irpjAdicional;
+    const csllTotal=baseCsll*0.09;
+    const pis=(receita+financeira)*0.0065;
+    const cofins=(receita+financeira)*0.03;
+    const totalTributos=irpjTotal+csllTotal+pis+cofins;
+    box.innerHTML=
+      '<div class="sim-res-row"><span class="rl">Base de presunção IRPJ ('+(ativ.irpj*100).toFixed(1)+'%)</span><span class="rv">'+fmt(baseIrpj)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">Base de presunção CSLL ('+(ativ.csll*100).toFixed(0)+'%)</span><span class="rv">'+fmt(baseCsll)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">IRPJ (15% + adicional 10% acima de R$ 60.000/tri)</span><span class="rv">'+fmt(irpjTotal)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">CSLL (9%)</span><span class="rv">'+fmt(csllTotal)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">PIS (0,65% — cumulativo)</span><span class="rv">'+fmt(pis)+'</span></div>'
+      +'<div class="sim-res-row"><span class="rl">COFINS (3% — cumulativo)</span><span class="rv">'+fmt(cofins)+'</span></div>'
+      +'<div class="sim-res-divider"></div>'
+      +'<div class="sim-res-total"><span>Total de tributos federais no trimestre</span><span>'+fmt(totalTributos)+'</span></div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.6">ISS (serviços) ou ICMS (comércio/indústria) não incluídos — variam por município/estado e devem ser apurados à parte.</div>';
+  }
+}
 
 function setSistema(s){
   _simSistema=s;
