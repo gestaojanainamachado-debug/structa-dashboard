@@ -1,6 +1,16 @@
 -- ============================================================
 -- STRUCTA — Schema Supabase
 -- Execute no SQL Editor do seu projeto Supabase
+--
+-- Perfis:
+--   master   → você (gestaojanainamachado@gmail.com). Acesso total: monta e
+--              edita o dashboard de qualquer cliente, de qualquer consultor,
+--              e convida novos consultores. Atribuído automaticamente no
+--              primeiro login (ver handle_new_user / self-heal no app).
+--   advisor  → "Consultor" na interface. Cria e edita os próprios clientes,
+--              convida clientes, só enxerga o que é seu.
+--   client   → acesso somente ao que foi liberado (Lançamentos para editar;
+--              Orçamento e Objetivos só para visualizar).
 -- ============================================================
 
 -- 1. TABELA DE PERFIS (estende auth.users)
@@ -8,65 +18,138 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id          UUID        REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   email       TEXT        NOT NULL,
   nome        TEXT,
-  role        TEXT        NOT NULL DEFAULT 'client' CHECK (role IN ('advisor', 'client')),
-  slug        TEXT        UNIQUE, -- ex: 'luciana', 'dr_joao' (vincula ao ?c= da URL)
-  advisor_id  UUID        REFERENCES public.profiles(id) ON DELETE SET NULL,
+  role        TEXT        NOT NULL DEFAULT 'client' CHECK (role IN ('master', 'advisor', 'client')),
+  slug        TEXT        UNIQUE, -- ex: 'luciana', 'dr_joao' (vincula ao ?c= da URL) — só para clientes
+  advisor_id  UUID        REFERENCES public.profiles(id) ON DELETE SET NULL, -- quem é o consultor deste cliente
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Se a tabela já existia (schema anterior sem o papel 'master'), atualize o
+-- CHECK constraint e rode o self-heal do master pelo app, ou manualmente:
+--   ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
+--   ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('master','advisor','client'));
+
 -- 2. TABELA DE DADOS DO CLIENTE (armazena o objeto S inteiro como JSONB)
+-- Observação: o app identifica o workspace do cliente pelo "slug" (não pelo
+-- profiles.id), para suportar workspaces criados localmente antes de o
+-- cliente ter conta — por isso client_data é indexada por slug.
 CREATE TABLE IF NOT EXISTS public.client_data (
   id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  client_id   UUID        REFERENCES public.profiles(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  slug        TEXT        UNIQUE NOT NULL,
+  advisor_id  UUID        REFERENCES public.profiles(id) ON DELETE SET NULL,
   data        JSONB       NOT NULL DEFAULT '{}',
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 3. CONVITES PENDENTES — criados pelo consultor/master ANTES de o convidado
+-- ter conta; quando a pessoa faz login pela primeira vez (magic link/OTP), o
+-- app lê esta tabela por e-mail e ativa o perfil certo (cliente com slug, ou
+-- novo consultor).
+CREATE TABLE IF NOT EXISTS public.pending_invites (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  email       TEXT        UNIQUE NOT NULL,
+  invite_role TEXT        NOT NULL DEFAULT 'client' CHECK (invite_role IN ('advisor', 'client')),
+  advisor_id  UUID        REFERENCES public.profiles(id) ON DELETE SET NULL, -- quem convidou (dono do cliente)
+  slug        TEXT,       -- obrigatório na prática para convite de cliente; nulo para convite de consultor
+  name        TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ── ROW LEVEL SECURITY ──────────────────────────────────────────────────────
 
-ALTER TABLE public.profiles   ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.client_data ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_data    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pending_invites ENABLE ROW LEVEL SECURITY;
 
--- profiles: cada user vê o próprio perfil
+-- Helper (via subquery nas policies abaixo): "sou master" = existe profiles
+-- com meu id e role='master'.
+
+-- profiles: cada usuário vê o próprio perfil
 CREATE POLICY "Usuário vê o próprio perfil"
   ON public.profiles FOR SELECT
   USING (auth.uid() = id);
 
--- profiles: advisor vê perfis dos seus clientes
-CREATE POLICY "Advisor vê perfis dos clientes"
+-- profiles: consultor vê perfis dos seus clientes
+CREATE POLICY "Consultor vê perfis dos clientes"
   ON public.profiles FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role = 'advisor'
-    )
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'advisor')
     AND advisor_id = auth.uid()
   );
+
+-- profiles: master vê e gerencia todos os perfis (consultores e clientes)
+CREATE POLICY "Master vê todos os perfis"
+  ON public.profiles FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'master'));
+
+CREATE POLICY "Master atualiza qualquer perfil"
+  ON public.profiles FOR UPDATE
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'master'));
+
+CREATE POLICY "Master apaga qualquer perfil"
+  ON public.profiles FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'master'));
 
 -- profiles: usuário atualiza o próprio perfil
 CREATE POLICY "Usuário atualiza o próprio perfil"
   ON public.profiles FOR UPDATE
   USING (auth.uid() = id);
 
--- client_data: cliente vê/edita apenas os próprios dados
+-- profiles: consultor apaga perfis dos próprios clientes (ex: ao excluir cliente)
+CREATE POLICY "Consultor apaga perfis dos clientes"
+  ON public.profiles FOR DELETE
+  USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'advisor')
+    AND advisor_id = auth.uid()
+  );
+
+-- client_data: cliente acessa os próprios dados (via profiles.slug == client_data.slug)
 CREATE POLICY "Cliente acessa os próprios dados"
   ON public.client_data FOR ALL
-  USING (client_id = auth.uid());
+  USING (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.slug = client_data.slug)
+  );
 
--- client_data: advisor acessa dados dos seus clientes
-CREATE POLICY "Advisor acessa dados dos clientes"
+-- client_data: consultor acessa dados dos seus clientes
+CREATE POLICY "Consultor acessa dados dos clientes"
   ON public.client_data FOR ALL
   USING (
-    EXISTS (
-      SELECT 1 FROM public.profiles p
-      WHERE p.id = auth.uid() AND p.role = 'advisor'
-    )
-    AND EXISTS (
-      SELECT 1 FROM public.profiles cp
-      WHERE cp.id = client_data.client_id AND cp.advisor_id = auth.uid()
-    )
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'advisor')
+    AND advisor_id = auth.uid()
   );
+
+-- client_data: master acessa (lê/edita/apaga) os dados de QUALQUER cliente,
+-- de qualquer consultor — é o que dá a ela autonomia total sobre o sistema.
+CREATE POLICY "Master acessa todos os dados"
+  ON public.client_data FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'master'));
+
+-- pending_invites: consultor/master vê e cria convites que ele mesmo emitiu
+CREATE POLICY "Convite visível para quem convidou"
+  ON public.pending_invites FOR SELECT
+  USING (advisor_id = auth.uid() OR advisor_id IS NULL);
+
+CREATE POLICY "Consultor/master cria convites"
+  ON public.pending_invites FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role IN ('advisor', 'master'))
+  );
+
+-- pending_invites: o próprio convidado lê (e depois apaga) seu convite ao
+-- logar pela primeira vez, para o app poder ativar o perfil certo
+CREATE POLICY "Convidado vê o próprio convite"
+  ON public.pending_invites FOR SELECT
+  USING (email = auth.email());
+
+CREATE POLICY "Convidado apaga o próprio convite após ativar"
+  ON public.pending_invites FOR DELETE
+  USING (email = auth.email());
+
+-- pending_invites: master apaga qualquer convite
+CREATE POLICY "Master apaga qualquer convite"
+  ON public.pending_invites FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.profiles p WHERE p.id = auth.uid() AND p.role = 'master'));
 
 -- ── FUNÇÕES E TRIGGERS ──────────────────────────────────────────────────────
 
@@ -107,6 +190,7 @@ CREATE TRIGGER update_profiles_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
 
 -- ── DADOS INICIAIS ──────────────────────────────────────────────────────────
--- Execute APÓS criar sua conta no Supabase.
--- Substitua 'SEU_USER_ID_AQUI' pelo seu UID (em Auth > Users no painel).
--- UPDATE public.profiles SET role = 'advisor' WHERE id = 'SEU_USER_ID_AQUI';
+-- O e-mail master (gestaojanainamachado@gmail.com) vira role='master' sozinho
+-- no primeiro login — não precisa rodar nada aqui para isso (self-heal no
+-- app, em sbLoadData). Caso queira promover alguém manualmente a consultor:
+-- UPDATE public.profiles SET role = 'advisor' WHERE id = 'ID_DO_CONSULTOR';
