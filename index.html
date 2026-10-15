@@ -1823,7 +1823,11 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     </div>
     <div id="fp-verdict" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;font-size:13px;font-weight:600"></div>
     <div class="tl-header">
-      <span>Dia</span><span>Descrição</span><span></span><span style="text-align:right">Valor</span><span style="text-align:right">Saldo</span>
+      <span style="cursor:pointer;user-select:none" onclick="fpSort('dia')">Dia <span id="fsrt-dia"></span></span>
+      <span style="cursor:pointer;user-select:none" onclick="fpSort('desc')">Descrição <span id="fsrt-desc"></span></span>
+      <span></span>
+      <span style="text-align:right;cursor:pointer;user-select:none" onclick="fpSort('valor')">Valor <span id="fsrt-valor"></span></span>
+      <span style="text-align:right;cursor:pointer;user-select:none" onclick="fpSort('saldo')">Saldo <span id="fsrt-saldo"></span></span>
     </div>
     <div id="timeline-body">
       <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">Adicione cartões ou entradas/saídas para visualizar o fluxo.</div>
@@ -2400,9 +2404,14 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="inv-scroll">
       <table class="inv-table">
         <thead><tr>
-          <th>Corretora</th><th>Tipo</th><th>Nome</th>
-          <th>Data Início</th><th style="min-width:120px">Valor Investido</th>
-          <th style="min-width:130px">Valor Atual ✏</th><th>Rentabilidade</th><th>Objetivo</th><th></th>
+          <th style="cursor:pointer;user-select:none" onclick="invSort('corretora')">Corretora <span id="isrt-corretora"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="invSort('tipo')">Tipo <span id="isrt-tipo"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="invSort('nome')">Nome <span id="isrt-nome"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="invSort('dataInicio')">Data Início <span id="isrt-dataInicio"></span></th>
+          <th style="min-width:120px;cursor:pointer;user-select:none" onclick="invSort('valorInv')">Valor Investido <span id="isrt-valorInv"></span></th>
+          <th style="min-width:130px;cursor:pointer;user-select:none" onclick="invSort('valorAtual')">Valor Atual ✏ <span id="isrt-valorAtual"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="invSort('rent')">Rentabilidade <span id="isrt-rent"></span></th>
+          <th>Objetivo</th><th></th>
         </tr></thead>
         <tbody id="inv-body"></tbody>
       </table>
@@ -4233,6 +4242,13 @@ function saveInvAtual(id,val){
   renderPatrimonio();
 }
 
+let invSortKey='', invSortDir=1; // '' = ordem de cadastro
+function invSort(key){
+  if(invSortKey===key) invSortDir*=-1; else{invSortKey=key;invSortDir=1;}
+  ['corretora','tipo','nome','dataInicio','valorInv','valorAtual','rent'].forEach(k=>{const el=document.getElementById('isrt-'+k);if(el)el.textContent='';});
+  const el=document.getElementById('isrt-'+key);if(el)el.textContent=invSortDir===-1?' ↓':' ↑';
+  renderInvestimentos();
+}
 function renderInvestimentos(){
   const body=document.getElementById('inv-body');
   const empty=document.getElementById('inv-empty');
@@ -4243,7 +4259,18 @@ function renderInvestimentos(){
   }
   if(empty)empty.style.display='none';
   const goalOpts=(S.goals||[]).map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
-  body.innerHTML=S.investimentos.map(inv=>{
+  const rentOf=i=>i.valorInv>0?((i.valorAtual-i.valorInv)/i.valorInv*100):0;
+  let invList=S.investimentos;
+  if(invSortKey){
+    invList=[...S.investimentos].sort((a,b)=>{
+      let va,vb;
+      if(invSortKey==='rent'){va=rentOf(a);vb=rentOf(b);}
+      else if(invSortKey==='valorInv'||invSortKey==='valorAtual'){va=a[invSortKey]||0;vb=b[invSortKey]||0;}
+      else{va=(a[invSortKey]||'').toLowerCase();vb=(b[invSortKey]||'').toLowerCase();}
+      if(va<vb)return -1*invSortDir;if(va>vb)return invSortDir;return 0;
+    });
+  }
+  body.innerHTML=invList.map(inv=>{
     const rent=inv.valorInv>0?((inv.valorAtual-inv.valorInv)/inv.valorInv*100):0;
     return `<tr>
       <td><input class="inv-inp" type="text" value="${inv.corretora||''}" placeholder="XP, BTG..." onchange="saveInvField('${inv.id}','corretora',this.value)"></td>
@@ -5449,6 +5476,14 @@ function clearTxMonth(){
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
+let fpSortKey='dia', fpSortDir=1; // 1=asc (cronológico), -1=desc
+function fpSort(key){
+  if(fpSortKey===key) fpSortDir*=-1; else{fpSortKey=key;fpSortDir=1;}
+  ['dia','desc','valor','saldo'].forEach(k=>{const el=document.getElementById('fsrt-'+k);if(el)el.textContent='';});
+  const el=document.getElementById('fsrt-'+key);if(el)el.textContent=fpSortDir===-1?' ↓':' ↑';
+  renderFluxoPgto();
+}
+
 let txSortKey='date', txSortDir=-1; // -1=desc, 1=asc
 function txSort(key){
   if(txSortKey===key) txSortDir*=-1; else{txSortKey=key;txSortDir=key==='amount'?-1:-1;}
@@ -5968,7 +6003,8 @@ function renderFluxoPgto(){
     if(card.vencDia) events.push({dia:card.vencDia,desc:'Fatura '+card.nome,tipo:'saida',valor:total,isCard:true,cardId:card.id});
   });
 
-  // Sort by dia
+  // Sort by dia — necessário pro cálculo do saldo acumulado, que é sempre
+  // cronológico independente da ordem de exibição escolhida pelo usuário.
   events.sort((a,b)=>a.dia-b.dia);
 
   // Compute totals
@@ -5992,11 +6028,26 @@ function renderFluxoPgto(){
   }
   let saldoCurr=S.saldoInicial||0;
   let minSaldo=saldoCurr,minDia=null;
-  body.innerHTML='';
+  // Calcula o saldo acumulado na ordem cronológica (sempre) e guarda em cada
+  // evento — depois a lista é reordenada só pra EXIBIÇÃO, sem recalcular nada.
   events.forEach(ev=>{
     const isEnt=ev.tipo==='entrada';
     saldoCurr+=isEnt?ev.valor:-ev.valor;
     if(saldoCurr<minSaldo){minSaldo=saldoCurr;minDia=ev.dia;}
+    ev.saldoApos=saldoCurr;
+  });
+  const displayEvents=[...events].sort((a,b)=>{
+    let va,vb;
+    if(fpSortKey==='desc'){va=(a.desc||'').toLowerCase();vb=(b.desc||'').toLowerCase();}
+    else if(fpSortKey==='valor'){va=a.tipo==='entrada'?a.valor:-a.valor;vb=b.tipo==='entrada'?b.valor:-b.valor;}
+    else if(fpSortKey==='saldo'){va=a.saldoApos;vb=b.saldoApos;}
+    else{va=a.dia;vb=b.dia;}
+    if(va<vb)return -1*fpSortDir;if(va>vb)return fpSortDir;return 0;
+  });
+  body.innerHTML='';
+  displayEvents.forEach(ev=>{
+    const isEnt=ev.tipo==='entrada';
+    const saldoCurr=ev.saldoApos;
     const d=new Date(y,m,ev.dia);
     const diaSem=DIAS_PT[d.getDay()];
     const valStr=(isEnt?'+ ':'- ')+fmt(ev.valor);
