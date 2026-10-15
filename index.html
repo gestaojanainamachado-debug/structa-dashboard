@@ -1584,7 +1584,6 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <button class="btn btn-o" onclick="orcCopyFromPrev()" title="Copiar orçamento do mês anterior">📋 Mês anterior</button>
     <button class="btn btn-o" onclick="orcSetDefault()" title="Salvar como padrão para meses sem orçamento definido">⭐ Salvar como padrão</button>
     <div class="sp"></div>
-    <button class="btn btn-o" onclick="openModal('csv')">📂 Importar CSV</button>
     <button class="btn btn-o" onclick="window.print()">🖨 Imprimir</button>
   </div>
   <!-- Saúde Financeira -->
@@ -1650,6 +1649,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           </div>
         </div>
         <div id="grp-despesas"></div>
+        <div class="tot-row"><span>Total Fixo</span><span id="tfx-o">R$ 0</span><span id="tfx-r">R$ 0</span><span class="var-cell neutral" id="vfx">—</span><span></span></div>
+        <div class="tot-row"><span>Total Variável</span><span id="tvr-o">R$ 0</span><span id="tvr-r">R$ 0</span><span class="var-cell neutral" id="vvr">—</span><span></span></div>
         <div class="tot-row"><span>Total Despesas</span><span id="tf-o">R$ 0</span><span id="tf-r">R$ 0</span><span class="var-cell neutral" id="vf">—</span><span></span></div>
         <!-- hidden compat elements -->
         <span id="tv-o" style="display:none"></span><span id="tv-r" style="display:none"></span><span id="vv" style="display:none"></span>
@@ -2887,8 +2888,7 @@ const DEFS={
   ct:[
     {id:'ct_assin',   lbl:'Assinaturas / Sistemas de Trabalho', grpNome:'Custos Profissionais'},
     {id:'ct_cont',    lbl:'Contador',                            grpNome:'Custos Profissionais'},
-    {id:'ct_imp',     lbl:'Impostos (IRPJ / CSLL / Simples)',    grpNome:'Custos Profissionais'},
-    {id:'ct_iss',     lbl:'Impostos ISS',                        grpNome:'Custos Profissionais'},
+    {id:'ct_imp',     lbl:'Impostos',                            grpNome:'Custos Profissionais'},
     {id:'ct_alug',    lbl:'Aluguel do Consultório',              grpNome:'Custos Profissionais'},
     {id:'ct_sal',     lbl:'Funcionários / Encargos',             grpNome:'Custos Profissionais'},
     {id:'ct_mkt',     lbl:'Marketing',                           grpNome:'Custos Profissionais'},
@@ -2909,13 +2909,11 @@ const DEFS={
     {id:'f_cel',      lbl:'Celular',                       grpNome:'Moradia'},
     {id:'f_hfax',     lbl:'Faxina / Diarista',             grpNome:'Moradia'},
     {id:'f_plano',    lbl:'Plano de Saúde',                grpNome:'Saúde'},
-    {id:'f_med_cont', lbl:'Tratamentos Contínuos',         grpNome:'Saúde'},
     {id:'f_terapia',  lbl:'Terapia',                       grpNome:'Bem-Estar e Esporte'},
     {id:'f_acad',     lbl:'Academia',                      grpNome:'Bem-Estar e Esporte'},
     {id:'f_personal', lbl:'Personal Trainer',              grpNome:'Bem-Estar e Esporte'},
     {id:'f_seg_auto', lbl:'Seguro do Veículo',             grpNome:'Transporte'},
     {id:'f_ipva_p',   lbl:'IPVA',                          grpNome:'Transporte'},
-    {id:'f_estac_m',  lbl:'Estacionamento / Garagem',      grpNome:'Transporte'},
     {id:'f_pet_plano',lbl:'Plano de Saúde Pet',            grpNome:'Pets'},
     {id:'f_pet_creche',lbl:'Creche / Hotel Pet',           grpNome:'Pets'},
     {id:'f_facul',    lbl:'Faculdade / Pós-graduação',     grpNome:'Educação'},
@@ -2923,11 +2921,10 @@ const DEFS={
     {id:'f_escola',   lbl:'Escola / Faculdade dos Filhos', grpNome:'Filhos e Família'},
     {id:'f_baba',     lbl:'Babá',                          grpNome:'Filhos e Família'},
     {id:'f_fesporte', lbl:'Atividades / Esportes Filhos',  grpNome:'Filhos e Família'},
+    {id:'f_familiares', lbl:'Custo com Familiares',        grpNome:'Filhos e Família'},
     {id:'f_assin',    lbl:'Streaming (Netflix, Spotify…)', grpNome:'Assinaturas'},
     {id:'f_app',      lbl:'Apps / Software Pessoal',       grpNome:'Assinaturas'},
-    {id:'f_clube',    lbl:'Clube de Benefício',            grpNome:'Assinaturas'},
     {id:'f_terccons', lbl:'Consultorias Recorrentes',      grpNome:'Serviços'},
-    {id:'f_contab',   lbl:'Contabilidade',                 grpNome:'Serviços'},
     {id:'f_seg_res',  lbl:'Seguro Residencial',            grpNome:'Seguros'},
     {id:'f_seg_vida', lbl:'Seguro de Vida',                grpNome:'Seguros'},
     {id:'f_seg_rc',   lbl:'Seguro de Resp. Civil',         grpNome:'Seguros'},
@@ -2939,7 +2936,6 @@ const DEFS={
     {id:'f_fin_im',   lbl:'Financiamento Imobiliário',     grpNome:'Dívidas'},
     {id:'f_fin_ve',   lbl:'Financiamento de Veículo',      grpNome:'Dívidas'},
     {id:'f_cons',     lbl:'Consórcio',                     grpNome:'Dívidas'},
-    {id:'f_reneg',    lbl:'Renegociação de Dívida',        grpNome:'Dívidas'},
   ],
   var:[
     {id:'v_habmanut', lbl:'Manutenção / Pequenos Reparos',  grpNome:'Moradia'},
@@ -2969,7 +2965,6 @@ const DEFS={
     {id:'v_deliv',    lbl:'Delivery',                        grpNome:'Lazer'},
     {id:'v_viagem',   lbl:'Viagens',                         grpNome:'Lazer'},
     {id:'v_passeio',  lbl:'Passeios / Shows / Cinema',       grpNome:'Lazer'},
-    {id:'v_festas',   lbl:'Festas',                          grpNome:'Lazer'},
     {id:'v_hobby',    lbl:'Hobbies / Jogos',                 grpNome:'Lazer'},
     {id:'v_compras',  lbl:'Compras para Casa',                 grpNome:'Compras'},
     {id:'v_vestu',    lbl:'Vestuário e Acessórios',           grpNome:'Compras'},
@@ -2980,7 +2975,6 @@ const DEFS={
     {id:'v_pres',     lbl:'Presentes / Comemorações',         grpNome:'Presentes'},
     {id:'v_doacao',   lbl:'Doações',                          grpNome:'Presentes'},
     {id:'v_advogado', lbl:'Advogado',                         grpNome:'Serviços'},
-    {id:'v_despacho', lbl:'Despachante',                      grpNome:'Serviços'},
     {id:'v_tercout',  lbl:'Outros Serviços',                  grpNome:'Serviços'},
     {id:'v_irpf',     lbl:'Impostos PF',                       grpNome:'Taxas e Impostos'},
     {id:'v_cartorio', lbl:'Taxas Cartorárias',                grpNome:'Taxas e Impostos'},
@@ -3015,9 +3009,8 @@ const KW={
   ct_inv_emp: ['investimento empresa','reforma clinica'],
   ct_assin:   ['prontuario','software medico','sistema clinica','totvs','aps ','suporte ti clinica','assinatura clinica','plataforma clinica'],
   ct_mkt:     ['marketing clinica','google ads','facebook ads','meta ads','publicidade clinica','facebk'],
-  ct_cont:    ['honorario contab','contador clinica','contabilidade clinica'],
-  ct_imp:     ['simples nacional','das ','irpj','cofins','csll','contribuicao mensal'],
-  ct_iss:     ['pm juiz de fora','pref mun juiz de for','pref municipal juiz de fora','issqn','iss retido'],
+  ct_cont:    ['honorario contab','contador clinica','contabilidade clinica','contabilidade ','escritorio contab'],
+  ct_imp:     ['simples nacional','das ','irpj','cofins','csll','contribuicao mensal','pm juiz de fora','pref mun juiz de for','pref municipal juiz de fora','issqn','iss retido'],
   ct_outros:  [],
   // FIXAS — 1. Moradia
   f_alug:     ['aluguel residencial','aluguel casa','aluguel apto','aluguel imovel','locacao resid'],
@@ -3031,7 +3024,6 @@ const KW={
   f_hfax:     ['diarista','faxineira','servico dom','limpeza resid'],
   // FIXAS — 3. Saude
   f_plano:    ['unimed','amil','bradesco saude','sulamerica saude','hapvida','notredame','plano de saude','plano saude','prevent senior','golden cross','porto seguro saude','valem administradora'],
-  f_med_cont: ['medicamento cont','tratamento cont','farmacia cont'],
   // FIXAS — 4. Bem-Estar e Esporte
   f_terapia:  ['psicolog','psicoterapi','terapia '],
   f_acad:     ['academia','crossfit','smart fit','smartfit','bio ritmo','bluefit','bodytech','totalpass','wellhub','move 4 you','move4you','aquadyn','d2 fit'],
@@ -3039,7 +3031,6 @@ const KW={
   // FIXAS — 5. Transporte
   f_seg_auto: ['seguro auto','porto auto','hdi auto','allianz auto','tokio marine','yelumseg'],
   f_ipva_p:   ['ipva prov','provisao ipva'],
-  f_estac_m:  ['garagem mensal','estacionamento mensal','aluguel garagem'],
   // FIXAS — 6. Pets
   f_pet_plano: ['plano pet','saude pet','seguro pet'],
   f_pet_creche:['creche pet','hotel pet','hotelzinho pet'],
@@ -3053,10 +3044,8 @@ const KW={
   // FIXAS — 11. Assinaturas e Servicos
   f_assin:    ['netflix','spotify','amazon prime','amazonprime','prime video','disney+','disney plus','hbo max','max.com','apple tv','apple.com/bill','apple','globoplay','deezer','youtube premium','youtubepremium','paramount+','crunchyroll','star+','google one','icloud','dropbox'],
   f_app:      ['canva ','chatgpt','openai','claude.ai','anthropic','melimais','meli+'],
-  f_clube:    ['clube benefit','clube de beneficio'],
   // FIXAS — 14. Servicos de Terceiros
   f_terccons: ['consultoria ','honorario cons','salu gestao estrategica','salu gestao estrategi'],
-  f_contab:   ['contabilidade ','escritorio contab'],
   // FIXAS — 15. Seguros
   f_seg_res:  ['seguro residencial','porto residencial','allianz resid','mapfre seg','bbseguros'],
   f_seg_vida: ['seguro vida','porto vida','icatu','mongeral vida','azos segu','azos '],
@@ -3070,7 +3059,6 @@ const KW={
   f_fin_im:   ['financiamento imovel','financiamento casa','financiamento apto','parcela imovel','prestacao hab','debito prestacao hab'],
   f_fin_ve:   ['financiamento veiculo','financiamento carro','parcela veiculo'],
   f_cons:     ['parcela cons','consorci ','consorcio ','porto consorcio'],
-  f_reneg:    ['renegociacao'],
   // VAR — 1. Moradia
   v_habmanut: ['material de construcao','reforma ','manutencao resid','pintura casa','telhas'],
   // VAR — 2. Alimentacao Basica
@@ -3124,7 +3112,6 @@ const KW={
   // ganhar do "parque " de v_passeio (que era usado pra parque de diversões/lazer).
   v_viagem:   ['hotel ','pousada','airbnb','booking','hoteis.com','decolar','123milhas','maxmilhas','cvc ','hurb ','passagem aerea','latam','gol air','gol linhas','azul air','azul linhas','voegol','smiles ','tudoazul','accor ','ibis ','tap web vip','pequena tiradentes','rapido federal viacao','buser','localiza','#parque','saritur'],
   v_passeio:  ['cinema','cinemark','kinoplex','cinepolis','uci ','moviecom','teatro','show ','ingresso','sympla','eventim','ticket360','zigpay'],
-  v_festas:   ['buffet ','decoracao festa','festa ','ticketmais'],
   v_hobby:    ['steam','playstation','xbox','nintendo','riot games','loteria','aposta','betano','bet365','sportingbet'],
   // VAR — 10. Cuidados Pessoais e Estetica
   v_vestu:    ['renner','c&a ','shein','zara ','riachuelo','marisa ','hering','centauro','decathlon','netshoes','nike ','adidas','arezzo','melissa ','havaianas','roupas ','calcados','jorge bischoff','carmen steffens','live store','acessorios','#optica','#otica','lujinha','duque de caxias','ppmoa','ricardo almeida','aramis outlet','aramis ','lume store','my place','dress to','loja reserva','confecc','jeans','joia','oh boy','priscillastie','chilli beans','malha','track e field','track field','voga ','live roupas'],
@@ -3139,8 +3126,7 @@ const KW={
   v_doacao:   ['doacao','dizimo','oferta ','contribuicao social'],
   // VAR — 14. Servicos de Terceiros
   v_advogado: ['advogado','escritorio adv'],
-  v_despacho: ['despachante'],
-  v_tercout:  ['servico terceiros','prestador servico'],
+  v_tercout:  ['servico terceiros','prestador servico','despachante'],
   // VAR — 16. Taxas e Impostos
   v_irpf:     ['darf ','imposto de renda','carne leao','tributos federai','iof imposto'],
   v_cartorio: ['cartorio ','tabeliao'],
@@ -4649,6 +4635,9 @@ function bootApp(){
     r_consul:'r_out',r_plantao:'r_out',r_cirurg:'r_out',r_telemed:'r_out',
     r_docenc:'r_out',r_prolabore:'r_out',r_resgate:'r_out',r_pix:'r_out',r_emp:'r_out',
     v_massagem:'v_esporte',v_exame:'v_consulta',
+    ct_iss:'ct_imp', // Impostos ISS e Impostos (IRPJ/CSLL/Simples) viraram uma única categoria "Impostos"
+    f_med_cont:'f_plano',f_estac_m:'f_tarifa',f_clube:'f_app',f_contab:'ct_cont',f_reneg:'f_div',
+    v_festas:'v_passeio',v_despacho:'v_tercout',
   };
   if(S.transactions)S.transactions.forEach(t=>{if(CAT_REMAP[t.catId]){t.catId=CAT_REMAP[t.catId];t.grp=t.catId.startsWith('r_')?'receita':t.catId.startsWith('n_')?'neutro':t.catId.startsWith('i_')?'inv':t.catId.startsWith('ct_')?'ct':t.catId.startsWith('f_')?'fixas':'var';}});
   // Migrate categories to latest DEFS (preserve orc values where id matches)
@@ -6120,19 +6109,19 @@ function recalc(){
   // per-cat
   (S.cats.ct||[]).forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
-    setVar('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
+    setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.fixas.forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
-    setVar('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
+    setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.var.forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
-    setVar('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
+    setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.inv.forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
-    setVar('var-'+c.id,(txMap[c.id]!==undefined?txMap[c.id]:c.real||0)-getOrcVal(c.id),true);
+    setVarCat('var-'+c.id,(txMap[c.id]!==undefined?txMap[c.id]:c.real||0)-getOrcVal(c.id),true);
   });
   setVar('var-renda',rendaReal-orcRenda,true);
 
@@ -6155,9 +6144,12 @@ function recalc(){
 
   // Group totals
   setText('tct-o',fmt(tCo));setText('tct-r',fmt(tCr));
+  setText('tfx-o',fmt(tFo));setText('tfx-r',fmt(tFr)); // total fixo
+  setText('tvr-o',fmt(tVo));setText('tvr-r',fmt(tVr)); // total variável
   setText('tf-o',fmt(tFo+tVo));setText('tf-r',fmt(tFr+tVr)); // combined despesas
   setText('ti-o',fmt(tIo));setText('ti-r',fmt(tIr));
-  setVar('vct',tCo-tCr,false);setVar('vf',(tFo+tVo)-(tFr+tVr),false);setVar('vi',tIr-tIo,true);
+  setVar('vct',tCo-tCr,false);setVar('vfx',tFo-tFr,false);setVar('vvr',tVo-tVr,false);
+  setVar('vf',(tFo+tVo)-(tFr+tVr),false);setVar('vi',tIr-tIo,true);
 
   // KPIs
   setText('kpi-renda',fmt(rendaReal));setText('kpi-renda-o',fmt(orcRenda));
@@ -6208,6 +6200,14 @@ function setVar(id,delta,isGood){
   if(!delta||delta===0){el.textContent='—';el.className='var-cell neutral';return;}
   el.className='var-cell '+(delta>0?'ok':'bad');
   el.textContent=(delta>0?'▲ ':'▼ ')+fmt(Math.abs(delta));
+}
+// Igual a setVar, mas sem a seta — usada linha a linha nas categorias do
+// Orçamento, onde o valor colorido já basta e a seta só poluía a tabela.
+function setVarCat(id,delta,isGood){
+  const el=document.getElementById(id);if(!el)return;
+  if(!delta||delta===0){el.textContent='—';el.className='var-cell neutral';return;}
+  el.className='var-cell '+(delta>0?'ok':'bad');
+  el.textContent=fmt(Math.abs(delta));
 }
 
 // ── CHARTS ───────────────────────────────────────────────────────────────────
@@ -6998,7 +6998,7 @@ const CSV_CAT_MAP={
   'LAZER':                          {catId:'v_restaur',  grp:'var'},
   'VIAGEM':                         {catId:'v_viagem',   grp:'var'},
   'JOGO':                           {catId:'v_jogo',     grp:'var'},
-  'FESTAS':                         {catId:'v_festas',   grp:'var'},
+  'FESTAS':                         {catId:'v_passeio',  grp:'var'},
   // VARIÁVEL — Outros
   'ESTUDO':                         {catId:'v_estudo',   grp:'var'},
   'PET':                            {catId:'v_pet',      grp:'var'},
