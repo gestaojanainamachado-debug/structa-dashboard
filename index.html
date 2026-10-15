@@ -3381,10 +3381,16 @@ async function sbLoadData(user) {
       }
     })();
   }
-  // Se cliente logado sem slug na URL → redireciona para seu dashboard
+  // Se cliente logado sem slug na URL → redireciona para seu dashboard.
+  // location.href= agenda a navegação mas NÃO interrompe a execução do
+  // JavaScript corrente — por isso devolvemos um sinal (true) para quem
+  // chamou sbLoadData() não seguir chamando bootApp() nesta página antiga
+  // (senão ela chegaria a desenhar a tela, por um instante, com a URL sem
+  // slug — e aí _isAdmin vira true à toa, mostrando permissão de consultor
+  // para quem acabou de entrar como cliente pelo link do e-mail).
   if(_sbRole === 'client' && _sbSlug && !_cid) {
     location.href = location.pathname + '?c=' + _sbSlug;
-    return;
+    return true;
   }
   // Slug a carregar: consultor/master usa _cid da URL; cliente usa seu próprio slug
   const loadSlug = (isConsultor() && _cid) ? _cid
@@ -4534,7 +4540,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       if(event==='SIGNED_IN'&&!_sbUser){
         _sbUser=session.user;
         sbHideAuthOverlay();
-        await sbLoadData(session.user);
+        const redirecting=await sbLoadData(session.user);
+        if(redirecting)return; // já navegando para a URL com o slug certo
         bootApp(); // continua o boot após login
         sbStartSyncLoop();
       }
@@ -4549,7 +4556,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       sbShowAuthOverlay();
       return; // aguarda login
     }
-    await sbLoadData(session.user);
+    const redirecting=await sbLoadData(session.user);
+    if(redirecting)return; // já navegando para a URL com o slug certo
   } else {
     // Sem Supabase: carrega do localStorage normalmente
     try{const sv=localStorage.getItem(SKEY);if(sv)S=JSON.parse(sv);}catch(_){}
