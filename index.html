@@ -1664,13 +1664,13 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="card">
         <div class="ctitle">Distribuição do Realizado</div>
         <div class="donut-wrap"><canvas id="donutChart"></canvas>
-          <div class="donut-center"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">da renda</div></div>
+          <div class="donut-center" title="Total de despesas + investimentos realizados no mês, dividido pela renda líquida já lançada no mês"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">da renda lançada</div></div>
         </div>
         <div class="legend">
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#a08060"></div><span>Trabalho</span></div><div class="leg-r"><span class="pct" id="lct-p">0%</span><span class="val" id="lct-v"> — R$ 0</span></div></div>
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#381c17"></div><span>Fixas</span></div><div class="leg-r"><span class="pct" id="lf-p">0%</span><span class="val" id="lf-v"> — R$ 0</span></div></div>
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#c7c3db"></div><span>Variáveis</span></div><div class="leg-r"><span class="pct" id="lv-p">0%</span><span class="val" id="lv-v"> — R$ 0</span></div></div>
-          <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#8b7355"></div><span>Investimentos</span></div><div class="leg-r"><span class="pct" id="li-p">0%</span><span class="val" id="li-v"> — R$ 0</span></div></div>
+          <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#4a6fa5"></div><span>Investimentos</span></div><div class="leg-r"><span class="pct" id="li-p">0%</span><span class="val" id="li-v"> — R$ 0</span></div></div>
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#3d6b4f"></div><span>Saldo</span></div><div class="leg-r"><span class="pct" id="ls-p">0%</span><span class="val" id="ls-v"> — R$ 0</span></div></div>
         </div>
       </div>
@@ -6186,7 +6186,19 @@ function recalc(){
   // logo abaixo, que também é % sobre a renda) — antes usava orçado como base
   // (comprometido/orçado), o que dava um número sem relação com os % da legenda
   // e confundia (ex: "228%" no centro vs. fatias que somam 100% na legenda).
-  setText('donut-c',rendaReal>=1?pct(tDr,rendaReal):'—');
+  // Passa de 100% quando a renda lançada no mês ainda está incompleta frente
+  // às despesas já lançadas — nesse caso o número fica vermelho como alerta.
+  const dcEl=document.getElementById('donut-c');
+  if(dcEl){
+    if(rendaReal>=1){
+      const compDonut=tDr/rendaReal;
+      dcEl.textContent=pct(tDr,rendaReal);
+      dcEl.style.color=compDonut>1?'var(--bad)':compDonut>.85?'var(--warn)':'var(--text)';
+    }else{
+      dcEl.textContent='—';
+      dcEl.style.color='var(--text)';
+    }
+  }
 
   updateDonut([tCr,tFr,tVr,tIr,slR]);
   updateBar([tCo,tFo,tVo,tIo],[tCr,tFr,tVr,tIr]);
@@ -6213,13 +6225,13 @@ function setVarCat(id,delta,isGood){
 // ── CHARTS ───────────────────────────────────────────────────────────────────
 function initCharts(){
   dChart=new Chart(document.getElementById('donutChart').getContext('2d'),{type:'doughnut',
-    data:{labels:['Consultório','Fixas','Variáveis','Investimentos','Saldo'],datasets:[{data:[0,0,0,0,1],backgroundColor:['#a08060','#381c17','#c7c3db','#8b7355','#3d6b4f'],borderWidth:0,hoverOffset:4}]},
+    data:{labels:['Consultório','Fixas','Variáveis','Investimentos','Saldo'],datasets:[{data:[0,0,0,0,1],backgroundColor:['#a08060','#381c17','#c7c3db','#4a6fa5','#3d6b4f'],borderWidth:0,hoverOffset:4}]},
     options:{cutout:'72%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmt(c.raw)}}},animation:{duration:300}}
   });
   bChart=new Chart(document.getElementById('barChart').getContext('2d'),{type:'bar',
     data:{labels:['Consultório','Fixas','Variáveis','Investimentos'],datasets:[
       {label:'Orçado',data:[0,0,0,0],backgroundColor:'#e8ddcd',borderColor:'#c7c3db',borderWidth:1,borderRadius:4},
-      {label:'Realizado',data:[0,0,0,0],backgroundColor:['#a08060','#381c17','#c7c3db','#8b7355'],borderWidth:0,borderRadius:4},
+      {label:'Realizado',data:[0,0,0,0],backgroundColor:['#a08060','#381c17','#c7c3db','#4a6fa5'],borderWidth:0,borderRadius:4},
     ]},
     options:{plugins:{legend:{display:true,position:'top',labels:{font:{family:'Inter',size:11},color:'#381c17',boxWidth:10,padding:10}}},
       scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},color:'#8a7068'}},
@@ -6228,7 +6240,7 @@ function initCharts(){
   lChart=new Chart(document.getElementById('lineChart').getContext('2d'),{type:'line',
     data:{labels:MESES,datasets:[
       {label:'Saldo Acumulado',data:Array(12).fill(0),borderColor:'#381c17',backgroundColor:'rgba(56,28,23,.07)',fill:true,tension:.4,pointRadius:3,pointBackgroundColor:'#381c17'},
-      {label:'Invest. Mensal',data:Array(12).fill(0),borderColor:'#8b7355',backgroundColor:'transparent',borderDash:[5,4],tension:.4,pointRadius:2,pointBackgroundColor:'#8b7355'},
+      {label:'Invest. Mensal',data:Array(12).fill(0),borderColor:'#4a6fa5',backgroundColor:'transparent',borderDash:[5,4],tension:.4,pointRadius:2,pointBackgroundColor:'#4a6fa5'},
     ]},
     options:{plugins:{legend:{display:true,position:'top',labels:{font:{family:'Inter',size:11},color:'#381c17',boxWidth:10,padding:10}}},
       scales:{x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{family:'Inter',size:10},color:'#8a7068'}},
