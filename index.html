@@ -3308,12 +3308,15 @@ async function sbLoadData(user) {
     .select('role,slug')
     .eq('id', user.id)
     .single();
-  _sbRole = prof?.role || (MASTER_EMAILS.includes(user.email) ? 'master' : null);
+  _sbRole = prof?.role || null;
   _sbSlug = prof?.slug || null;
-  // Self-heal: garante que o e-mail master fique gravado como role='master' no
-  // banco (não só localmente), senão as políticas de RLS não reconhecem o
-  // perfil como master e o acesso a todos os consultores/clientes falha.
-  if(_sbRole==='master' && prof?.role!=='master'){
+  // Self-heal: o e-mail master é sempre promovido a role='master' no banco,
+  // mesmo que o perfil já tivesse outro papel salvo de antes (ex.: contas
+  // criadas quando esse e-mail ainda era tratado como consultor comum no
+  // código). Sem isso, um perfil pré-existente nunca vira master e as
+  // políticas de RLS continuam tratando-o como um consultor qualquer.
+  if(MASTER_EMAILS.includes(user.email) && _sbRole!=='master'){
+    _sbRole='master';
     try{ await _sb.from('profiles').upsert({id:user.id,email:user.email,role:'master'},{onConflict:'id'}); }catch(e){console.warn('master self-heal:',e);}
   }
   // Se usuário logou mas perfil não tem role: tentar ativar via pending_invites
