@@ -3321,9 +3321,18 @@ async function sbLoadData(user) {
     _sbRole='master';
     try{ await _sb.from('profiles').upsert({id:user.id,email:user.email,role:'master'},{onConflict:'id'}); }catch(e){console.warn('master self-heal:',e);}
   }
-  // Se usuário logou mas perfil não tem role: tentar ativar via pending_invites
-  // (pode ser convite de cliente, com slug, ou convite de novo consultor)
-  if(!_sbRole && !MASTER_EMAILS.includes(user.email)) {
+  // Tentar ativar via pending_invites quando o perfil ainda não foi de fato
+  // ativado por um convite. IMPORTANTE: o trigger handle_new_user() sempre
+  // cria o perfil com role='client' (valor padrão da coluna) assim que a
+  // pessoa confirma o e-mail — antes de o app rodar essa ativação. Por isso
+  // NÃO dá pra usar "!_sbRole" como sinal de "ainda não ativado": um cliente
+  // recém-criado já chega aqui com role='client', só que sem slug nenhum
+  // (e um consultor recém-convidado também, já que o trigger não sabe que
+  // deveria virar 'advisor'). O sinal real de "falta ativar" é: é cliente e
+  // não tem slug — cobre tanto o convite de cliente quanto o de consultor.
+  const needsInviteActivation = !MASTER_EMAILS.includes(user.email)
+    && (!_sbRole || (_sbRole==='client' && !_sbSlug));
+  if(needsInviteActivation) {
     try {
       const {data: inv} = await _sb.from('pending_invites')
         .select('slug,advisor_id,invite_role').eq('email', user.email).maybeSingle();
