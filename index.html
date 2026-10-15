@@ -1163,6 +1163,16 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .sb-logout-icon{transition:background-color .15s var(--ease),color .15s var(--ease)}
 .topbar{box-shadow:0 1px 0 var(--border),0 6px 18px -16px rgba(56,28,23,.3)}
 .topbar-export-btn{border-radius:var(--rad-sm);transition:background-color .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
+
+/* campos restantes (simulador, IR/PGBL, segurança, patrimônio, conversor) ganham
+   o mesmo glow de foco e cantos levemente arredondados do resto do app */
+.ir-fld input,.ir-fld select,.sim-fld input,.sim-fld select,.seg-field-row input,.seg-field-row select,
+.pat-row input,.pat-row select,.csvr-filter select{border-radius:8px}
+.ir-fld input:focus,.ir-fld select:focus,.sim-fld input:focus,.sim-fld select:focus,
+.seg-field-row input:focus,.seg-field-row select:focus,.pat-row input:focus,.pat-row select:focus,
+.csvr-filter select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(199,195,219,.35)}
+.locked-banner{box-shadow:var(--shadow-card)}
+.badge{letter-spacing:.01em}
 </style>
 <!-- Supabase JS SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -3884,8 +3894,10 @@ function renameCatMgr(key,idx,lbl){
   buildCatSelect();save();
 }
 function delCatMgr(key,id){
-  if(!confirm('Remover esta categoria? Lançamentos com ela ficarão sem classificação.'))return;
-  S.transactions=S.transactions.filter(t=>t.catId!==id);
+  if(!confirm('Remover esta categoria? Lançamentos com ela ficarão sem classificação, mas não serão apagados.'))return;
+  // Desvincula em vez de apagar: o lançamento continua existindo e pode ser
+  // reclassificado depois em Lançamentos, sem perder valor nem histórico.
+  S.transactions.forEach(t=>{if(t.catId===id)t.catId=null;});
   if(S.cats[key])S.cats[key]=S.cats[key].filter(c=>c.id!==id);
   renderCatMgrList(key);
   buildCatSelect();renderAll();recalc();renderTxList();save();
@@ -5093,7 +5105,10 @@ function addCatNamed(grp){
   recalc();save();
 }
 function delCat(grp,id){
-  S.transactions=S.transactions.filter(t=>t.catId!==id);
+  if(!confirm('Remover esta categoria do orçamento? Os lançamentos já feitos nela são mantidos, só ficam sem categoria até você reclassificá-los.'))return;
+  // Nunca apaga lançamentos ao remover uma categoria — apenas desvincula
+  // (catId=null), preservando o histórico para reclassificação posterior.
+  S.transactions.forEach(t=>{if(t.catId===id)t.catId=null;});
   S.cats[grp]=S.cats[grp].filter(c=>c.id!==id);
   renderGroup(grp);buildCatSelect();recalc();renderTxList();save();
 }
@@ -5397,7 +5412,10 @@ function buildTxCatFilter(){
   const sel=document.getElementById('tx-filter-cat');if(!sel)return;
   const cur=sel.value;
   const cats=[...Object.values(S.cats)].flat().sort((a,b)=>a.lbl.localeCompare(b.lbl));
-  sel.innerHTML='<option value="">Todas as categorias</option>'+cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
+  const semCatSel=cur==='__sem_cat__'?' selected':'';
+  sel.innerHTML='<option value="">Todas as categorias</option>'
+    +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`
+    +cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
 }
 
 // Filtro+ordenação compartilhado entre a tabela de Lançamentos e a exportação
@@ -5421,7 +5439,8 @@ function getFilteredTx(){
     const catLbl=getCatLbl(tx.catId,tx.grp).toLowerCase();
     return tx.desc.toLowerCase().includes(q)||catLbl.includes(q)||String(tx.amount).includes(q);
   });
-  if(fCat) filtered=filtered.filter(tx=>tx.catId===fCat);
+  if(fCat==='__sem_cat__') filtered=filtered.filter(tx=>!tx.catId);
+  else if(fCat) filtered=filtered.filter(tx=>tx.catId===fCat);
   if(fGrp) filtered=filtered.filter(tx=>tx.grp===fGrp);
   const vMin=parseFloat(document.getElementById('tx-filter-val-min')?.value);
   const vMax=parseFloat(document.getElementById('tx-filter-val-max')?.value);
@@ -5642,9 +5661,10 @@ function setDeltaPill(id,delta,higherIsGood,base){
   el.className='delta '+(good?'ok':Math.abs(pctDelta)<=.1?'warn':'bad');
 }
 function getCatLbl(catId,grp){
-  if(grp==='receita'){return DEFS.receita.find(c=>c.id===catId)?.lbl||'Receita';}
-  if(grp==='neutro'){return(S.cats.neutro||[]).find(c=>c.id===catId)?.lbl||catId;}
-  return[...(S.cats.ct||[]),...S.cats.fixas,...S.cats.var,...S.cats.inv].find(c=>c.id===catId)?.lbl||catId;
+  if(!catId)return'Sem categoria';
+  if(grp==='receita'){return DEFS.receita.find(c=>c.id===catId)?.lbl||'Sem categoria';}
+  if(grp==='neutro'){return(S.cats.neutro||[]).find(c=>c.id===catId)?.lbl||'Sem categoria';}
+  return[...(S.cats.ct||[]),...S.cats.fixas,...S.cats.var,...S.cats.inv].find(c=>c.id===catId)?.lbl||'Sem categoria';
 }
 
 // ── CARTÕES ──────────────────────────────────────────────────────────────────
