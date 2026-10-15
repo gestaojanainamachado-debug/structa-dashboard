@@ -1284,6 +1284,17 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div id="inv-msg" style="font-size:12px;margin-top:8px;min-height:16px;text-align:center"></div>
   </div>
 
+  <!-- Seção de gestão de consultores (só aparece para o perfil master) -->
+  <div id="master-consultores-section" style="display:none;margin-top:24px;padding-top:20px;border-top:1px solid var(--border);width:100%;max-width:480px">
+    <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:3px">👥 Consultores</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Como master, você enxerga todos os clientes de todos os consultores e pode convidar novos consultores.</div>
+    <div id="master-consultores-list" style="margin-bottom:10px"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="masterInviteConsultor()" style="flex:1;background:var(--primary);color:var(--bg);border:none;border-radius:8px;padding:10px;font-size:12px;font-weight:600;cursor:pointer">✉️ Convidar consultor</button>
+    </div>
+    <div id="master-consultor-msg" style="font-size:12px;margin-top:8px;min-height:16px;text-align:center"></div>
+  </div>
+
   <div class="cs-import-wrap" style="margin-top:20px;padding-top:18px;border-top:1px solid var(--border)">
     <button onclick="csBulkExport()" style="background:var(--primary);color:var(--bg);border:none;border-radius:8px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:7px;letter-spacing:.01em">
       💾 Backup — Exportar Todos os Clientes
@@ -3183,9 +3194,18 @@ try {
 } catch(e) { console.warn('Supabase init error:', e); }
 
 let _sbUser = null;      // usuário logado
-let _sbRole = null;      // 'advisor' | 'client'
+let _sbRole = null;      // 'master' | 'advisor' (consultor) | 'client'
 let _sbSlug = null;      // slug do perfil do usuário logado (clientes)
 let _sbSaveTimer = null; // debounce do sync
+// E-mails que viram "master" automaticamente no primeiro login (ver sbLoadData).
+// Master tem as mesmas permissões de consultor (isConsultor()==true) e, além
+// disso, enxerga/gerencia todos os consultores e todos os clientes do sistema.
+const MASTER_EMAILS = ['gestaojanainamachado@gmail.com'];
+// "Consultor" é o nome usado na interface para o papel salvo como 'advisor'
+// no banco (compatibilidade com dados já existentes). Master herda tudo que
+// um consultor pode fazer, por isso os dois são tratados juntos aqui.
+function isConsultor(){ return _sbRole==='advisor' || _sbRole==='master'; }
+function isMaster(){ return _sbRole==='master'; }
 
 let _authEmail = '';
 
@@ -3288,15 +3308,28 @@ async function sbLoadData(user) {
     .select('role,slug')
     .eq('id', user.id)
     .single();
-  const ADVISOR_EMAILS = ['gestaojanainamachado@gmail.com'];
-  _sbRole = prof?.role || (ADVISOR_EMAILS.includes(user.email) ? 'advisor' : null);
+  _sbRole = prof?.role || (MASTER_EMAILS.includes(user.email) ? 'master' : null);
   _sbSlug = prof?.slug || null;
-  // Se cliente logou mas perfil não tem role: tentar ativar via pending_invites
-  if(!_sbRole && !ADVISOR_EMAILS.includes(user.email)) {
+  // Self-heal: garante que o e-mail master fique gravado como role='master' no
+  // banco (não só localmente), senão as políticas de RLS não reconhecem o
+  // perfil como master e o acesso a todos os consultores/clientes falha.
+  if(_sbRole==='master' && prof?.role!=='master'){
+    try{ await _sb.from('profiles').upsert({id:user.id,email:user.email,role:'master'},{onConflict:'id'}); }catch(e){console.warn('master self-heal:',e);}
+  }
+  // Se usuário logou mas perfil não tem role: tentar ativar via pending_invites
+  // (pode ser convite de cliente, com slug, ou convite de novo consultor)
+  if(!_sbRole && !MASTER_EMAILS.includes(user.email)) {
     try {
       const {data: inv} = await _sb.from('pending_invites')
-        .select('slug,advisor_id').eq('email', user.email).maybeSingle();
-      if(inv) {
+        .select('slug,advisor_id,invite_role').eq('email', user.email).maybeSingle();
+      if(inv && inv.invite_role==='advisor') {
+        await _sb.from('profiles').upsert(
+          {id: user.id, email: user.email, role: 'advisor'},
+          {onConflict: 'id'}
+        );
+        _sbRole = 'advisor';
+        await _sb.from('pending_invites').delete().eq('email', user.email);
+      } else if(inv) {
         await _sb.from('profiles').upsert(
           {id: user.id, email: user.email, role: 'client', slug: inv.slug, advisor_id: inv.advisor_id},
           {onConflict: 'id'}
@@ -3306,9 +3339,9 @@ async function sbLoadData(user) {
       }
     } catch(e) { console.warn('invite activation failed:', e); }
   }
-  // Advisor: sync localStorage → Supabase em background
+  // Consultor/master: sync localStorage → Supabase em background
   // Também carimba advisor_id em registros antigos que não tinham o campo
-  if(_sbRole === 'advisor'){
+  if(isConsultor()){
     (async()=>{
       let existingSlugs = new Set();
       try {
@@ -3348,8 +3381,8 @@ async function sbLoadData(user) {
     location.href = location.pathname + '?c=' + _sbSlug;
     return;
   }
-  // Slug a carregar: advisor usa _cid da URL; cliente usa seu próprio slug
-  const loadSlug = (_sbRole === 'advisor' && _cid) ? _cid
+  // Slug a carregar: consultor/master usa _cid da URL; cliente usa seu próprio slug
+  const loadSlug = (isConsultor() && _cid) ? _cid
                  : (_sbRole === 'client' && _sbSlug) ? _sbSlug
                  : null;
   if(loadSlug) {
@@ -3477,11 +3510,11 @@ function sbMerge3(base, loc, rem){
 }
 
 function sbCurrentSlug(){
-  if(_sbUser) return (_sbRole === 'advisor' && _cid) ? _cid
+  if(_sbUser) return (isConsultor() && _cid) ? _cid
                    : (_sbRole === 'client' && _sbSlug) ? _sbSlug : null;
   return _cid || null;
 }
-function sbPersistBase(){ return !(_isAdmin && _cid && _sbRole === 'advisor'); }
+function sbPersistBase(){ return !(_isAdmin && _cid && isConsultor()); }
 function sbReadBase(){
   try { const r = localStorage.getItem(SKEY+'_base'); return r ? JSON.parse(r) : null; } catch(_) { return null; }
 }
@@ -3554,6 +3587,8 @@ async function sbSync(opts = {}){
       let res;
       if(row){
         const upd = { data: snapshot, updated_at: now };
+        // Só o próprio consultor carimba advisor_id ao salvar (nunca o master —
+        // senão toda edição do master reatribuiria o cliente para si mesmo).
         if(_sbUser && _sbRole === 'advisor') upd.advisor_id = _sbUser.id;
         let q = _sb.from('client_data').update(upd).eq('slug', slug);
         // Tentativas 1–3: grava só se ninguém gravou desde a leitura.
@@ -3567,7 +3602,8 @@ async function sbSync(opts = {}){
         }
       } else {
         const payload = { slug, data: snapshot, updated_at: now };
-        if(_sbUser && _sbRole === 'advisor') payload.advisor_id = _sbUser.id;
+        // Workspace novo: o criador (consultor ou master) vira o dono.
+        if(_sbUser && isConsultor()) payload.advisor_id = _sbUser.id;
         res = await _sb.from('client_data').upsert(payload, { onConflict: 'slug' }).select('updated_at');
         if(res.error) throw res.error;
       }
@@ -7332,7 +7368,7 @@ function csAllClients(){
 }
 async function renderClientScreen(){
   // Mostra seção de convite e botão de logout se a consultora está logada via Supabase
-  if(_sbUser && _sbRole === 'advisor'){
+  if(_sbUser && isConsultor()){
     document.getElementById('sb-invite-section').style.display='block';
     const logoutBtn=document.getElementById('cs-logout-btn');
     if(logoutBtn){logoutBtn.style.display='inline-block';logoutBtn.textContent='Sair ('+(_sbUser.email||'conta')+')';}
@@ -7345,14 +7381,24 @@ async function renderClientScreen(){
       });
     }
   }
+  const masterSec=document.getElementById('master-consultores-section');
+  if(masterSec) masterSec.style.display=isMaster()?'block':'none';
   const el=document.getElementById('cs-list');
   // Clientes do localStorage
   const localClients=csAllClients();
-  // Clientes do Supabase (somente se logada como advisor)
+  // Clientes do Supabase (consultor vê os seus; master vê todos, via RLS)
   let sbClients=[];
-  if(_sb && _sbUser && _sbRole==='advisor'){
-    const {data}=await _sb.from('client_data').select('slug,data');
-    if(data) sbClients=data.filter(c=>!c.slug.endsWith('_ts')).map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' ')}));
+  let advisorNameById={};
+  if(_sb && _sbUser && isConsultor()){
+    const {data}=await _sb.from('client_data').select('slug,data,advisor_id');
+    if(data) sbClients=data.filter(c=>!c.slug.endsWith('_ts')).map(c=>({slug:c.slug,name:c.data?.name||c.slug.replace(/_/g,' '),advisorId:c.advisor_id}));
+    if(isMaster()){
+      try{
+        const {data:advs}=await _sb.from('profiles').select('id,email,nome').eq('role','advisor');
+        (advs||[]).forEach(a=>{advisorNameById[a.id]=a.nome||a.email;});
+      }catch(_){}
+      masterRenderConsultores();
+    }
   }
   // Merge: evita duplicatas por slug
   const localSlugs=new Set(localClients.map(c=>c.slug));
@@ -7361,18 +7407,21 @@ async function renderClientScreen(){
     ...sbClients.filter(c=>!localSlugs.has(c.slug))
   ];
   if(!allClients.length){el.innerHTML='<div class="cs-empty">Nenhum cliente cadastrado ainda.</div>';updateBackupStatus();return;}
-  const isAdvisor=_sbUser&&_sbRole==='advisor';
-  el.innerHTML=allClients.map(c=>`
+  el.innerHTML=allClients.map(c=>{
+    const consultorTag=isMaster()&&c.advisorId
+      ?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: ${esc(advisorNameById[c.advisorId]||'—')}</div>`
+      :(isMaster()?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: você (master)</div>`:'');
+    return `
     <div class="cs-item">
-      <div class="cs-item-name">${c.name||c.slug}</div>
+      <div class="cs-item-name">${c.name||c.slug}${consultorTag}</div>
       <div class="cs-item-actions">
         <button class="cs-btn-sm cs-btn-open" onclick="csOpen('${c.slug}')">Abrir (cliente)</button>
         <button class="cs-btn-sm cs-btn-admin" onclick="csOpenAdmin('${c.slug}')">Consultor</button>
-        ${isAdvisor?`<button class="cs-btn-sm" style="background:#e8f4ec;color:#2a7a3b;border:none;cursor:pointer" onclick="sbSendInvite('${c.slug}')">📧 Convidar</button>`:''}
+        ${isConsultor()?`<button class="cs-btn-sm" style="background:#e8f4ec;color:#2a7a3b;border:none;cursor:pointer" onclick="sbSendInvite('${c.slug}')">📧 Convidar</button>`:''}
         <button class="cs-btn-sm cs-btn-export" onclick="csExport('${c.slug}')">⬇ JSON</button>
         <button class="cs-btn-sm cs-btn-del" onclick="csDelete('${c.slug}')">✕</button>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
   updateBackupStatus();
 }
 function csCreate(){
@@ -7405,7 +7454,7 @@ async function sbCreateWorkspace(sendEmail){
   }
   // 1b. Salvar no Supabase (fire-and-forget, nunca bloqueia o fluxo)
   try{
-    if(_sb && _sbUser && _sbRole==='advisor'){
+    if(_sb && _sbUser && isConsultor()){
       const d=JSON.parse(localStorage.getItem(key)||'{}');
       Promise.resolve(_sb.from('client_data').upsert(
         {slug,advisor_id:_sbUser.id,data:d,updated_at:new Date().toISOString()},
@@ -7451,6 +7500,36 @@ async function sbSendInvite(slug){
     alert(`✓ Convite enviado para ${email}!`);
   }catch(e){alert('Erro: '+(e.message||JSON.stringify(e)));}
 }
+async function masterRenderConsultores(){
+  const el=document.getElementById('master-consultores-list');
+  if(!el||!_sb||!isMaster())return;
+  const {data:advs}=await _sb.from('profiles').select('id,email,nome').eq('role','advisor');
+  if(!advs||!advs.length){el.innerHTML='<div style="font-size:11px;color:var(--muted);font-style:italic">Nenhum consultor cadastrado ainda.</div>';return;}
+  el.innerHTML=advs.map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--s2);font-size:12px">
+    <span>${esc(a.nome||a.email)}</span><span style="color:var(--muted);font-size:11px">${esc(a.email)}</span>
+  </div>`).join('');
+}
+async function masterInviteConsultor(){
+  if(!isMaster()){alert('Só o perfil master pode convidar consultores.');return;}
+  const name=prompt('Nome do novo consultor:');
+  if(!name)return;
+  const email=prompt('Email do consultor (vai receber o link de acesso):');
+  if(!email)return;
+  const emailNorm=email.trim().toLowerCase();
+  if(!emailNorm.includes('@')){alert('Email inválido.');return;}
+  const msg=document.getElementById('master-consultor-msg');
+  if(msg){msg.style.color='#555';msg.textContent='Enviando convite...';}
+  try{
+    const {error:err1}=await _sb.from('pending_invites').insert({email:emailNorm,name,invite_role:'advisor'});
+    if(err1&&err1.code!=='23505'){throw err1;}
+    const {error:err2}=await _sb.auth.signInWithOtp({email:emailNorm,options:{shouldCreateUser:true}});
+    if(err2)throw err2;
+    if(msg){msg.style.color='#2a7a3b';msg.textContent=`✓ Convite enviado para ${emailNorm}`;}
+    masterRenderConsultores();
+  }catch(e){
+    if(msg){msg.style.color='#c0392b';msg.textContent='Erro: '+(e.message||JSON.stringify(e));}
+  }
+}
 function csOpen(slug){location.href=location.pathname+'?c='+slug;}
 function csOpenAdmin(slug){location.href=location.pathname+'?c='+slug+'&admin=1';}
 async function forceSyncLocalToCloud(){
@@ -7471,10 +7550,13 @@ async function forceSyncLocalToCloud(){
 async function csDelete(slug){
   if(!confirm('Excluir cliente "'+slug+'"? Dados serão apagados permanentemente.'))return;
   localStorage.removeItem('structa_v4_'+slug);
-  // Remove também do Supabase se advisor logado
-  if(_sb && _sbUser && _sbRole === 'advisor'){
+  // Remove também do Supabase se consultor/master logado (RLS decide o que
+  // cada um pode de fato apagar: consultor só os seus, master qualquer um)
+  if(_sb && _sbUser && isConsultor()){
     await _sb.from('client_data').delete().eq('slug', slug);
-    await _sb.from('profiles').delete().eq('slug', slug).eq('advisor_id', _sbUser.id);
+    let delProf=_sb.from('profiles').delete().eq('slug', slug);
+    if(!isMaster()) delProf=delProf.eq('advisor_id', _sbUser.id);
+    await delProf;
   }
   renderClientScreen();
 }
@@ -7581,9 +7663,9 @@ const CLIENT_READONLY = ['orcamento','objetivos'];
 
 function applyPermissions(){
   const sbClientMode = _sbUser && _sbRole === 'client';
-  // Advisor: acesso total
+  // Consultor/master: acesso total
   if(_isAdmin && !sbClientMode) return;
-  if(_sbUser && _sbRole === 'advisor') return;
+  if(_sbUser && isConsultor()) return;
   // Cliente: esconder tabs fora da lista e bloquear edição nas somente-leitura
   document.querySelectorAll('#tab-bar .tab').forEach(t => {
     const name = t.getAttribute('data-tab');
