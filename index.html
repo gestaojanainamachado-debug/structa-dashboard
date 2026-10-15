@@ -3196,6 +3196,7 @@ try {
 let _sbUser = null;      // usuário logado
 let _sbRole = null;      // 'master' | 'advisor' (consultor) | 'client'
 let _sbSlug = null;      // slug do perfil do usuário logado (clientes)
+let _sbPasswordSet = false; // cliente já criou senha própria? (ver bootApp/sbForceSetPassword)
 let _sbSaveTimer = null; // debounce do sync
 // E-mails que viram "master" automaticamente no primeiro login (ver sbLoadData).
 // Master tem as mesmas permissões de consultor (isConsultor()==true) e, além
@@ -3305,11 +3306,12 @@ async function sbLoadData(user) {
   // Carrega role e slug do perfil
   const {data: prof} = await _sb
     .from('profiles')
-    .select('role,slug')
+    .select('role,slug,password_set')
     .eq('id', user.id)
     .single();
   _sbRole = prof?.role || null;
   _sbSlug = prof?.slug || null;
+  _sbPasswordSet = !!prof?.password_set;
   // Self-heal: o e-mail master é sempre promovido a role='master' no banco,
   // mesmo que o perfil já tivesse outro papel salvo de antes (ex.: contas
   // criadas quando esse e-mail ainda era tratado como consultor comum no
@@ -4577,6 +4579,15 @@ function bootApp(){
           <button onclick="(_sb?_sb.auth.signOut():Promise.resolve()).finally(()=>{location.href='/'})" style="background:#381c17;color:#f4ede4;border:none;padding:11px 28px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">Sair</button>
         </div>
       </div>`;
+    return;
+  }
+  // Cliente logado pelo link de convite (e-mail) mas ainda sem senha própria →
+  // bloqueia o dashboard até ela ser criada, em vez de deixar como botão
+  // opcional. Assim o fluxo é: clica no link do e-mail → já loga → cria a
+  // senha na hora → entra no dashboard.
+  if(sbClientMode && !_sbPasswordSet){
+    document.getElementById('client-screen').classList.add('hidden');
+    sbRenderForcePasswordScreen();
     return;
   }
   // Se não há cliente na URL E não é cliente Supabase → tela de seleção
@@ -7717,8 +7728,64 @@ async function sbSetPassword() {
   if(!pwd) return;
   if(pwd.length < 6) { alert('Senha muito curta. Use pelo menos 6 caracteres.'); return; }
   const {error} = await _sb.auth.updateUser({ password: pwd });
-  if(error) { alert('Erro ao salvar senha: ' + error.message); }
-  else { alert('✓ Senha criada! Na próxima vez, use seu e-mail + senha para entrar.'); }
+  if(error) { alert('Erro ao salvar senha: ' + error.message); return; }
+  await sbMarkPasswordSet();
+  alert('✓ Senha criada! Na próxima vez, use seu e-mail + senha para entrar.');
+}
+async function sbMarkPasswordSet(){
+  _sbPasswordSet = true;
+  if(_sb && _sbUser){
+    try{ await _sb.from('profiles').update({password_set:true}).eq('id',_sbUser.id); }catch(e){console.warn('password_set update:',e);}
+  }
+}
+
+// ── Tela obrigatória de criação de senha (primeiro acesso do cliente) ───────
+// O cliente chega aqui direto ao clicar no link do e-mail de convite: a sessão
+// já está ativa (Supabase loga automaticamente ao abrir o link), falta só
+// criar a senha antes de liberar o dashboard.
+function sbRenderForcePasswordScreen(){
+  let ov=document.getElementById('force-password-overlay');
+  if(ov){ov.style.display='flex';return;} // já existe (ex.: usuária voltou pra essa tela)
+  ov=document.createElement('div');
+  ov.id='force-password-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:#f4ede4;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:32px;text-align:center;overflow:auto';
+  ov.innerHTML=`
+    <svg width="148" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:32px">
+      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
+      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
+      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
+      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
+    </svg>
+    <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:360px;width:100%;box-shadow:0 4px 32px rgba(56,28,23,.08);text-align:left">
+      <div style="width:48px;height:48px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px">🔑</div>
+      <h2 style="color:#381c17;font-size:18px;font-weight:700;margin:0 0 8px;letter-spacing:-.01em;text-align:center">Crie sua senha de acesso</h2>
+      <p style="color:#7a6a60;line-height:1.7;margin:0 0 24px;font-size:13px;text-align:center">É só essa vez — depois é só usar seu e-mail e essa senha para entrar, de qualquer celular ou computador.</p>
+      <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">Nova senha</label>
+      <input id="fp-pass1" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 12px;font-size:14px;outline:none;font-family:Inter,sans-serif">
+      <label style="font-size:11px;font-weight:700;color:#381c17;text-transform:uppercase;letter-spacing:.08em">Confirmar senha</label>
+      <input id="fp-pass2" type="password" placeholder="repita a senha" autocomplete="new-password"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid #c7c3db;border-radius:10px;margin:6px 0 16px;font-size:14px;outline:none;font-family:Inter,sans-serif"
+        onkeydown="if(event.key==='Enter')sbSubmitForcePassword()">
+      <button onclick="sbSubmitForcePassword()" style="width:100%;background:#381c17;color:#f4ede4;border:none;padding:13px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">Criar senha e entrar</button>
+      <div id="fp-msg" style="margin-top:12px;font-size:13px;text-align:center;color:#c0392b;min-height:18px"></div>
+      <button onclick="(_sb?_sb.auth.signOut():Promise.resolve()).finally(()=>{location.href='/'})" style="width:100%;margin-top:4px;background:none;border:none;color:#a09080;font-size:12px;cursor:pointer;text-decoration:underline;font-family:Inter,sans-serif">Sair</button>
+    </div>`;
+  document.body.appendChild(ov);
+}
+async function sbSubmitForcePassword(){
+  const p1=document.getElementById('fp-pass1')?.value||'';
+  const p2=document.getElementById('fp-pass2')?.value||'';
+  const msg=document.getElementById('fp-msg');
+  if(p1.length<6){msg.textContent='A senha precisa ter pelo menos 6 caracteres.';return;}
+  if(p1!==p2){msg.textContent='As senhas não são iguais.';return;}
+  msg.style.color='#7a6a60';msg.textContent='Salvando...';
+  const {error}=await _sb.auth.updateUser({password:p1});
+  if(error){msg.style.color='#c0392b';msg.textContent='Erro: '+error.message;return;}
+  await sbMarkPasswordSet();
+  const ov=document.getElementById('force-password-overlay');
+  if(ov)ov.remove();
+  bootApp(); // libera o dashboard
 }
 
 // ── RELATÓRIO ────────────────────────────────────────────────────────────────

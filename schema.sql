@@ -21,14 +21,21 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   role        TEXT        NOT NULL DEFAULT 'client' CHECK (role IN ('master', 'advisor', 'client')),
   slug        TEXT        UNIQUE, -- ex: 'luciana', 'dr_joao' (vincula ao ?c= da URL) — só para clientes
   advisor_id  UUID        REFERENCES public.profiles(id) ON DELETE SET NULL, -- quem é o consultor deste cliente
+  password_set BOOLEAN    NOT NULL DEFAULT false, -- já criou a própria senha? (ver sbRenderForcePasswordScreen no app)
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Se a tabela já existia (schema anterior sem o papel 'master'), atualize o
--- CHECK constraint e rode o self-heal do master pelo app, ou manualmente:
+-- Se a tabela já existia (schema anterior sem o papel 'master' e/ou sem
+-- password_set), rode isto antes do resto do script:
 --   ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 --   ALTER TABLE public.profiles ADD CONSTRAINT profiles_role_check CHECK (role IN ('master','advisor','client'));
+--   ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT false;
+--   -- Backfill: quem já tinha criado senha antes (fluxo antigo, opcional) não
+--   -- precisa passar pela tela obrigatória de novo.
+--   UPDATE public.profiles p SET password_set = true
+--     FROM auth.users u
+--     WHERE u.id = p.id AND u.encrypted_password IS NOT NULL AND u.encrypted_password <> '';
 
 -- 2. TABELA DE DADOS DO CLIENTE (armazena o objeto S inteiro como JSONB)
 -- Observação: o app identifica o workspace do cliente pelo "slug" (não pelo
