@@ -1,0 +1,80 @@
+<!--
+  Supabase → Authentication → Email Templates → "Confirm signup"
+  É o e-mail que chega para um CLIENTE (ou consultor) convidado pela primeira
+  vez — quando ainda não existe conta com aquele e-mail. O link já loga a
+  pessoa direto no dashboard; lá, o app força a criação da senha antes de
+  liberar o acesso (ver sbRenderForcePasswordScreen em index.html).
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirme seu acesso — Structa</title>
+</head>
+<body style="margin:0;padding:0;background:#f4ede4;font-family:Inter,'Helvetica Neue',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4ede4;padding:48px 16px;">
+    <tr>
+      <td align="center">
+
+        <table width="480" cellpadding="0" cellspacing="0" style="max-width:480px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 32px rgba(56,28,23,0.10);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#381c17;padding:32px 40px 28px;">
+              <svg width="140" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg">
+                <rect x="0" y="6.25" width="15.67" height="43.5" fill="#f4ede4"/>
+                <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#f4ede4"/>
+                <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#f4ede4">Structa</text>
+                <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#f4ede4" opacity="0.65">Consultoria Financeira</text>
+              </svg>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <p style="margin:0 0 6px;font-size:20px;font-weight:700;color:#381c17;letter-spacing:-0.02em;">Seu acesso ao Dashboard Structa está pronto</p>
+              <p style="margin:0 0 28px;font-size:14px;color:#7a6a60;line-height:1.7;">
+                Clique no botão abaixo para confirmar seu e-mail. Você vai cair direto no dashboard e criar sua senha de acesso — é só essa vez, depois é só usar seu e-mail e essa senha para entrar de qualquer celular ou computador.
+              </p>
+
+              <!-- Botão -->
+              <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:28px;">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}" target="_blank"
+                      style="display:inline-block;background:#381c17;color:#f4ede4;text-decoration:none;font-family:Inter,sans-serif;font-weight:600;font-size:15px;letter-spacing:.02em;padding:15px 36px;border-radius:10px;">
+                      Confirmar e-mail e criar senha
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <hr style="border:none;border-top:1px solid #e8ddcd;margin:0 0 24px;">
+
+              <p style="margin:0;font-size:12px;color:#a09080;line-height:1.6;">
+                Se você não solicitou este acesso, ignore este e-mail. Nenhuma ação é necessária.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f4ede4;padding:20px 40px;border-top:1px solid #e8ddcd;">
+              <p style="margin:0;font-size:11px;color:#a09080;line-height:1.6;">
+                <strong style="color:#381c17;">Structa Consultoria Financeira</strong><br>
+                Dashboard de gestão financeira para profissionais de saúde.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
