@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>COLM — Controle de Aplicação</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#f4ede4;--surface:#fff;--s2:#f1efeb;--lilac:#c7c3db;
+  --primary:#381c17;--p2:#5a2e27;
+  --text:#2a1510;--muted:#8a7068;--muted-2:#8a817c;--border:#e5e1da;
+  --ok:#3d6b4f;--warn:#a06820;--bad:#b03030;
+  --ok-bg:#e2f0e8;--warn-bg:#fef5e0;--bad-bg:#fde8e8;
+  --rad:12px;--rad-sm:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.hdr{background:var(--lilac);color:var(--primary);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hdr h1{font-size:17px;font-weight:700;letter-spacing:.02em}
+.hdr .sub{font-size:11px;opacity:.6}
+.hdr button{background:transparent;border:1px solid rgba(56,28,23,.35);color:var(--primary);font-size:12px;padding:6px 12px;border-radius:7px;cursor:pointer}
+.hdr button:hover{background:rgba(56,28,23,.08)}
+.wrap{max-width:1280px;margin:0 auto;padding:16px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tab{padding:8px 14px;border-radius:8px;background:var(--surface);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad);padding:16px;margin-bottom:14px}
+.card h2{font-size:14px;margin-bottom:10px;color:var(--p2)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}
+.field{display:flex;flex-direction:column;gap:4px;min-width:140px}
+.field label{font-size:11px;color:var(--muted);font-weight:600}
+.field input,.field select{padding:7px 9px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--s2);font-family:inherit}
+.field input:focus,.field select:focus{outline:2px solid var(--lilac)}
+.btn{padding:8px 16px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--p2)}
+.btn.ghost{background:transparent;color:var(--primary);border:1px solid var(--border)}
+.btn.sm{padding:4px 10px;font-size:12px}
+.btn.danger{background:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;padding:8px 10px;background:var(--s2);color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;position:sticky;top:0}
+td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+tr:hover td{background:#faf8f5}
+.tbl-wrap{overflow-x:auto;max-height:70vh}
+.pill{padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.modal-bg{position:fixed;inset:0;background:rgba(42,21,16,.5);display:none;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--rad);padding:20px;max-width:820px;width:100%;max-height:90vh;overflow:auto}
+.modal h3{margin-bottom:12px;color:var(--p2)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.calc-box{background:var(--s2);border-radius:8px;padding:12px;margin-top:10px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;font-size:12.5px}
+.calc-box div b{display:block;color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase}
+.calc-box div span{font-variant-numeric:tabular-nums;font-weight:700}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--rad-sm);padding:12px}
+.stat b{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px}
+.stat span{font-size:19px;font-weight:700;color:var(--p2)}
+#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center}
+#login-screen .card{width:340px}
+.msg{font-size:12px;padding:8px 10px;border-radius:7px;margin-top:8px}
+.msg.err{background:var(--bad-bg);color:var(--bad)}
+.msg.ok{background:var(--ok-bg);color:var(--ok)}
+.hidden{display:none !important}
+.actions-cell{display:flex;gap:4px}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="card">
+    <h2 style="font-size:16px;margin-bottom:14px">COLM — Controle de Aplicação</h2>
+    <div class="field" style="margin-bottom:10px"><label>E-mail</label><input id="login-email" type="email" placeholder="secretaria@colm.com.br"></div>
+    <div class="field" style="margin-bottom:12px"><label>Senha</label><input id="login-pass" type="password"></div>
+    <button class="btn" style="width:100%" onclick="doLogin()">Entrar</button>
+    <button class="btn ghost" style="width:100%;margin-top:8px" onclick="doSignup()">Criar conta (1º acesso)</button>
+    <div id="login-msg"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="hdr">
+    <div>
+      <h1>COLM — Controle de Aplicação</h1>
+      <div class="sub">Clínica de Olhos Lopes da Motta</div>
+    </div>
+    <button onclick="doLogout()">Sair</button>
+  </div>
+  <div class="wrap">
+    <div class="tabs">
+      <div class="tab active" data-tab="lista" onclick="showTab('lista')">Lançamentos</div>
+      <div class="tab" data-tab="receb" onclick="showTab('receb')">Recebimentos</div>
+      <div class="tab" data-tab="rel" onclick="showTab('rel')">Relatórios</div>
+      <div class="tab" data-tab="cad" onclick="showTab('cad')">Cadastros</div>
+    </div>
+
+    <!-- LISTA -->
+    <div id="tab-lista">
+      <div class="card">
+        <div class="row">
+          <div class="field"><label>Mês</label><select id="f-mes"><option value="">Todos</option></select></div>
+          <div class="field"><label>Médico</label><select id="f-medico"><option value="">Todos</option></select></div>
+          <div class="field"><label>Convênio</label><select id="f-convenio"><option value="">Todos</option></select></div>
+          <div class="field"><label>Instituição</label><select id="f-instituicao"><option value="">Todas</option><option>COLM</option><option>RM</option></select></div>
+          <div class="field"><label>Paciente</label><input id="f-paciente" placeholder="buscar..."></div>
+          <button class="btn" onclick="loadLancamentos()">Filtrar</button>
+          <button class="btn ghost" onclick="clearFilters()">Limpar</button>
+          <button class="btn" style="margin-left:auto" onclick="openForm()">+ Novo Lançamento</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap">
+          <table id="tbl-lancamentos">
+            <thead><tr>
+              <th>Data</th><th>Paciente</th><th>Convênio</th><th>Procedimento</th><th>Médico</th>
+              <th class="num">Valor Bruto</th><th class="num">Líq. Final</th><th class="num">Comissão</th><th class="num">Médico Recebe</th>
+              <th>Recebimento</th><th>Ações</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEBIMENTOS -->
+    <div id="tab-receb" class="hidden">
+      <div class="card">
+        <h2>Pendentes / Atrasados</h2>
+        <div class="tbl-wrap">
+          <table id="tbl-receb">
+            <thead><tr><th>Data</th><th>Paciente</th><th>Convênio</th><th>Previsto</th><th>Status</th><th class="num">Valor Líq. Final</th><th>Ações</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Glosas registradas</h2>
+        <div class="tbl-wrap">
+          <table id="tbl-glosas">
+            <thead><tr><th>Data</th><th>Paciente</th><th>Convênio</th><th class="num">Glosa</th><th>Obs</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div id="tab-rel" class="hidden">
+      <div class="card">
+        <div class="row">
+          <div class="field"><label>Mês</label><select id="r-mes"><option value="">Todos</option></select></div>
+          <button class="btn" onclick="renderRelatorios()">Atualizar</button>
+        </div>
+      </div>
+      <div id="rel-summary" class="summary-grid"></div>
+      <div class="card">
+        <h2>Por Médico</h2>
+        <div class="tbl-wrap"><table id="tbl-rel-medico"><thead><tr><th>Médico</th><th class="num">Qtd</th><th class="num">Valor Bruto</th><th class="num">Líq. Final</th><th class="num">Comissão Secret.</th><th class="num">Recebe Médico</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Por Convênio</h2>
+        <div class="tbl-wrap"><table id="tbl-rel-convenio"><thead><tr><th>Convênio</th><th class="num">Qtd</th><th class="num">Valor Bruto</th><th class="num">Líq. Final</th></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h2>Por Mês</h2>
+        <div class="tbl-wrap"><table id="tbl-rel-mes"><thead><tr><th>Mês</th><th class="num">Qtd</th><th class="num">Valor Bruto</th><th class="num">Líq. Final</th><th class="num">Comissão Secret.</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- CADASTROS -->
+    <div id="tab-cad" class="hidden">
+      <div class="card">
+        <h2>Médicos</h2>
+        <div class="row"><div class="field"><label>Novo médico</label><input id="new-medico"></div><button class="btn sm" onclick="addRef('colm_medicos','new-medico')">Adicionar</button></div>
+        <div id="list-medicos" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2>Convênios (imposto / dias de pagamento)</h2>
+        <div id="list-convenios"></div>
+      </div>
+      <div class="card">
+        <h2>Formas de pagamento (taxa de cartão)</h2>
+        <div id="list-formas"></div>
+      </div>
+      <div class="card">
+        <h2>Instituições (% retenção na aplicação)</h2>
+        <div id="list-instituicoes"></div>
+      </div>
+      <div class="card">
+        <h2>Procedimentos x Convênio (tabela de preços)</h2>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px">Edição fina de preços: use o Supabase (tabela colm_procedimentos, coluna precos) para grandes alterações. Aqui você só pode cadastrar um novo procedimento com preço inicial por convênio padrão.</p>
+        <div id="list-procedimentos"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL FORM -->
+<div class="modal-bg" id="form-modal">
+  <div class="modal">
+    <h3 id="form-title">Novo Lançamento</h3>
+    <div class="grid3">
+      <div class="field"><label>Data</label><input type="date" id="fm-data"></div>
+      <div class="field"><label>Paciente</label><input id="fm-paciente"></div>
+      <div class="field"><label>Convênio</label><select id="fm-convenio"></select></div>
+      <div class="field"><label>Procedimento</label><select id="fm-procedimento"></select></div>
+      <div class="field"><label>Olho</label><select id="fm-olho"><option value="">-</option><option>OD</option><option>OE</option><option>AO</option></select></div>
+      <div class="field"><label>Instituição</label><select id="fm-instituicao"><option>COLM</option><option>RM</option></select></div>
+      <div class="field"><label>Médico</label><select id="fm-medico"></select></div>
+      <div class="field"><label>Forma de Pagamento</label><select id="fm-forma"></select></div>
+      <div class="field"><label>Medicamento do Plano (R$)</label><input type="number" step="0.01" id="fm-medplano" value="0"></div>
+      <div class="field"><label>Desconto/Acréscimo (R$)</label><input type="number" step="0.01" id="fm-desconto" value="0"></div>
+      <div class="field"><label>Deflator (fração)</label><input type="number" step="0.0001" id="fm-deflator" value="0"></div>
+      <div class="field"><label>Taxa de Sala (R$, negativo)</label><input type="number" step="0.01" id="fm-taxasala" value="0"></div>
+      <div class="field"><label>Instrumental (R$, negativo)</label><input type="number" step="0.01" id="fm-instr" value="0"></div>
+      <div class="field"><label>Custo Dose Remédio (R$, negativo)</label><input type="number" step="0.01" id="fm-custodose" value="0"></div>
+      <div class="field"><label>Guia</label><input id="fm-guia"></div>
+      <div class="field"><label>NF</label><input id="fm-nf"></div>
+      <div class="field"><label>Glosa (R$)</label><input type="number" step="0.01" id="fm-glosa" value="0"></div>
+      <div class="field"><label>Data Real Recebimento</label><input type="date" id="fm-datareal"></div>
+      <div class="field"><label>Data Pgto Médico</label><input type="date" id="fm-datapgto"></div>
+    </div>
+    <div class="field" style="margin-top:10px"><label>Obs</label><input id="fm-obs"></div>
+
+    <div class="calc-box" id="calc-box"></div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn" onclick="saveLancamento()">Salvar</button>
+      <button class="btn ghost" onclick="closeForm()">Cancelar</button>
+      <span id="form-msg" style="margin-left:8px"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://napmvdpugfwrxvghgaug.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5hcG12ZHB1Z2Z3cnh2Z2hnYXVnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1MjM3ODAsImV4cCI6MjEwMzA5OTc4MH0.hNLR37OzZsvpVS6LQmRusHYQXawYcId4DQvaucaXOyQ';
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+
+let REF = { convenios:{}, formas:{}, instituicoes:{}, medicos:[], procedimentos:{} };
+let LANC = [];
+let editingId = null;
+
+const fmt = n => (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtDate = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-BR') : '-';
+const todayStr = () => new Date().toISOString().slice(0,10);
+
+// ---------- AUTH ----------
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  const msg = document.getElementById('login-msg');
+  if(error){ msg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  await boot();
+}
+async function doSignup(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const msg = document.getElementById('login-msg');
+  if(!email || password.length < 6){ msg.innerHTML = '<div class="msg err">Preencha e-mail e senha (mín. 6 caracteres).</div>'; return; }
+  const { error } = await sb.auth.signUp({ email, password });
+  if(error){ msg.innerHTML = `<div class="msg err">${error.message}</div>`; return; }
+  msg.innerHTML = '<div class="msg ok">Conta criada. Se a confirmação por e-mail estiver ativa no Supabase, confirme antes de entrar.</div>';
+}
+async function doLogout(){ await sb.auth.signOut(); location.reload(); }
+
+async function checkSession(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){ await boot(); }
+}
+
+// ---------- BOOT ----------
+async function boot(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await loadRefs();
+  fillMonthFilters();
+  await loadLancamentos();
+}
+
+async function loadRefs(){
+  const [conv, formas, inst, med, proc] = await Promise.all([
+    sb.from('colm_convenios').select('*').eq('ativo', true).order('nome'),
+    sb.from('colm_formas_pagamento').select('*').eq('ativo', true).order('nome'),
+    sb.from('colm_instituicoes').select('*').eq('ativo', true).order('nome'),
+    sb.from('colm_medicos').select('*').eq('ativo', true).order('nome'),
+    sb.from('colm_procedimentos').select('*').eq('ativo', true).order('nome'),
+  ]);
+  REF.convenios = {}; (conv.data||[]).forEach(c => REF.convenios[c.nome] = c);
+  REF.formas = {}; (formas.data||[]).forEach(f => REF.formas[f.nome] = f);
+  REF.instituicoes = {}; (inst.data||[]).forEach(i => REF.instituicoes[i.nome] = i);
+  REF.medicos = (med.data||[]);
+  REF.procedimentos = {}; (proc.data||[]).forEach(p => REF.procedimentos[p.nome] = p);
+
+  fillSelect('fm-convenio', Object.keys(REF.convenios));
+  fillSelect('fm-procedimento', Object.keys(REF.procedimentos));
+  fillSelect('fm-medico', REF.medicos.map(m=>m.nome));
+  fillSelect('fm-forma', Object.keys(REF.formas));
+  fillSelect('f-medico', REF.medicos.map(m=>m.nome), true);
+  fillSelect('f-convenio', Object.keys(REF.convenios), true);
+
+  renderCadastros();
+}
+function fillSelect(id, arr, keepFirst){
+  const sel = document.getElementById(id);
+  const first = keepFirst ? sel.firstElementChild : null;
+  sel.innerHTML = '';
+  if(first) sel.appendChild(first);
+  arr.forEach(v => { const o = document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+function fillMonthFilters(){
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  ['f-mes','r-mes'].forEach(id=>{
+    const sel = document.getElementById(id);
+    meses.forEach((m,i)=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; sel.appendChild(o); });
+  });
+}
+
+// ---------- CÁLCULO (replica fórmulas da planilha) ----------
+function calcular(inp){
+  const conv = REF.convenios[inp.convenio] || { imposto:0, dias_pgto:0 };
+  const forma = REF.formas[inp.forma_pagamento] || { taxa:0 };
+  const inst = REF.instituicoes[inp.instituicao] || { retencao_aplicacao:0 };
+  const proc = REF.procedimentos[inp.procedimento] || { precos:{} };
+
+  const valor_bruto = Number(proc.precos?.[inp.convenio] || 0);
+  const desconto = Number(inp.desconto_acrescimo||0);
+  const deflator = Number(inp.deflator||0);
+  const valor_apos = valor_bruto + desconto - (deflator * valor_bruto);
+  const impostos = conv.imposto * valor_apos;
+  const taxa_cartao = forma.taxa * valor_apos;
+  const valor_liquido = valor_apos - impostos - taxa_cartao;
+  const taxa_sala = Number(inp.taxa_sala||0);
+  const instrumental = Number(inp.instrumental||0);
+  const custo_dose = Number(inp.custo_dose_remedio||0);
+  const medplano = Number(inp.medicamento_do_plano||0);
+  const dif_medicamento = medplano + custo_dose;
+  const valor_liquido_final = valor_liquido + taxa_sala + instrumental + dif_medicamento;
+  const retencao_clinica = inst.retencao_aplicacao * valor_liquido_final;
+  const comissao_secretaria = valor_liquido_final * 0.02;
+  const recebimento_medico = valor_liquido_final - retencao_clinica;
+  const base_pct = desconto + valor_apos;
+  const pct_medico = base_pct ? recebimento_medico / base_pct : null;
+
+  let data_prevista = null;
+  if(inp.data){ const d = new Date(inp.data+'T00:00:00'); d.setDate(d.getDate() + (conv.dias_pgto||0)); data_prevista = d.toISOString().slice(0,10); }
+
+  return { valor_bruto, valor_apos_desc_acresc: valor_apos, impostos, taxa_cartao, valor_liquido,
+    dif_medicamento, valor_liquido_final, retencao_clinica, comissao_secretaria, recebimento_medico,
+    pct_medico, data_prevista_recebimento: data_prevista };
+}
+
+function renderCalcBox(){
+  const inp = readForm();
+  const c = calcular(inp);
+  const box = document.getElementById('calc-box');
+  const rows = [
+    ['Valor Bruto', c.valor_bruto], ['Após Desc/Acresc', c.valor_apos_desc_acresc],
+    ['Impostos', c.impostos], ['Taxa Cartão', c.taxa_cartao], ['Valor Líquido', c.valor_liquido],
+    ['Dif. Medicamento', c.dif_medicamento], ['Líquido Final', c.valor_liquido_final],
+    ['Retenção Clínica', c.retencao_clinica], ['Comissão Secret. (2%)', c.comissao_secretaria],
+    ['Médico Recebe', c.recebimento_medico], ['% Médico', c.pct_medico!=null ? (c.pct_medico*100).toFixed(1)+'%' : '-'],
+    ['Previsão Recebimento', fmtDate(c.data_prevista_recebimento)]
+  ];
+  box.innerHTML = rows.map(([k,v]) => `<div><b>${k}</b><span>${typeof v==='number' ? 'R$ '+fmt(v) : v}</span></div>`).join('');
+  return { inp, c };
+}
+
+function readForm(){
+  return {
+    data: document.getElementById('fm-data').value,
+    paciente: document.getElementById('fm-paciente').value.trim(),
+    convenio: document.getElementById('fm-convenio').value,
+    procedimento: document.getElementById('fm-procedimento').value,
+    olho: document.getElementById('fm-olho').value,
+    instituicao: document.getElementById('fm-instituicao').value,
+    medico: document.getElementById('fm-medico').value,
+    forma_pagamento: document.getElementById('fm-forma').value,
+    medicamento_do_plano: document.getElementById('fm-medplano').value,
+    desconto_acrescimo: document.getElementById('fm-desconto').value,
+    deflator: document.getElementById('fm-deflator').value,
+    taxa_sala: document.getElementById('fm-taxasala').value,
+    instrumental: document.getElementById('fm-instr').value,
+    custo_dose_remedio: document.getElementById('fm-custodose').value,
+    guia: document.getElementById('fm-guia').value.trim(),
+    nf: document.getElementById('fm-nf').value.trim(),
+    glosa: document.getElementById('fm-glosa').value,
+    obs: document.getElementById('fm-obs').value.trim(),
+    data_real_recebimento: document.getElementById('fm-datareal').value || null,
+    data_pgto_medico: document.getElementById('fm-datapgto').value || null,
+  };
+}
+
+// ---------- FORM MODAL ----------
+function openForm(row){
+  editingId = row ? row.id : null;
+  document.getElementById('form-title').textContent = row ? 'Editar Lançamento' : 'Novo Lançamento';
+  document.getElementById('form-msg').textContent = '';
+  const set = (id,v) => document.getElementById(id).value = v ?? '';
+  set('fm-data', row?.data || todayStr());
+  set('fm-paciente', row?.paciente);
+  set('fm-convenio', row?.convenio);
+  set('fm-procedimento', row?.procedimento);
+  set('fm-olho', row?.olho);
+  set('fm-instituicao', row?.instituicao || 'COLM');
+  set('fm-medico', row?.medico);
+  set('fm-forma', row?.forma_pagamento);
+  set('fm-medplano', row?.medicamento_do_plano || 0);
+  set('fm-desconto', row?.desconto_acrescimo || 0);
+  set('fm-deflator', row?.deflator || 0);
+  set('fm-taxasala', row?.taxa_sala || 0);
+  set('fm-instr', row?.instrumental || 0);
+  set('fm-custodose', row?.custo_dose_remedio || 0);
+  set('fm-guia', row?.guia);
+  set('fm-nf', row?.nf);
+  set('fm-glosa', row?.glosa || 0);
+  set('fm-obs', row?.obs);
+  set('fm-datareal', row?.data_real_recebimento);
+  set('fm-datapgto', row?.data_pgto_medico);
+  document.getElementById('form-modal').classList.add('open');
+  renderCalcBox();
+}
+function closeForm(){ document.getElementById('form-modal').classList.remove('open'); editingId = null; }
+
+async function saveLancamento(){
+  const { inp, c } = renderCalcBox();
+  const msg = document.getElementById('form-msg');
+  if(!inp.data || !inp.paciente || !inp.convenio || !inp.procedimento || !inp.medico || !inp.forma_pagamento){
+    msg.innerHTML = '<span style="color:var(--bad)">Preencha data, paciente, convênio, procedimento, médico e forma de pagamento.</span>';
+    return;
+  }
+  const payload = {
+    data: inp.data, paciente: inp.paciente, convenio: inp.convenio, procedimento: inp.procedimento,
+    olho: inp.olho || null, instituicao: inp.instituicao, medico: inp.medico, forma_pagamento: inp.forma_pagamento,
+    medicamento_do_plano: Number(inp.medicamento_do_plano)||0, desconto_acrescimo: Number(inp.desconto_acrescimo)||0,
+    deflator: Number(inp.deflator)||0, taxa_sala: Number(inp.taxa_sala)||0, instrumental: Number(inp.instrumental)||0,
+    custo_dose_remedio: Number(inp.custo_dose_remedio)||0, guia: inp.guia||null, nf: inp.nf||null,
+    glosa: Number(inp.glosa)||0, obs: inp.obs||null,
+    data_real_recebimento: inp.data_real_recebimento, data_pgto_medico: inp.data_pgto_medico,
+    valor_bruto: c.valor_bruto, valor_apos_desc_acresc: c.valor_apos_desc_acresc, impostos: c.impostos,
+    taxa_cartao: c.taxa_cartao, valor_liquido: c.valor_liquido, dif_medicamento: c.dif_medicamento,
+    valor_liquido_final: c.valor_liquido_final, retencao_clinica: c.retencao_clinica,
+    comissao_secretaria: c.comissao_secretaria, recebimento_medico: c.recebimento_medico,
+    pct_medico: c.pct_medico, data_prevista_recebimento: c.data_prevista_recebimento,
+  };
+  let error;
+  if(editingId){
+    ({ error } = await sb.from('colm_lancamentos').update(payload).eq('id', editingId));
+  } else {
+    const { data: userData } = await sb.auth.getUser();
+    payload.created_by = userData?.user?.id || null;
+    ({ error } = await sb.from('colm_lancamentos').insert(payload));
+  }
+  if(error){ msg.innerHTML = `<span style="color:var(--bad)">${error.message}</span>`; return; }
+  closeForm();
+  await loadLancamentos();
+}
+
+async function deleteLancamento(id){
+  if(!confirm('Excluir este lançamento?')) return;
+  await sb.from('colm_lancamentos').delete().eq('id', id);
+  await loadLancamentos();
+}
+
+async function marcarRecebido(id){
+  const hoje = todayStr();
+  await sb.from('colm_lancamentos').update({ data_real_recebimento: hoje, data_pgto_medico: hoje }).eq('id', id);
+  await loadLancamentos();
+}
+
+// ---------- LISTA ----------
+function clearFilters(){
+  document.getElementById('f-mes').value='';
+  document.getElementById('f-medico').value='';
+  document.getElementById('f-convenio').value='';
+  document.getElementById('f-instituicao').value='';
+  document.getElementById('f-paciente').value='';
+  loadLancamentos();
+}
+
+async function loadLancamentos(){
+  let q = sb.from('colm_lancamentos').select('*').order('data', { ascending: false });
+  const medico = document.getElementById('f-medico').value;
+  const convenio = document.getElementById('f-convenio').value;
+  const inst = document.getElementById('f-instituicao').value;
+  const paciente = document.getElementById('f-paciente').value.trim();
+  if(medico) q = q.eq('medico', medico);
+  if(convenio) q = q.eq('convenio', convenio);
+  if(inst) q = q.eq('instituicao', inst);
+  if(paciente) q = q.ilike('paciente', `%${paciente}%`);
+  const { data, error } = await q;
+  if(error){ console.error(error); return; }
+  const mes = document.getElementById('f-mes').value;
+  LANC = (data||[]).filter(r => !mes || (new Date(r.data+'T00:00:00').getMonth()+1) === Number(mes));
+  renderLista();
+  renderRecebimentos();
+}
+
+function statusPill(r){
+  if(r.glosa && Number(r.glosa) !== 0) return '<span class="pill bad">Glosa</span>';
+  if(r.data_real_recebimento) return '<span class="pill ok">Recebido</span>';
+  if(r.data_prevista_recebimento && new Date(r.data_prevista_recebimento) < new Date()) return '<span class="pill warn">Atrasado</span>';
+  return '<span class="pill warn">Pendente</span>';
+}
+
+function renderLista(){
+  const tbody = document.querySelector('#tbl-lancamentos tbody');
+  tbody.innerHTML = LANC.map(r => `
+    <tr>
+      <td>${fmtDate(r.data)}</td>
+      <td>${r.paciente}</td>
+      <td>${r.convenio}</td>
+      <td>${r.procedimento}</td>
+      <td>${r.medico}</td>
+      <td class="num">${fmt(r.valor_bruto)}</td>
+      <td class="num">${fmt(r.valor_liquido_final)}</td>
+      <td class="num">${fmt(r.comissao_secretaria)}</td>
+      <td class="num">${fmt(r.recebimento_medico)}</td>
+      <td>${statusPill(r)}</td>
+      <td class="actions-cell">
+        <button class="btn sm ghost" onclick='openForm(${JSON.stringify(r).replace(/'/g,"&#39;")})'>Editar</button>
+        <button class="btn sm danger" onclick="deleteLancamento('${r.id}')">Excluir</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">Nenhum lançamento encontrado.</td></tr>';
+}
+
+// ---------- RECEBIMENTOS ----------
+function renderRecebimentos(){
+  const pend = LANC.filter(r => !r.data_real_recebimento);
+  const tbody = document.querySelector('#tbl-receb tbody');
+  tbody.innerHTML = pend.map(r => `
+    <tr>
+      <td>${fmtDate(r.data)}</td><td>${r.paciente}</td><td>${r.convenio}</td>
+      <td>${fmtDate(r.data_prevista_recebimento)}</td><td>${statusPill(r)}</td>
+      <td class="num">${fmt(r.valor_liquido_final)}</td>
+      <td><button class="btn sm" onclick="marcarRecebido('${r.id}')">Marcar recebido</button></td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Nenhum pendente.</td></tr>';
+
+  const glosas = LANC.filter(r => r.glosa && Number(r.glosa) !== 0);
+  document.querySelector('#tbl-glosas tbody').innerHTML = glosas.map(r => `
+    <tr><td>${fmtDate(r.data)}</td><td>${r.paciente}</td><td>${r.convenio}</td>
+    <td class="num">${fmt(r.glosa)}</td><td>${r.obs||'-'}</td></tr>`).join('')
+    || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Nenhuma glosa registrada.</td></tr>';
+}
+
+// ---------- RELATÓRIOS ----------
+async function renderRelatorios(){
+  const { data } = await sb.from('colm_lancamentos').select('*');
+  let rows = data || [];
+  const mes = document.getElementById('r-mes').value;
+  if(mes) rows = rows.filter(r => (new Date(r.data+'T00:00:00').getMonth()+1) === Number(mes));
+
+  const total_bruto = rows.reduce((s,r)=>s+Number(r.valor_bruto||0),0);
+  const total_final = rows.reduce((s,r)=>s+Number(r.valor_liquido_final||0),0);
+  const total_comissao = rows.reduce((s,r)=>s+Number(r.comissao_secretaria||0),0);
+  const total_medico = rows.reduce((s,r)=>s+Number(r.recebimento_medico||0),0);
+  const pendentes = rows.filter(r=>!r.data_real_recebimento).length;
+
+  document.getElementById('rel-summary').innerHTML = `
+    <div class="stat"><b>Lançamentos</b><span>${rows.length}</span></div>
+    <div class="stat"><b>Valor Bruto</b><span>R$ ${fmt(total_bruto)}</span></div>
+    <div class="stat"><b>Líquido Final</b><span>R$ ${fmt(total_final)}</span></div>
+    <div class="stat"><b>Comissão Secretaria</b><span>R$ ${fmt(total_comissao)}</span></div>
+    <div class="stat"><b>Médicos Recebem</b><span>R$ ${fmt(total_medico)}</span></div>
+    <div class="stat"><b>Pendentes Receb.</b><span>${pendentes}</span></div>`;
+
+  const byKey = (keyFn) => {
+    const m = {};
+    rows.forEach(r=>{
+      const k = keyFn(r);
+      if(!m[k]) m[k] = { qtd:0, bruto:0, final:0, comissao:0, medico:0 };
+      m[k].qtd++; m[k].bruto += Number(r.valor_bruto||0); m[k].final += Number(r.valor_liquido_final||0);
+      m[k].comissao += Number(r.comissao_secretaria||0); m[k].medico += Number(r.recebimento_medico||0);
+    });
+    return m;
+  };
+
+  const porMedico = byKey(r=>r.medico);
+  document.querySelector('#tbl-rel-medico tbody').innerHTML = Object.entries(porMedico)
+    .sort((a,b)=>b[1].final-a[1].final)
+    .map(([k,v])=>`<tr><td>${k}</td><td class="num">${v.qtd}</td><td class="num">${fmt(v.bruto)}</td><td class="num">${fmt(v.final)}</td><td class="num">${fmt(v.comissao)}</td><td class="num">${fmt(v.medico)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:16px">Sem dados.</td></tr>';
+
+  const porConvenio = byKey(r=>r.convenio);
+  document.querySelector('#tbl-rel-convenio tbody').innerHTML = Object.entries(porConvenio)
+    .sort((a,b)=>b[1].final-a[1].final)
+    .map(([k,v])=>`<tr><td>${k}</td><td class="num">${v.qtd}</td><td class="num">${fmt(v.bruto)}</td><td class="num">${fmt(v.final)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:16px">Sem dados.</td></tr>';
+
+  const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const porMes = byKey(r=>meses[new Date(r.data+'T00:00:00').getMonth()]);
+  document.querySelector('#tbl-rel-mes tbody').innerHTML = meses.filter(m=>porMes[m]).map(k=>{
+    const v = porMes[k];
+    return `<tr><td>${k}</td><td class="num">${v.qtd}</td><td class="num">${fmt(v.bruto)}</td><td class="num">${fmt(v.final)}</td><td class="num">${fmt(v.comissao)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:16px">Sem dados.</td></tr>';
+}
+
+// ---------- CADASTROS ----------
+async function addRef(table, inputId){
+  const input = document.getElementById(inputId);
+  const nome = input.value.trim();
+  if(!nome) return;
+  const { error } = await sb.from(table).insert({ nome });
+  if(error){ alert(error.message); return; }
+  input.value = '';
+  await loadRefs();
+}
+async function toggleRefActive(table, id, ativo){
+  await sb.from(table).update({ ativo: !ativo }).eq('id', id);
+  await loadRefs();
+}
+function renderCadastros(){
+  document.getElementById('list-medicos').innerHTML = REF.medicos.map(m =>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border)"><span>${m.nome}</span><button class="btn sm ghost" onclick="toggleRefActive('colm_medicos','${m.id}',true)">Desativar</button></div>`
+  ).join('') || '<p style="color:var(--muted);font-size:12px">Nenhum médico cadastrado.</p>';
+
+  document.getElementById('list-convenios').innerHTML = Object.values(REF.convenios).map(c =>
+    `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span>${c.nome}</span><span>${(c.imposto*100).toFixed(2)}% · ${c.dias_pgto}d</span></div>`
+  ).join('');
+
+  document.getElementById('list-formas').innerHTML = Object.values(REF.formas).map(f =>
+    `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span>${f.nome}</span><span>${(f.taxa*100).toFixed(2)}%</span></div>`
+  ).join('');
+
+  document.getElementById('list-instituicoes').innerHTML = Object.values(REF.instituicoes).map(i =>
+    `<div style="display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px"><span>${i.nome}</span><span>${(i.retencao_aplicacao*100).toFixed(1)}%</span></div>`
+  ).join('');
+
+  document.getElementById('list-procedimentos').innerHTML = Object.values(REF.procedimentos).map(p =>
+    `<div style="padding:4px 0;border-bottom:1px solid var(--border);font-size:12.5px">${p.nome} <span style="color:var(--muted)">(${Object.keys(p.precos||{}).length} convênios com preço)</span></div>`
+  ).join('');
+}
+
+// ---------- TABS ----------
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  ['lista','receb','rel','cad'].forEach(n => document.getElementById('tab-'+n).classList.toggle('hidden', n !== name));
+  if(name === 'rel') renderRelatorios();
+}
+
+['fm-convenio','fm-procedimento','fm-instituicao','fm-medico','fm-forma','fm-medplano','fm-desconto','fm-deflator','fm-taxasala','fm-instr','fm-custodose','fm-data'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(el) el.addEventListener('input', renderCalcBox);
+});
+
+checkSession();
+</script>
+</body>
+</html>
