@@ -6703,6 +6703,10 @@ function sbUpdateProfile(){
   const cn=document.getElementById('sb-cname');
   if(av)av.textContent=initials;
   if(cn)cn.textContent=name;
+  // Barra "Modo Consultor": mostra o nome do cliente (não só o slug técnico
+  // da URL), pra refletir em tempo real qualquer edição feita em "editar nome".
+  const acl=document.getElementById('admin-client-label');
+  if(acl) acl.textContent = S.name ? (S.name+' ('+_rawCid+')') : _rawCid;
   // Consultora: clicar no nome permite editar (o campo do cabeçalho some no desktop)
   const isAdvisorView=_isAdmin&&!(_sbUser&&_sbRole==='client');
   const prof=document.getElementById('sb-profile');
