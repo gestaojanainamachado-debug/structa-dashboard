@@ -1289,7 +1289,9 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 
 <!-- ADMIN BAR (visível só no modo consultor) -->
 <div class="admin-bar hidden" id="admin-bar">
-  <div class="admin-bar-left">🔐 Modo Consultor &nbsp;·&nbsp; Cliente: <b id="admin-client-label">—</b></div>
+  <div class="admin-bar-left">🔐 Modo Consultor &nbsp;·&nbsp; Cliente: <b id="admin-client-label">—</b>
+    <span onclick="sbEditClientName()" style="cursor:pointer;text-decoration:underline;opacity:.85;margin-left:4px" title="Editar o nome do cliente (como aparece no painel e nos relatórios)">✎ editar nome</span>
+  </div>
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
     <button class="abar-btn" onclick="exportData()">⬇ Exportar JSON</button>
