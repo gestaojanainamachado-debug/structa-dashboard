@@ -138,17 +138,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 
 /* CATEGORY TABLE */
 .cat-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
-.cat-grid{min-width:470px}
-.col-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:8px 0 5px;border-bottom:1.5px solid var(--border)}
+.cat-grid{min-width:620px}
+.col-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:8px 0 5px;border-bottom:1.5px solid var(--border)}
 .col-hdr span{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-align:right}
 .col-hdr span:first-child{text-align:left;color:var(--primary)}
 .parent-grp{margin-bottom:10px}
-.parent-grp-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:baseline;font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
+.parent-grp-hdr{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:baseline;font-weight:600;font-size:11.5px;color:var(--primary);padding:7px 0 3px;border-bottom:1.5px solid var(--border);margin-bottom:3px;letter-spacing:.2px}
 .parent-grp-hdr .grp-sum{font-size:11px;font-weight:700;text-align:right;color:var(--muted);letter-spacing:0}
 .parent-grp-hdr .grp-sum.real{color:var(--primary)}
 .subtype-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 1px;font-weight:500}
 .despesas-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);background:rgba(56,28,23,.07);padding:5px 10px;border-radius:5px;margin:8px 0 4px}
-.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
 .cat-row:hover{background:rgba(56,28,23,.02)}
 .cat-lbl{font-size:12px;padding:3px 0;border:none;background:transparent;font-family:inherit;width:100%;outline:none;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat-lbl:focus{border-bottom:1px dashed var(--lilac);white-space:normal}
@@ -163,14 +163,17 @@ body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--t
 .del-btn:hover{background:var(--bad-bg);color:var(--bad)}
 .add-cat-btn{display:flex;align-items:center;gap:5px;padding:6px 0;background:none;border:none;font-family:inherit;font-size:11px;color:var(--muted);cursor:pointer;transition:.15s}
 .add-cat-btn:hover{color:var(--primary)}
-.tot-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:7px 0 2px;border-top:1.5px solid var(--border);margin-top:4px}
+.tot-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:7px 0 2px;border-top:1.5px solid var(--border);margin-top:4px}
 .tot-row span{font-size:12px;font-weight:700;text-align:right;color:var(--primary)}
 .tot-row span:first-child{text-align:left}
-.renda-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:5px 0 8px}
+.renda-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:5px 0 8px}
 .renda-row .rl{font-size:12px;font-weight:600;color:var(--primary)}
-.renda-sub-row{display:grid;grid-template-columns:1fr 98px 98px 78px 28px;gap:6px;align-items:center;padding:2px 0}
+.renda-sub-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:2px 0}
 .renda-sub-row .rsl{font-size:11px;color:var(--muted);padding-left:10px}
 .renda-sub-row .rsv{font-size:11px;color:var(--text);text-align:right}
+.obs-cell{font-size:11px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-family:inherit;color:var(--text);background:var(--bg);width:100%;transition:.15s;overflow:hidden;text-overflow:ellipsis}
+.obs-cell:focus{outline:none;border-color:var(--primary);background:#fff;white-space:normal}
+.obs-cell::placeholder{color:var(--muted);opacity:.6}
 .sec-sep{height:1px;background:var(--s2);margin:12px 0 8px}
 .sec-name{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 
@@ -854,10 +857,11 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
   /* Patrimônio — class + inline style override */
   .pat-row{grid-template-columns:80px 1fr 90px 24px!important}
   .pat-ativos-hdr{grid-template-columns:80px 1fr 90px 24px!important}
-  /* Orçamento — remove coluna variação, ajusta grid */
+  /* Orçamento — remove coluna variação e observação, ajusta grid */
   .col-hdr,.cat-row,.tot-row,.renda-row,.renda-sub-row,.parent-grp-hdr{grid-template-columns:1fr 86px 86px 24px!important;gap:4px!important}
   .cat-row .var-cell,.tot-row .var-cell,.renda-row .var-cell,.renda-sub-row .var-cell{display:none!important}
   .col-hdr>*:nth-child(4){display:none!important}
+  .obs-cell,.obs-hdr{display:none!important}
   .parent-grp-hdr>*:nth-child(4){display:none!important}
   .cat-grid{min-width:0!important}
   /* Diagnóstico — garantir que cards não transbordem */
@@ -1610,13 +1614,13 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="card">
       <div class="ctitle">Dados Financeiros Mensais</div>
       <div class="cat-scroll"><div class="cat-grid">
-        <div class="col-hdr"><span>Categoria</span><span>Orçamento</span><span>Realizado</span><span>Variação</span><span></span></div>
+        <div class="col-hdr"><span>Categoria</span><span>Orçamento</span><span>Realizado</span><span>Variação</span><span class="obs-hdr">Observação</span><span></span></div>
         <div class="sec-sep" style="margin-top:6px"></div><div class="sec-name">Renda</div>
         <div class="renda-row">
           <div class="rl">Renda líquida mensal<span id="renda-tx-ind" style="font-size:9px;color:var(--ok);font-weight:700;margin-left:4px"></span></div>
           <input class="inp" type="number" id="rendaOrc" min="0" placeholder="0" oninput="setOrcRendaOrc(+this.value||0)">
           <input class="inp real" type="number" id="rendaReal" min="0" placeholder="0" oninput="S.rendaReal=+this.value||0;recalc();save()">
-          <div class="var-cell neutral" id="var-renda">—</div><div></div>
+          <div class="var-cell neutral" id="var-renda">—</div><div></div><div></div>
         </div>
         <div id="renda-detail"></div>
         <div class="sec-sep"></div>
@@ -1626,7 +1630,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         </div>
         <div id="grp-ct"></div>
         <button class="add-cat-btn" onclick="addCat('ct')">＋ Adicionar categoria</button>
-        <div class="tot-row"><span>Total Trabalho</span><span id="tct-o">R$ 0</span><span id="tct-r">R$ 0</span><span class="var-cell neutral" id="vct">—</span><span></span></div>
+        <div class="tot-row"><span>Total Trabalho</span><span id="tct-o">R$ 0</span><span id="tct-r">R$ 0</span><span class="var-cell neutral" id="vct">—</span><span></span><span></span></div>
         <div class="sec-sep"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div class="sec-name" style="margin-bottom:0">Despesas Pessoais</div>
@@ -1636,15 +1640,15 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           </div>
         </div>
         <div id="grp-despesas"></div>
-        <div class="tot-row"><span>Total Fixo</span><span id="tfx-o">R$ 0</span><span id="tfx-r">R$ 0</span><span class="var-cell neutral" id="vfx">—</span><span></span></div>
-        <div class="tot-row"><span>Total Variável</span><span id="tvr-o">R$ 0</span><span id="tvr-r">R$ 0</span><span class="var-cell neutral" id="vvr">—</span><span></span></div>
-        <div class="tot-row"><span>Total Despesas</span><span id="tf-o">R$ 0</span><span id="tf-r">R$ 0</span><span class="var-cell neutral" id="vf">—</span><span></span></div>
+        <div class="tot-row"><span>Total Fixo</span><span id="tfx-o">R$ 0</span><span id="tfx-r">R$ 0</span><span class="var-cell neutral" id="vfx">—</span><span></span><span></span></div>
+        <div class="tot-row"><span>Total Variável</span><span id="tvr-o">R$ 0</span><span id="tvr-r">R$ 0</span><span class="var-cell neutral" id="vvr">—</span><span></span><span></span></div>
+        <div class="tot-row"><span>Total Despesas</span><span id="tf-o">R$ 0</span><span id="tf-r">R$ 0</span><span class="var-cell neutral" id="vf">—</span><span></span><span></span></div>
         <!-- hidden compat elements -->
         <span id="tv-o" style="display:none"></span><span id="tv-r" style="display:none"></span><span id="vv" style="display:none"></span>
         <div class="sec-sep"></div><div class="sec-name">Investimentos &amp; Reserva</div>
         <div id="grp-inv"></div>
         <button class="add-cat-btn" onclick="addCat('inv')">＋ Adicionar categoria</button>
-        <div class="tot-row"><span>Total Investimentos</span><span id="ti-o">R$ 0</span><span id="ti-r">R$ 0</span><span class="var-cell neutral" id="vi">—</span><span></span></div>
+        <div class="tot-row"><span>Total Investimentos</span><span id="ti-o">R$ 0</span><span id="ti-r">R$ 0</span><span class="var-cell neutral" id="vi">—</span><span></span><span></span></div>
       </div></div>
     </div>
     <div>
@@ -5099,7 +5103,7 @@ function renderDespesas(){
       const wrap=document.createElement('div');wrap.className='parent-grp';
       const hdr=document.createElement('div');hdr.className='parent-grp-hdr';
       const sid=grpSumId(grp,nome);
-      hdr.innerHTML=`<span>📁 ${esc(nome)}</span><span class="grp-sum orc" id="${sid}-o">${fmt(orcSum)}</span><span class="grp-sum real" id="${sid}-r">${fmt(realSum)}</span><span></span><span></span>`;
+      hdr.innerHTML=`<span>📁 ${esc(nome)}</span><span class="grp-sum orc" id="${sid}-o">${fmt(orcSum)}</span><span class="grp-sum real" id="${sid}-r">${fmt(realSum)}</span><span></span><span></span><span></span>`;
       wrap.appendChild(hdr);
       byNome[nome].forEach(cat=>{
         const ft=txMap[cat.id]!==undefined;
@@ -5137,6 +5141,8 @@ function makeRow(grp,cat,fromTx,txVal){
       value="${rv||''}" ${fromTx?'readonly title="Calculado dos lançamentos"':''}
       oninput="${fromTx?'':'setCatVal(\''+grp+'\',\''+cat.id+'\',\'real\',+this.value||0)'}">
     <div class="var-cell neutral" id="var-${cat.id}">—</div>
+    <input class="obs-cell" type="text" placeholder="Observação…" value="${esc(cat.obs||'')}"
+      oninput="setCatVal('${grp}','${cat.id}','obs',this.value)">
     <button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button>`;
   return d;
 }
@@ -6126,7 +6132,7 @@ function recalc(){
     const rdMap=getTxRendaMap(orcViewYear,orcViewMonth);
     const rdCats=(DEFS.receita||[]).filter(c=>rdMap[c.id]>0);
     rdEl.innerHTML=rdCats.length>0
-      ?rdCats.map(c=>`<div class="renda-sub-row"><div class="rsl">${c.lbl}</div><div></div><div class="rsv">${fmt(rdMap[c.id])}</div><div class="var-cell neutral"></div><div></div></div>`).join('')
+      ?rdCats.map(c=>`<div class="renda-sub-row"><div class="rsl">${c.lbl}</div><div></div><div class="rsv">${fmt(rdMap[c.id])}</div><div class="var-cell neutral"></div><div></div><div></div></div>`).join('')
       :'';
   }
 
