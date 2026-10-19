@@ -1291,6 +1291,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 <div class="admin-bar hidden" id="admin-bar">
   <div class="admin-bar-left">🔐 Modo Consultor &nbsp;·&nbsp; Cliente: <b id="admin-client-label">—</b>
     <span onclick="sbEditClientName()" style="cursor:pointer;text-decoration:underline;opacity:.85;margin-left:4px" title="Editar o nome do cliente (como aparece no painel e nos relatórios)">✎ editar nome</span>
+    <span onclick="sbEditClientSlug()" style="cursor:pointer;text-decoration:underline;opacity:.85;margin-left:8px" title="Editar o identificador do link que a cliente usa pra acessar (muda a URL)">🔗 editar link</span>
   </div>
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
@@ -6725,6 +6726,38 @@ function sbEditClientName(){
   const inp=document.getElementById('clientName');if(inp)inp.value=S.name;
   save();sbUpdateProfile();
   try{renderPessoaBars();}catch(e){}
+}
+// Muda o identificador do link do cliente (?c=<slug>) — diferente de
+// sbEditClientName(), que só muda o nome exibido. O slug é o que vai no link
+// de convite/acesso enviado à cliente, então precisa poder ser corrigido se
+// saiu errado na criação (ex.: gerado a partir de um nome digitado errado).
+async function sbEditClientSlug(){
+  if(!isConsultor()){alert('Só consultoras podem alterar o link do cliente.');return;}
+  const oldSlug=_cid;
+  if(!oldSlug){alert('Nenhum cliente selecionado.');return;}
+  const novoRaw=prompt('Novo identificador do link do cliente (vai na URL que ela usa pra entrar — sem espaços ou acentos):',oldSlug);
+  if(novoRaw===null)return;
+  const novoSlug=csSlug(novoRaw);
+  if(!novoSlug){alert('Identificador inválido.');return;}
+  if(novoSlug===oldSlug)return;
+  if(_sb && isConsultor()){
+    const {data:exists}=await _sb.from('client_data').select('slug').eq('slug',novoSlug).maybeSingle();
+    if(exists){alert('Já existe um cliente com esse identificador. Escolha outro.');return;}
+    try{
+      await _sb.from('client_data').update({slug:novoSlug}).eq('slug',oldSlug);
+      await _sb.from('profiles').update({slug:novoSlug}).eq('slug',oldSlug);
+      await _sb.from('pending_invites').update({slug:novoSlug}).eq('slug',oldSlug);
+    }catch(e){alert('Erro ao renomear: '+e.message);return;}
+  } else {
+    const oldKey='structa_v4_'+oldSlug, newKey='structa_v4_'+novoSlug;
+    if(localStorage.getItem(newKey)){alert('Já existe um cliente salvo neste navegador com esse identificador.');return;}
+    const raw=localStorage.getItem(oldKey);
+    if(raw){localStorage.setItem(newKey,raw);localStorage.removeItem(oldKey);}
+    const ts=localStorage.getItem(oldKey+'_ts');
+    if(ts){localStorage.setItem(newKey+'_ts',ts);localStorage.removeItem(oldKey+'_ts');}
+  }
+  const adminParam=_params.get('admin')==='1'?'&admin=1':'';
+  location.href=location.pathname+'?c='+novoSlug+adminParam;
 }
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
