@@ -1289,7 +1289,9 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 
 <!-- ADMIN BAR (visível só no modo consultor) -->
 <div class="admin-bar hidden" id="admin-bar">
-  <div class="admin-bar-left">🔐 Modo Consultor &nbsp;·&nbsp; Cliente: <b id="admin-client-label">—</b></div>
+  <div class="admin-bar-left">🔐 Modo Consultor &nbsp;·&nbsp; Cliente: <b id="admin-client-label">—</b>
+    <span onclick="sbEditClientName()" style="cursor:pointer;text-decoration:underline;opacity:.85;margin-left:4px" title="Editar o nome do cliente (como aparece no painel e nos relatórios)">✎ editar nome</span>
+  </div>
   <div class="admin-bar-btns">
     <button class="abar-btn ok" onclick="generateReport()">📄 Gerar Relatório</button>
     <button class="abar-btn" onclick="exportData()">⬇ Exportar JSON</button>
@@ -3300,6 +3302,14 @@ async function sbLoadData(user) {
       }
     } catch(e) { console.warn('invite activation failed:', e); }
   }
+  // _isAdmin foi calculado só a partir da URL (?admin=1), ANTES de sabermos
+  // o papel do usuário — então um consultor/master que entra numa URL com
+  // ?c=slug mas sem &admin=1 (ex.: o link do último cliente que ela visitou,
+  // ou um favorito salvo no navegador) caía como se fosse o próprio cliente:
+  // sem barra de "Modo Consultor", sem botão "Trocar cliente", sem como
+  // voltar pra tela de seleção de clientes. Role de consultor/master sempre
+  // vira admin, independente do que a URL diz.
+  if(isConsultor()) _isAdmin = true;
   // Consultor/master: sync localStorage → Supabase em background
   // Também carimba advisor_id em registros antigos que não tinham o campo
   if(isConsultor()){
@@ -3647,7 +3657,7 @@ async function sbLogout() {
 const _params=new URLSearchParams(location.search);
 const _rawCid=(_params.get('c')||'').trim();
 const _cid=_rawCid.toLowerCase().replace(/[^a-z0-9]/g,'_');
-const _isAdmin=!_cid||_params.get('admin')==='1';
+let _isAdmin=!_cid||_params.get('admin')==='1';
 const SKEY=_cid?'structa_v4_'+_cid:'structa_v4';
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
