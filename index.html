@@ -3798,6 +3798,7 @@ function orcSetDefault(){
 
 // ── GERENCIAR CATEGORIAS ────────────────────────────────────────────────────
 const CAT_GROUPS=[
+  {key:'receita',lbl:'💰 Receita',               hasOrc:false},
   {key:'ct',    lbl:'🏥 Custos do Consultório', hasOrc:true},
   {key:'fixas', lbl:'🏠 Despesas Fixas',         hasOrc:true},
   {key:'var',   lbl:'🛍 Despesas Variáveis',      hasOrc:true},
@@ -4644,14 +4645,17 @@ function bootApp(){
     v_festas:'v_passeio',v_despacho:'v_tercout',
   };
   if(S.transactions)S.transactions.forEach(t=>{if(CAT_REMAP[t.catId]){t.catId=CAT_REMAP[t.catId];t.grp=t.catId.startsWith('r_')?'receita':t.catId.startsWith('n_')?'neutro':t.catId.startsWith('i_')?'inv':t.catId.startsWith('ct_')?'ct':t.catId.startsWith('f_')?'fixas':'var';}});
-  // Migrate categories to latest DEFS (preserve orc values where id matches)
-  ['ct','fixas','var','inv'].forEach(grp=>{
+  // Migrate categories to latest DEFS (preserve orc/nome customizados, e também
+  // categorias extras criadas pela consultora — ex. em "Gerenciar categorias" ou
+  // na Receita — que não existem em DEFS e antes eram descartadas a cada reload).
+  ['ct','fixas','var','inv','receita'].forEach(grp=>{
     const old=S.cats[grp]||[];
     const oldMap={};old.forEach(c=>{oldMap[c.id]=c;});
-    S.cats[grp]=DEFS[grp].map(d=>({...d,orc:oldMap[d.id]?oldMap[d.id].orc||0:0,real:0}));
+    const defIds=new Set(DEFS[grp].map(d=>d.id));
+    const fromDefs=DEFS[grp].map(d=>({...d,...(oldMap[d.id]?{lbl:oldMap[d.id].lbl,orc:oldMap[d.id].orc||0}:{}),real:0}));
+    const custom=old.filter(c=>!defIds.has(c.id)).map(c=>({...c,real:0}));
+    S.cats[grp]=[...fromDefs,...custom];
   });
-  // Always update receita from DEFS
-  S.cats.receita=DEFS.receita.map(c=>({...c}));
   S.cats.neutro=DEFS.neutro.map(c=>({...c}));
   if(!S.irPago)S.irPago={fonte:0,carneLeao:0,outros:0};
   if(!S.seguros)S.seguros=freshSeguros();
@@ -5215,7 +5219,7 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
     cats.forEach(c=>og.appendChild(makeOpt(c,grp)));
     sc.appendChild(og);
   }
-  if(key==='receita') DEFS.receita.forEach(c=>sc.appendChild(makeOpt(c,'receita')));
+  if(key==='receita') (S.cats.receita||[]).forEach(c=>sc.appendChild(makeOpt(c,'receita')));
   else if(key==='ct') (S.cats.ct||[]).forEach(c=>sc.appendChild(makeOpt(c,'ct')));
   else if(key==='inv') (S.cats.inv||[]).forEach(c=>sc.appendChild(makeOpt(c,'inv')));
   else if(key==='neutro') (S.cats.neutro||[]).forEach(c=>sc.appendChild(makeOpt(c,'neutro')));
@@ -5732,7 +5736,7 @@ function setDeltaPill(id,delta,higherIsGood,base){
 }
 function getCatLbl(catId,grp){
   if(!catId)return'Sem categoria';
-  if(grp==='receita'){return DEFS.receita.find(c=>c.id===catId)?.lbl||'Sem categoria';}
+  if(grp==='receita'){return(S.cats.receita||[]).find(c=>c.id===catId)?.lbl||'Sem categoria';}
   if(grp==='neutro'){return(S.cats.neutro||[]).find(c=>c.id===catId)?.lbl||'Sem categoria';}
   return[...(S.cats.ct||[]),...S.cats.fixas,...S.cats.var,...S.cats.inv].find(c=>c.id===catId)?.lbl||'Sem categoria';
 }
@@ -6130,7 +6134,7 @@ function recalc(){
   const rdEl=document.getElementById('renda-detail');
   if(rdEl){
     const rdMap=getTxRendaMap(orcViewYear,orcViewMonth);
-    const rdCats=(DEFS.receita||[]).filter(c=>rdMap[c.id]>0);
+    const rdCats=(S.cats.receita||[]).filter(c=>rdMap[c.id]>0);
     rdEl.innerHTML=rdCats.length>0
       ?rdCats.map(c=>`<div class="renda-sub-row"><div class="rsl">${c.lbl}</div><div></div><div class="rsv">${fmt(rdMap[c.id])}</div><div class="var-cell neutral"></div><div></div><div></div></div>`).join('')
       :'';
@@ -7286,7 +7290,7 @@ function parseCsvRows(text,stmtType){
 
 function buildCsvrCatOptions(selected,grp){
   const sections=[
-    {g:'receita', lbl:'💰 Receita',          cats:DEFS.receita},
+    {g:'receita', lbl:'💰 Receita',          cats:S.cats.receita||[]},
     {g:'ct',      lbl:'🏥 Custos Consultório',cats:S.cats.ct||[]},
     {g:'fixas',   lbl:'🏠 Despesas Fixas',    cats:S.cats.fixas},
     {g:'var',     lbl:'🛍 Despesas Variáveis', cats:S.cats.var},
@@ -9541,7 +9545,7 @@ function convCatHTML(selected){
   let html=`<select onchange="convOnCatChange(this)" style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;width:100%;max-width:200px">`;
   // Receita
   html+=`<optgroup label="💰 Receita">`;
-  (DEFS.receita||[]).forEach(c=>html+=`<option value="${c.id}"${c.id===selected?' selected':''}>${c.lbl}</option>`);
+  (S.cats.receita||[]).forEach(c=>html+=`<option value="${c.id}"${c.id===selected?' selected':''}>${c.lbl}</option>`);
   html+=`</optgroup>`;
   // Custos Profissionais
   html+=`<optgroup label="🏥 Custos Profissionais">`;
