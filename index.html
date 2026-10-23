@@ -10080,6 +10080,7 @@ const BANK_NAMES={
   cef_app:        'Caixa – Extrato por Período (App)',
   prox_fatura:    'Cartão – Demonstrativo Próxima Fatura',
   nubank_extrato: 'Nubank – Extrato Conta',
+  nubank_fatura:  'Nubank – Fatura Cartão',
   generico:       'Formato Genérico',
   csv_xls:        'CSV / Excel',
 };
@@ -10118,8 +10119,14 @@ function ensureContaFromImport(bank,allText){
 }
 function detectBank(lines){
   const t=lines.map(l=>l.text).join('\n').toLowerCase();
-  // Nubank: precisa vir antes do Santander (txns Pix podem citar "BCO SANTANDER")
-  if(t.includes('nubank.com.br')||t.includes('nu pagamentos s.a'))return'nubank_extrato';
+  // Nubank: precisa vir antes do Santander (txns Pix podem citar "BCO SANTANDER").
+  // Fatura (cartão de crédito) e extrato (conta) citam ambos "nu pagamentos s.a" no
+  // rodapé — só dá pra diferenciar pelo texto de abertura da fatura.
+  if(t.includes('nubank.com.br')||t.includes('nu pagamentos s.a')){
+    if(t.includes('esta é a sua fatura')||t.includes('esta e a sua fatura')
+       ||(t.includes('transações')&&t.includes('pagamento mínimo')))return'nubank_fatura';
+    return'nubank_extrato';
+  }
   // Extrato de conta Banco Inter (PF/PJ): cabeçalho "Instituição: Banco Inter" + blocos
   // diários "DD de Mês de AAAA Saldo do dia: R$ X". Vem antes do Santander/BB porque as
   // contrapartes dos Pix podem citar outros bancos no meio do texto.
@@ -11504,6 +11511,48 @@ function parseNubankExtrato(lines){
   return txns;
 }
 
+// ── NUBANK – FATURA CARTÃO ───────────────────────────────────────────────────
+// Transações só aparecem na(s) última(s) página(s), na seção "TRANSAÇÕES DE
+// DD MMM A DD MMM" — antes disso é só resumo/simulações de pagamento, ignorado.
+// Cada lançamento: "DD MMM [•••• NNNN] Descrição R$ X,XX" (uma linha); linhas de
+// cabeçalho de agrupamento ("Pagamentos e Financiamentos R$ 360,67") não começam
+// com a data e por isso já ficam de fora. Não imprime ano — infere pelo mês de
+// vencimento ("FATURA DD MMM AAAA" / "Data de vencimento: DD MMM AAAA").
+function parseNubankFatura(lines,allText){
+  const txns=[];
+  const MO={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
+  let year=new Date().getFullYear(),refMonth=null;
+  const vm=(allText||'').match(/(?:data de vencimento|fatura)[:\s]*(\d{1,2})\s+([A-Za-zç]{3})\s+(\d{4})/i);
+  if(vm){refMonth=MO[vm[2].toLowerCase()];year=parseInt(vm[3]);}
+  const re=/^(\d{1,2})\s+([A-Za-zç]{3})\s+(.+?)\s+(-|−)?\s*R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})$/i;
+  const skipDesc=/^pagamento em \d|pagamento da fatura|cr[ée]dito concedido|multa por atraso|iof do rotativo|juros do rotativo|juros de mora/i;
+  function cleanDesc(s){
+    return s.replace(/^nu\s+(?=[A-ZÀ-Ú])/,'')                             // ícone "nu" de pagamento por Pix/NuPay
+            .replace(/•+[\d.•\s-]*/g,' ')                                  // cartão mascarado (•••• 1641)
+            .replace(/\b\d{2}\.\d{3}\.\d{3}(?:\/\d{4}-?\d{0,2})?\b/g,' ')  // CNPJ parcial/completo
+            .replace(/\s+/g,' ').trim();
+  }
+  let inSection=false;
+  for(const l of lines){
+    const text=l.text.trim();
+    if(/^transa[çc][õo]es\b/i.test(text)){inSection=true;continue;}
+    if(!inSection)continue;
+    const m=text.match(re);
+    if(!m)continue;
+    const mo=MO[m[2].toLowerCase()];
+    if(!mo)continue;
+    const desc=cleanDesc(m[3]);
+    if(!desc||skipDesc.test(desc))continue;
+    const amt=convParseBR(m[5]);
+    if(amt===null||isNaN(amt))continue;
+    const value=m[4]?Math.abs(amt):-Math.abs(amt);
+    const y=(refMonth&&mo>refMonth)?year-1:year;
+    const date=`${m[1].padStart(2,'0')}/${String(mo).padStart(2,'0')}/${y}`;
+    txns.push({date,desc,value,cat:classifyTx(desc,value)});
+  }
+  return txns;
+}
+
 // ── BANCO INTER – EXTRATO CONTA CORRENTE (PF/PJ) ─────────────────────────────
 // Cabeçalho do dia: "14 de Setembro de 2026 Saldo do dia: R$ 2.522,29"
 // Lançamento (1 linha): 'Pix recebido: "Cp :71163315-NOME" R$ 676,13 R$ 2.522,29'
@@ -11915,6 +11964,7 @@ async function convProcessPDF(file){
       case'inter_extrato':   txns=parseInterExtrato(lines);break;
       case'mp_fatura':       txns=parseMPFatura(lines,allText);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
+      case'nubank_fatura':   txns=parseNubankFatura(lines,allText);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
       case'sicoob_fatura':   txns=parseSicoobFatura(lines,allText);break;
