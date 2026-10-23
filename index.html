@@ -10071,6 +10071,7 @@ const BANK_NAMES={
   inter_fatura:   'Banco Inter – Fatura Cartão',
   inter_extrato:  'Banco Inter – Extrato Conta Corrente',
   mp_fatura:      'Mercado Pago – Fatura Cartão',
+  mp_extrato:     'Mercado Pago – Extrato de Conta',
   infinitepay:    'InfinitePay – Extrato',
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
   sicoob_fatura:  'Sicoob – Fatura Cartão',
@@ -10156,8 +10157,12 @@ function detectBank(lines){
      &&(t.includes('fatura')||t.includes('estabelecimento')))return'itau_fatura';
   if(t.includes('itaú')||t.includes('itau'))return'itau_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
+  // Extrato de conta Mercado Pago — "EXTRATO DE CONTA" + colunas "Data Descrição
+  // ID da operação Valor Saldo". Precisa vir antes da fatura (ambos citam
+  // "mercado pago" no texto).
+  if(t.includes('mercado pago')&&t.includes('extrato de conta'))return'mp_extrato';
   // Fatura de cartão Mercado Pago — precisa do segundo termo pra não confundir
-  // com um extrato de conta Mercado Pago (se algum dia for suportado).
+  // com um extrato de conta Mercado Pago.
   if(t.includes('mercado pago')&&(t.includes('cartão de crédito')||t.includes('essa é sua fatura')))return'mp_fatura';
   // Fatura de cartão Sicoob (Sicoobcard) — precisa vir antes do extrato SISBR,
   // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
@@ -10464,33 +10469,52 @@ function parseItauExtrato(lines){
 }
 
 // ── Itaú Fatura ──────────────────────────────────────────────────────────────
-// Line: DD/MM DESCRIÇÃO [Parc.X/Y] VALOR  (next line = category, skip)
-function parseItauFatura(lines){
+// Line: DD/MM DESCRIÇÃO [Parc.X/Y] VALOR  (next line = category, skip).
+// Faturas com parcelamentos antigos imprimem DUAS tabelas lado a lado — a dos
+// lançamentos do mês e a dos parcelamentos de meses anteriores que ainda estão
+// sendo cobrados — na mesma faixa vertical da página. Como o pdf.js agrupa por
+// coordenada Y, as duas colunas caem numa linha só (ex.: "02/10 FULANO 11/12
+// 558,33 16/07 OUTRA LOJA 10,95"), então usa regex GLOBAL pra extrair quantos
+// lançamentos a linha tiver, em vez de supor um só por linha (o que fazia o
+// valor da coluna da esquerda ser engolido pela descrição e perdido). A
+// separação entre data/descrição/valor é tratada como opcional (\s*) porque
+// esse PDF específico às vezes não grava espaço real entre palavras — só o
+// recuo maior entre colunas garante a leitura certa de qualquer forma.
+// Datas de parcelamentos antigos não trazem ano — infere pelo mês de emissão
+// da fatura ("Emissão: DD/MM/AAAA"): mês da transação maior que o mês de
+// emissão = ano anterior (mesmo critério já usado nos outros parsers de fatura).
+function parseItauFatura(lines,allText){
   const txns=[];
-  const yr=new Date().getFullYear();
-  // Match: starts with DD/MM, ends with numeric amount
-  const lineRe=/^(\d{2}\/\d{2})\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s*$/;
+  let year=new Date().getFullYear(),refMonth=null;
+  const em=(allText||'').match(/emiss[ãa]o:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(em){refMonth=parseInt(em[2]);year=parseInt(em[3]);}
+  const lineRe=/(\d{2}\/\d{2})\s*(.+?)\s*(\d{1,3}(?:\.\d{3})*,\d{2})(?=\s|$)/g;
 
   for(const line of lines){
     const text=line.text;
     if(shouldSkip(text))continue;
-    const m=text.match(lineRe);
-    if(!m)continue;
+    let m;
+    lineRe.lastIndex=0;
+    while((m=lineRe.exec(text))){
+      const[,rawDate,rawDesc,amtStr]=m;
+      const mo=parseInt(rawDate.split('/')[1]);
+      const y=(refMonth&&mo>refMonth)?year-1:year;
+      const date=`${rawDate.split('/')[0]}/${rawDate.split('/')[1]}/${y}`;
 
-    const [,rawDate,rawDesc,amtStr]=m;
-    const [day,month]=rawDate.split('/');
-    const date=`${day}/${month.padStart(2,'0')}/${yr}`;
+      // Strip trailing "DD/MM" installment date artifact
+      const desc=rawDesc.replace(/\s+\d{2}\/\d{2}\s*$/,'').trim();
+      // A linha da seção "Pagamentos efetuados" (quitação da fatura anterior)
+      // imprime só "PAGAMENTO" na coluna de descrição — sem "recebido"/
+      // "efetuado" junto, que são o texto do cabeçalho da seção, não da linha.
+      if(/^pagamento\b/i.test(desc))continue;
+      if(shouldSkip(desc))continue;
 
-    // Strip trailing "DD/MM" installment date artifact
-    const desc=rawDesc.replace(/\s+\d{2}\/\d{2}\s*$/,'').trim();
-    if(/pagamento recebido|pagamento efetuado/i.test(desc))continue;
-    if(shouldSkip(desc))continue;
+      const amt=convParseBR(amtStr);
+      if(amt===null)continue;
+      const value=-Math.abs(amt); // fatura charges are always expenses
 
-    const amt=convParseBR(amtStr);
-    if(amt===null)continue;
-    const value=-Math.abs(amt); // fatura charges are always expenses
-
-    txns.push({date,desc,value,cat:classifyTx(desc,value)});
+      txns.push({date,desc,value,cat:classifyTx(desc,value)});
+    }
   }
   return txns;
 }
@@ -11622,6 +11646,51 @@ function parseInterFatura(lines){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: MERCADO PAGO — EXTRATO DE CONTA
+// Tabela "DETALHE DOS MOVIMENTOS": cada linha começa com "DD-MM-AAAA" (data) e
+// termina, em alguma linha seguinte, com "ID da operação (9+ dígitos) R$ Valor
+// R$ Saldo" — a descrição às vezes quebra em 2-3 linhas no meio (ex.: nome de
+// quem enviou/recebeu um Pix), com ID/Valor/Saldo sempre alinhados com a ÚLTIMA
+// linha da descrição, nunca com a data. Por isso acumula as linhas de descrição
+// até achar essa linha final de números, em vez de exigir tudo numa linha só.
+// O "Valor" já vem com o sinal certo (negativo = saída), não precisa inferir.
+// ═══════════════════════════════════════════════════════════════════════════════
+function parseMPExtrato(lines){
+  const txns=[];
+  const dateRe=/^(\d{2})-(\d{2})-(\d{4})\s*(.*)$/;
+  const endRe=/^(.*?)\s*\d{9,}\s+R\$\s*(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+R\$\s*-?\d{1,3}(?:\.\d{3})*,\d{2}$/;
+  const skipRe=/^(data de gera|voc[eê] tem alguma|mercado pago institui|extrato de conta|cpf\/cnpj|per[íi]odo:|saldo inicial|entradas:|saidas:|saldo final|detalhe dos movimentos|data\s+descri[çc][ãa]o)/i;
+  let curDate=null,descParts=[];
+  function finalize(m){
+    if(m[1])descParts.push(m[1]);
+    const desc=descParts.join(' ').replace(/\s+/g,' ').trim();
+    const value=convParseBR(m[2]);
+    if(desc&&value!==null&&!isNaN(value))txns.push({date:curDate,desc,value,cat:classifyTx(desc,value)});
+    curDate=null;descParts=[];
+  }
+  for(const l of lines){
+    const text=l.text.trim();
+    if(!text||skipRe.test(text))continue;
+    const dm=text.match(dateRe);
+    if(dm){
+      curDate=`${dm[1]}/${dm[2]}/${dm[3]}`;descParts=[];
+      const rest=dm[4].trim();
+      if(rest){
+        const em=rest.match(endRe);
+        if(em){finalize(em);continue;}
+        descParts.push(rest);
+      }
+      continue;
+    }
+    if(!curDate)continue;
+    const em=text.match(endRe);
+    if(em){finalize(em);continue;}
+    descParts.push(text);
+  }
+  return txns;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PARSER: MERCADO PAGO — FATURA CARTÃO DE CRÉDITO
 // Tabela "Detalhes de consumo": "DD/MM DESCRIÇÃO [Parcela N de M] R$ X.XXX,XX".
 // Ignora linhas de "Movimentações na fatura" que não são consumo novo (pagamento
@@ -11954,7 +12023,7 @@ async function convProcessPDF(file){
       case'cef_extrato':     txns=parseCaixaExtrato(lines);break;
       case'cef_fatura':      txns=parseCEFFatura(lines);break;
       case'itau_extrato':    txns=parseItauExtrato(lines);break;
-      case'itau_fatura':     txns=parseItauFatura(lines);break;
+      case'itau_fatura':     txns=parseItauFatura(lines,allText);break;
       case'santander_extrato':txns=parseSantanderExtrato(lines,allText);break;
       case'santander_fatura': txns=parseSantanderFatura(lines,allText);break;
       case'bb_extrato':      txns=parseBBExtrato(lines);break;
@@ -11963,6 +12032,7 @@ async function convProcessPDF(file){
       case'inter_fatura':    txns=parseInterFatura(lines);break;
       case'inter_extrato':   txns=parseInterExtrato(lines);break;
       case'mp_fatura':       txns=parseMPFatura(lines,allText);break;
+      case'mp_extrato':      txns=parseMPExtrato(lines);break;
       case'nubank_extrato':  txns=parseNubankExtrato(lines);break;
       case'nubank_fatura':   txns=parseNubankFatura(lines,allText);break;
       case'infinitepay':     txns=parseInfinitePay(lines);break;
