@@ -10159,8 +10159,9 @@ function detectBank(lines){
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
   // Extrato de conta Mercado Pago — "EXTRATO DE CONTA" + colunas "Data Descrição
   // ID da operação Valor Saldo". Precisa vir antes da fatura (ambos citam
-  // "mercado pago" no texto).
-  if(t.includes('mercado pago')&&t.includes('extrato de conta'))return'mp_extrato';
+  // "mercado pago" no texto). Checagem tolerante a espaço porque esse PDF às
+  // vezes não grava espaço real entre palavras (mesmo problema do Itaú).
+  if(/mercado\s*pago/.test(t)&&/extrato\s*de\s*conta/.test(t))return'mp_extrato';
   // Fatura de cartão Mercado Pago — precisa do segundo termo pra não confundir
   // com um extrato de conta Mercado Pago.
   if(t.includes('mercado pago')&&(t.includes('cartão de crédito')||t.includes('essa é sua fatura')))return'mp_fatura';
@@ -10489,9 +10490,15 @@ function parseItauFatura(lines,allText){
   const em=(allText||'').match(/emiss[ãa]o:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
   if(em){refMonth=parseInt(em[2]);year=parseInt(em[3]);}
   const lineRe=/(\d{2}\/\d{2})\s*(.+?)\s*(\d{1,3}(?:\.\d{3})*,\d{2})(?=\s|$)/g;
+  // "Compras parceladas - próximas faturas": prévia de parcelas de MESES
+  // FUTUROS (ainda não cobradas nesta fatura) — sempre a última seção do PDF.
+  // Sem isso, essas linhas (mesmo formato DD/MM ESTABELECIMENTO VALOR das
+  // compras de verdade) entravam como se fossem lançamentos deste mês.
+  const stopRe=/compras\s+parceladas/i;
 
   for(const line of lines){
     const text=line.text;
+    if(stopRe.test(text))break;
     if(shouldSkip(text))continue;
     let m;
     lineRe.lastIndex=0;
@@ -11658,7 +11665,7 @@ function parseInterFatura(lines){
 function parseMPExtrato(lines){
   const txns=[];
   const dateRe=/^(\d{2})-(\d{2})-(\d{4})\s*(.*)$/;
-  const endRe=/^(.*?)\s*\d{9,}\s+R\$\s*(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+R\$\s*-?\d{1,3}(?:\.\d{3})*,\d{2}$/;
+  const endRe=/^(.*?)\s*\d{9,}\s*R\$\s*(-?\d{1,3}(?:\.\d{3})*,\d{2})\s*R\$\s*-?\d{1,3}(?:\.\d{3})*,\d{2}$/;
   const skipRe=/^(data de gera|voc[eê] tem alguma|mercado pago institui|extrato de conta|cpf\/cnpj|per[íi]odo:|saldo inicial|entradas:|saidas:|saldo final|detalhe dos movimentos|data\s+descri[çc][ãa]o)/i;
   let curDate=null,descParts=[];
   function finalize(m){
