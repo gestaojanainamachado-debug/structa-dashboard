@@ -10515,6 +10515,13 @@ function parseItauFatura(lines,allText){
       // "efetuado" junto, que são o texto do cabeçalho da seção, não da linha.
       if(/^pagamento\b/i.test(desc))continue;
       if(shouldSkip(desc))continue;
+      // A página de resumo (capa) tem frases como "R$ 6.273,98 20/08/2026
+      // R$307.660,00" (limite de crédito) e "Pagamento efetuado em
+      // 20/08/2026 - 6.273,98" que batem por acidente no padrão data+valor
+      // e viravam "lançamentos" fantasmas de centenas de milhares de reais.
+      // Uma descrição de compra de verdade sempre tem nome de estabelecimento
+      // (letras) — "R$" sozinho não conta.
+      if(desc.replace(/r\$/gi,'').replace(/[^A-Za-zÀ-ÿ]/g,'').length<3)continue;
 
       const amt=convParseBR(amtStr);
       if(amt===null)continue;
