@@ -10494,7 +10494,7 @@ function parseItauExtrato(lines){
 // qual coluna ele pertence — compras do Itaú sempre colocam a 2ª coluna a
 // partir de ~x=360pt nesse layout — então separa os itens de cada linha
 // em "esquerda"/"direita" ANTES de rodar o regex em cada metade.
-const ITAU_FATURA_COL2_X=360;
+const ITAU_FATURA_COL2_X=350;
 
 function parseItauFatura(lines,allText){
   const txns=[];
@@ -10506,6 +10506,13 @@ function parseItauFatura(lines,allText){
   // FUTUROS (ainda não cobradas nesta fatura) — sempre a última seção do PDF.
   // Sem isso, essas linhas (mesmo formato DD/MM ESTABELECIMENTO VALOR das
   // compras de verdade) entravam como se fossem lançamentos deste mês.
+  // Como a coluna esquerda e a direita têm números diferentes de linhas,
+  // essa seção pode começar numa coluna bem antes da outra (ex.: um PDF
+  // real tinha uma compra de verdade na coluna esquerda na MESMA linha Y
+  // em que a coluna direita já tinha entrado nessa seção) — por isso o
+  // "parar de ler" é rastreado por coluna, não pra fatura inteira: parar
+  // a leitura inteira ali perdia lançamentos de verdade da outra coluna
+  // que ainda viriam depois.
   const stopRe=/compras\s+parceladas/i;
   // "L Total dos lançamentos atuais X" (rodapé da tabela) às vezes cai na
   // mesma linha Y de uma transação da coluna da esquerda — sem excluir essa
@@ -10513,16 +10520,18 @@ function parseItauFatura(lines,allText){
   // lançamento fantasma.
   const totalRe=/total\s+dos?\s+lan[çc]amentos|total\s+desta\s+fatura/i;
 
+  let stoppedL=false,stoppedR=false;
   for(const line of lines){
-    const text=line.text;
-    if(stopRe.test(text))break;
-    if(totalRe.test(text))continue;
-    if(shouldSkip(text))continue;
+    if(stoppedL&&stoppedR)break;
+    if(totalRe.test(line.text))continue;
     const segs=line.items
-      ?[line.items.filter(it=>it.x<ITAU_FATURA_COL2_X).map(it=>it.text).join(' '),
-        line.items.filter(it=>it.x>=ITAU_FATURA_COL2_X).map(it=>it.text).join(' ')]
-      :[text];
-    for(const segText of segs){
+      ?[['L',line.items.filter(it=>it.x<ITAU_FATURA_COL2_X).map(it=>it.text).join(' ')],
+        ['R',line.items.filter(it=>it.x>=ITAU_FATURA_COL2_X).map(it=>it.text).join(' ')]]
+      :[['L',line.text]];
+    for(const[side,segText]of segs){
+    if(side==='L'&&stoppedL)continue;
+    if(side==='R'&&stoppedR)continue;
+    if(stopRe.test(segText)){if(side==='L')stoppedL=true;else stoppedR=true;continue;}
     if(shouldSkip(segText))continue;
     let m;
     lineRe.lastIndex=0;
@@ -10538,6 +10547,11 @@ function parseItauFatura(lines,allText){
       // imprime só "PAGAMENTO" na coluna de descrição — sem "recebido"/
       // "efetuado" junto, que são o texto do cabeçalho da seção, não da linha.
       if(/^pagamento\b/i.test(desc))continue;
+      // "Parcelamento da fatura": quando o cliente financia o saldo de uma
+      // fatura anterior, o PDF lista TODAS as N parcelas futuras desse
+      // financiamento de uma vez (prévia), não só a parcela deste mês —
+      // sem isso, o mesmo valor entrava repetido várias vezes.
+      if(/parcfatpg|parcelamen/i.test(desc))continue;
       if(shouldSkip(desc))continue;
       // A página de resumo (capa) tem frases como "R$ 6.273,98 20/08/2026
       // R$307.660,00" (limite de crédito) e "Pagamento efetuado em
