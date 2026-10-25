@@ -10505,7 +10505,11 @@ function parseItauFatura(lines,allText){
   let year=new Date().getFullYear(),refMonth=null;
   const em=(allText||'').match(/emiss[ãa]o:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
   if(em){refMonth=parseInt(em[2]);year=parseInt(em[3]);}
-  const lineRe=/(\d{2}\/\d{2})\s*(.+?)\s*(\d{1,3}(?:\.\d{3})*,\d{2})(?=\s|$)/g;
+  // A fonte usada nessas faturas (kerning irregular) às vezes insere um
+  // espaço espúrio DENTRO da data ("04/ 09") ou do valor ("678, 80") — o
+  // mesmo problema que causa nomes de estabelecimento fragmentados. Sem
+  // tolerar esse espaço aqui, a transação inteira falhava o match e sumia.
+  const lineRe=/(\d{2}\s*\/\s*\d{2})\s*(.+?)\s*(\d{1,3}(?:\.\s?\d{3})*\s?,\s?\d{2})(?=\s|$)/g;
   // "Compras parceladas - próximas faturas": prévia de parcelas de MESES
   // FUTUROS (ainda não cobradas nesta fatura) — sempre a última seção do PDF.
   // Sem isso, essas linhas (mesmo formato DD/MM ESTABELECIMENTO VALOR das
@@ -10517,7 +10521,9 @@ function parseItauFatura(lines,allText){
   // "parar de ler" é rastreado por coluna, não pra fatura inteira: parar
   // a leitura inteira ali perdia lançamentos de verdade da outra coluna
   // que ainda viriam depois.
-  const stopRe=/compras\s+parceladas/i;
+  // \s* (não \s+): esse cabeçalho às vezes vem sem nenhum espaço real
+  // entre as palavras ("Comprasparceladas"), outro efeito da mesma fonte.
+  const stopRe=/compras\s*parceladas/i;
   // "L Total dos lançamentos atuais X" (rodapé da tabela) às vezes cai na
   // mesma linha Y de uma transação da coluna da esquerda — sem excluir essa
   // linha inteira, o valor do total (dezenas de milhares) virava um
@@ -10540,13 +10546,15 @@ function parseItauFatura(lines,allText){
     let m;
     lineRe.lastIndex=0;
     while((m=lineRe.exec(segText))){
-      const[,rawDate,rawDesc,amtStr]=m;
+      const[,rawDateRaw,rawDesc,amtStrRaw]=m;
+      const rawDate=rawDateRaw.replace(/\s+/g,'');
+      const amtStr=amtStrRaw.replace(/\s+/g,'');
       const mo=parseInt(rawDate.split('/')[1]);
       const y=(refMonth&&mo>refMonth)?year-1:year;
       const date=`${rawDate.split('/')[0]}/${rawDate.split('/')[1]}/${y}`;
 
       // Strip trailing "DD/MM" installment date artifact
-      const desc=rawDesc.replace(/\s+\d{2}\/\d{2}\s*$/,'').trim();
+      const desc=rawDesc.replace(/\s+\d{2}\s*\/\s*\d{2}\s*$/,'').trim();
       // A linha da seção "Pagamentos efetuados" (quitação da fatura anterior)
       // imprime só "PAGAMENTO" na coluna de descrição — sem "recebido"/
       // "efetuado" junto, que são o texto do cabeçalho da seção, não da linha.
