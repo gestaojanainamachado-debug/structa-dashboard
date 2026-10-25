@@ -10003,11 +10003,15 @@ async function extractLines(file){
   const pdf=await task.promise;
   const allLines=[];
 
-  // Algumas faturas (ex.: Visa Infinite) emitem letras espaçadas DENTRO do
-  // próprio item ("1 0 / f e v"). Junta tokens de 1-2 chars num só termo.
+  // Algumas faturas (ex.: Visa Infinite, faturas Itaú Visa em geral) emitem
+  // texto espaçado DENTRO do próprio item por causa de kerning da fonte
+  // ("1 0 / f e v", ou nomes de estabelecimento tipo "PAG AM ENT O" em vez
+  // de "PAGAMENTO"). Junta tokens curtos (até 4 letras) num só termo — o
+  // risco de juntar por engano duas palavras curtas de verdade (ex. "RUA DO
+  // SOL") é bem menor que deixar o nome do estabelecimento todo fragmentado.
   function unspace(s){
     const t=s.split(' ').filter(Boolean);
-    if(t.length>=3&&t.every(w=>w.length<=2))return t.join('');
+    if(t.length>=3&&t.every(w=>w.length<=4))return t.join('');
     if(t.length===2&&t[0].length===1&&t[1].length===1)return t.join('');
     return s;
   }
