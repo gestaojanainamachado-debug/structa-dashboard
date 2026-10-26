@@ -1,9 +1,15 @@
 <!--
   Supabase → Authentication → Email Templates → "Confirm signup"
   É o e-mail que chega para um CLIENTE (ou consultor) convidado pela primeira
-  vez — quando ainda não existe conta com aquele e-mail. O link já loga a
-  pessoa direto no dashboard; lá, o app força a criação da senha antes de
-  liberar o acesso (ver sbRenderForcePasswordScreen em index.html).
+  vez — quando ainda não existe conta com aquele e-mail. O botão NÃO usa mais
+  {{ .ConfirmationURL }} (que loga direto via GET): provedores como o Outlook/
+  Hotmail "Safe Links" abrem esse link sozinhos para escanear, antes da pessoa
+  clicar, e "gastam" o token de uso único. Em vez disso o link aponta para o
+  próprio app com ?token_hash=...&type=signup; o app só troca isso por uma
+  sessão de verdade quando a pessoa aperta um botão de confirmação (ver
+  sbRenderConfirmLinkScreen/sbSubmitConfirmLink em index.html), o que um bot de
+  escaneamento não reproduz. Depois disso o app força a criação da senha antes
+  de liberar o acesso (ver sbRenderForcePasswordScreen em index.html).
 -->
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -63,7 +69,7 @@
               <table cellpadding="0" cellspacing="0" width="100%" style="margin-bottom:28px;">
                 <tr>
                   <td align="center">
-                    <a href="{{ .ConfirmationURL }}" target="_blank"
+                    <a href="{{ .SiteURL }}?token_hash={{ .TokenHash }}&type=signup" target="_blank"
                       style="display:inline-block;background:#381c17;color:#f4ede4;text-decoration:none;font-family:Inter,sans-serif;font-weight:600;font-size:15px;letter-spacing:.02em;padding:15px 36px;border-radius:10px;">
                       Acessar meu dashboard e criar senha
                     </a>

@@ -4638,6 +4638,26 @@ window.addEventListener('DOMContentLoaded', async ()=>{
         sbRenderForcePasswordScreen();
       }
     });
+
+    // ── CONFIRMAÇÃO POR CLIQUE (anti-pré-escaneamento de e-mail) ──────────────
+    // E-mails de convite/redefinição de senha trazem um link de uso único.
+    // Alguns provedores (ex.: Outlook/Hotmail "Safe Links") abrem esse link
+    // sozinhos para escanear a página ANTES da pessoa clicar, consumindo o
+    // token e deixando o link "gasto" quando ela realmente tenta entrar. Por
+    // isso os templates de e-mail não usam mais {{ .ConfirmationURL }} (que
+    // loga direto via GET) — eles apontam para cá com ?token_hash=...&type=...,
+    // e só trocamos isso por uma sessão de verdade quando a pessoa aperta o
+    // botão manualmente (ação de usuário real, que um bot de escaneamento não
+    // reproduz). O listener de onAuthStateChange acima (já registrado nesse
+    // ponto) é quem recebe o SIGNED_IN/PASSWORD_RECOVERY disparado pelo
+    // verifyOtp() dentro de sbSubmitConfirmLink().
+    const _qp=new URLSearchParams(location.search);
+    const _th=_qp.get('token_hash'), _tt=_qp.get('type');
+    if(_th && _tt){
+      sbRenderConfirmLinkScreen(_th, _tt);
+      return; // aguarda o clique antes de prosseguir com o boot normal
+    }
+
     // Verifica sessão existente
     const {data:{session}}=await _sb.auth.getSession();
     if(!session){
@@ -7959,6 +7979,52 @@ async function sbMarkPasswordSet(){
   if(_sb && _sbUser){
     try{ await _sb.from('profiles').update({password_set:true}).eq('id',_sbUser.id); }catch(e){console.warn('password_set update:',e);}
   }
+}
+
+// ── Tela de confirmação por clique (links de convite/redefinição de senha) ──
+// Ver comentário no BOOT: em vez de logar automaticamente ao abrir o link
+// (vulnerável a pré-escaneamento), mostramos essa tela e só chamamos
+// verifyOtp() quando a pessoa aperta o botão — uma ação que um bot de
+// escaneamento de e-mail não realiza.
+function sbRenderConfirmLinkScreen(tokenHash, type){
+  const isRecovery = type==='recovery';
+  let ov=document.createElement('div');
+  ov.id='confirm-link-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:#f4ede4;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Inter,sans-serif;padding:32px;text-align:center;overflow:auto';
+  ov.innerHTML=`
+    <svg width="148" viewBox="0 0 270 56" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:32px">
+      <rect x="0" y="6.25" width="15.67" height="43.5" fill="#381c17"/>
+      <path d="M64,49.75 V6.25 H53.12 C39.83,6.25 31.87,23.3 15.67,49.75 Z" fill="#381c17"/>
+      <text x="78" y="38" font-family="Inter,sans-serif" font-weight="700" font-size="34" letter-spacing="-0.8" fill="#381c17">Structa</text>
+      <text x="79" y="52" font-family="Inter,sans-serif" font-weight="300" font-size="10" letter-spacing="2.5" fill="#381c17" opacity="0.55">Consultoria Financeira</text>
+    </svg>
+    <div style="background:#fff;border-radius:16px;padding:36px 32px;max-width:360px;width:100%;box-shadow:0 4px 32px rgba(56,28,23,.08)">
+      <div style="width:48px;height:48px;border-radius:50%;background:#f4ede4;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px">${isRecovery?'🔑':'👋'}</div>
+      <h2 style="color:#381c17;font-size:18px;font-weight:700;margin:0 0 10px;letter-spacing:-.01em">${isRecovery?'Redefinir sua senha':'Confirmar meu acesso'}</h2>
+      <p style="color:#7a6a60;max-width:300px;line-height:1.7;margin:0 auto 24px;font-size:14px">${isRecovery?'Toque no botão abaixo para continuar e escolher uma nova senha.':'Toque no botão abaixo para confirmar que foi você quem abriu este e-mail e continuar.'}</p>
+      <button id="confirm-link-btn" onclick="sbSubmitConfirmLink('${tokenHash}','${type}')" style="background:#381c17;color:#f4ede4;border:none;padding:13px 28px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;font-family:Inter,sans-serif;letter-spacing:.02em">${isRecovery?'Continuar':'Confirmar e continuar'}</button>
+      <div id="confirm-link-msg" style="margin-top:14px;font-size:13px;color:#c0392b;min-height:18px"></div>
+    </div>`;
+  document.body.appendChild(ov);
+}
+async function sbSubmitConfirmLink(tokenHash, type){
+  const btn=document.getElementById('confirm-link-btn');
+  const msg=document.getElementById('confirm-link-msg');
+  if(btn){btn.disabled=true;btn.style.opacity='.6';}
+  if(msg){msg.style.color='#7a6a60';msg.textContent='Confirmando...';}
+  const {error}=await _sb.auth.verifyOtp({token_hash:tokenHash, type});
+  if(error){
+    if(btn){btn.disabled=false;btn.style.opacity='1';}
+    if(msg){
+      msg.style.color='#c0392b';
+      msg.textContent='Este link já foi usado ou expirou. Peça um novo link ou código à sua consultora.';
+    }
+    return;
+  }
+  // Sucesso: remove os parâmetros da URL e deixa o onAuthStateChange
+  // (SIGNED_IN ou PASSWORD_RECOVERY, já tratados no BOOT) tocar o resto do fluxo.
+  history.replaceState(null,'',location.pathname+location.hash);
+  document.getElementById('confirm-link-overlay')?.remove();
 }
 
 // ── Tela obrigatória de criação de senha (primeiro acesso do cliente) ───────
