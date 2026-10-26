@@ -44,6 +44,12 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{-webkit-text-size-adjust:100%}
 body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+/* Campos de valor: sem setinhas de incremento — só digitar */
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
+.val-inp{-moz-appearance:textfield}
+.card{transition:box-shadow .18s ease,transform .18s ease}
+.card:hover{box-shadow:var(--shadow-elevated)}
 
 /* HEADER */
 .hdr{background:#c7c3db;color:#381c17;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -320,7 +326,7 @@ canvas{max-width:100%}
   /* Filtros: busca full width, depois 2 selects lado a lado */
   #panel-lancamentos .tx-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
   #tx-search{width:100%!important;min-width:0!important;flex:none}
-  #tx-filter-cat,#tx-filter-grp{flex:1;min-width:0!important;font-size:12px}
+  #tx-filter-cat,#tx-filter-grp,#tx-filter-pgto{flex:1;min-width:0!important;font-size:12px}
   #tx-filter-val-min,#tx-filter-val-max{width:calc(50% - 22px)!important;min-width:0}
   .timeline-row,.tl-header{grid-template-columns:36px 1fr auto 88px}
   .tl-header span:last-child,.timeline-row .tl-saldo{display:none}
@@ -1697,7 +1703,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="fld fld-cat"><label>Grupo</label><select id="tx-cat-grp" onchange="filterCatSub('tx-cat-grp','tx-cat')"></select></div>
       <div class="fld fld-cat"><label>Subcategoria</label><select id="tx-cat"></select></div>
       <div class="fld fld-pgto"><label>Conta/Cartão/Forma de Pgto</label><select id="tx-pgto"></select></div>
-      <div class="fld fld-val"><label>Valor (R$)</label><input type="number" id="tx-val" min="0" placeholder="0,00" step="0.01"></div>
+      <div class="fld fld-val"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="val-inp" id="tx-val" placeholder="0,00" onblur="dec2Mask(this)"></div>
       <div class="fld" style="display:flex;align-items:flex-end;padding-bottom:6px">
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer;white-space:nowrap" title="Marque quando este valor é um reembolso/estorno que reduz o gasto da categoria escolhida (ex: um amigo te devolveu parte de uma despesa)">
           <input type="checkbox" id="tx-credito-cat" style="width:14px;height:14px;accent-color:var(--primary)"> É reembolso/estorno (abate da categoria)
@@ -1719,6 +1725,14 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="tx-total-sub">Planejado: <span id="tx-tot-sal-o">R$ 0</span></div></div>
   </div>
 
+  <!-- Gastos por categoria no mês -->
+  <div class="card gap" id="tx-chart-card">
+    <div class="ctitle">Gastos por categoria no mês</div>
+    <div class="donut-wrap"><canvas id="txCatChart" height="170"></canvas>
+      <div class="donut-center" id="tx-chart-empty" style="display:none;font-size:11px;color:var(--muted)">Sem gastos no mês</div>
+    </div>
+  </div>
+
   <!-- Barra de busca e filtros -->
   <div class="tx-filters" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
     <input type="text" id="tx-search" placeholder="🔍 Buscar descrição..." oninput="renderTxList()"
@@ -1736,6 +1750,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <option value="inv">Investimentos</option>
       <option value="ct">Custo Trabalho</option>
       <option value="neutro">Neutros</option>
+    </select>
+    <select id="tx-filter-pgto" onchange="renderTxList()"
+      style="padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none;min-width:0">
+      <option value="">Todas as formas de pgto</option>
     </select>
     <input type="number" id="tx-filter-val-min" placeholder="Valor mín." min="0" step="0.01" oninput="renderTxList()"
       style="width:auto;min-width:0;padding:7px 10px;border:1.5px solid var(--border);border-radius:var(--rad-sm);font-family:inherit;font-size:12px;background:var(--bg);color:var(--text);outline:none">
@@ -2355,14 +2373,26 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="kpi"><div class="kpi-lbl">Comprometimento Mensal</div><div class="kpi-val warn" id="div-kpi-mensal">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Total Contratado</div><div class="kpi-val" id="div-kpi-total">R$ 0</div></div>
   </div>
+  <div class="card gap" id="div-chart-card">
+    <div class="ctitle">Saldo em aberto por tipo de dívida</div>
+    <div class="donut-wrap"><canvas id="divTipoChart" height="170"></canvas>
+      <div class="donut-center" id="div-chart-empty" style="display:none;font-size:11px;color:var(--muted)">Sem dívidas</div>
+    </div>
+  </div>
   <div class="card">
     <div class="div-scroll">
       <table class="div-table">
         <thead><tr>
-          <th>Tipo</th><th>Instituição</th><th style="min-width:100px">Valor Contrat.</th>
-          <th>Taxa % a.a.</th><th>Modalidade</th><th>1ª Parcela</th><th>Nº Parc.</th>
-          <th>Vl. Parcela</th><th style="min-width:110px">Total a Pagar</th>
-          <th style="min-width:90px">Já Pago</th><th style="min-width:110px">Saldo Aberto</th><th></th>
+          <th style="cursor:pointer;user-select:none" onclick="divSort('tipo')">Tipo <span id="dsrt-tipo"></span></th>
+          <th style="cursor:pointer;user-select:none" onclick="divSort('inst')">Instituição <span id="dsrt-inst"></span></th>
+          <th style="min-width:100px;cursor:pointer;user-select:none" onclick="divSort('valorCont')">Valor Contrat. <span id="dsrt-valorCont"></span></th>
+          <th>Taxa % a.a.</th><th>Modalidade</th>
+          <th style="cursor:pointer;user-select:none" onclick="divSort('dataPrimParc')">1ª Parcela <span id="dsrt-dataPrimParc"></span></th>
+          <th>Nº Parc.</th>
+          <th style="cursor:pointer;user-select:none" onclick="divSort('valorParc')">Vl. Parcela <span id="dsrt-valorParc"></span></th>
+          <th style="min-width:110px">Total a Pagar</th>
+          <th style="min-width:90px">Já Pago</th>
+          <th style="min-width:110px;cursor:pointer;user-select:none" onclick="divSort('saldoAberto')">Saldo Aberto <span id="dsrt-saldoAberto"></span></th><th></th>
         </tr></thead>
         <tbody id="div-body"></tbody>
       </table>
@@ -2390,6 +2420,12 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="kpi"><div class="kpi-lbl">Total Investido</div><div class="kpi-val" id="inv-kpi-inv">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Total Atual</div><div class="kpi-val ok" id="inv-kpi-atu">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Rentabilidade Total</div><div class="kpi-val" id="inv-kpi-rent">0%</div></div>
+  </div>
+  <div class="card gap" id="inv-chart-card">
+    <div class="ctitle">Alocação por tipo de investimento</div>
+    <div class="donut-wrap"><canvas id="invTipoChart" height="170"></canvas>
+      <div class="donut-center" id="inv-chart-empty" style="display:none;font-size:11px;color:var(--muted)">Sem investimentos</div>
+    </div>
   </div>
   <div class="card">
     <div class="inv-scroll">
@@ -2833,7 +2869,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div class="fld"><label>Data da compra</label><input type="date" id="etx-date"></div>
         <div class="fld"><label>Data Pgto (vencimento)</label><input type="date" id="etx-datapgto"></div>
         <div class="fld"><label>Parcela (ex: 2/6)</label><input type="text" id="etx-parcela" placeholder="ex: 2/6 ou vazio"></div>
-        <div class="fld"><label>Valor (R$)</label><input type="number" id="etx-valor" min="0" step="0.01" placeholder="0,00"></div>
+        <div class="fld"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="val-inp" id="etx-valor" placeholder="0,00" onblur="dec2Mask(this)"></div>
         <div class="fld"><label>Grupo</label><select id="etx-cat-grp" onchange="filterCatSub('etx-cat-grp','etx-cat')"></select></div>
         <div class="fld"><label>Subcategoria</label><select id="etx-cat"></select></div>
         <div class="fld"><label>Conta/Cartão/Forma de Pgto</label><select id="etx-conta"><option value="">— não informado —</option></select></div>
@@ -3711,7 +3747,30 @@ function freshState(){
 }
 let S=freshState();
 let csvData=null;
-let dChart=null,bChart=null,lChart=null;
+let dChart=null,bChart=null,lChart=null,txCatChart=null,divTipoChart=null,invTipoChart=null;
+const CHART_PALETTE=['#381c17','#a08060','#4a6fa5','#3d6b4f','#a06820','#c7c3db','#b03030','#8a7068','#5a2e27','#e8ddcd'];
+// Donut genérico (categoria → total) reaproveitado em Lançamentos/Dívidas/Investimentos.
+function renderDonutByGroup(canvasId,emptyId,entries){
+  const cv=document.getElementById(canvasId);if(!cv||typeof Chart==='undefined')return null;
+  const empty=document.getElementById(emptyId);
+  const labels=entries.map(e=>e[0]);
+  const data=entries.map(e=>e[1]);
+  const total=data.reduce((a,b)=>a+b,0);
+  if(empty)empty.style.display=total>0?'none':'block';
+  cv.style.display=total>0?'':'none';
+  const colors=labels.map((_,i)=>CHART_PALETTE[i%CHART_PALETTE.length]);
+  const existing=cv._chartInstance;
+  if(existing){
+    existing.data.labels=labels;existing.data.datasets[0].data=data;existing.data.datasets[0].backgroundColor=colors;
+    existing.update();return existing;
+  }
+  const ch=new Chart(cv.getContext('2d'),{type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:4}]},
+    options:{cutout:'68%',plugins:{legend:{display:true,position:'bottom',labels:{font:{family:'Inter',size:10},color:'#381c17',boxWidth:9,padding:8}},
+      tooltip:{callbacks:{label:c=>' '+c.label+': '+fmt(c.raw)}}},animation:{duration:300}}
+  });
+  cv._chartInstance=ch;return ch;
+}
 let pgtoYear=new Date().getFullYear(), pgtoMonth=new Date().getMonth();
 let txViewYear=new Date().getFullYear(), txViewMonth=new Date().getMonth();
 let _csvrRows=[]; // rows being reviewed
@@ -4136,16 +4195,35 @@ function saveDivField(id,field,val){
   d[field]=val;save();renderDividas();renderPatrimonio();
 }
 
+let divSortKey='', divSortDir=1; // '' = ordem de cadastro
+function divSort(key){
+  if(divSortKey===key) divSortDir*=-1; else{divSortKey=key;divSortDir=1;}
+  ['tipo','inst','valorCont','dataPrimParc','valorParc','saldoAberto'].forEach(k=>{const el=document.getElementById('dsrt-'+k);if(el)el.textContent='';});
+  const el=document.getElementById('dsrt-'+key);if(el)el.textContent=divSortDir===-1?' ↓':' ↑';
+  renderDividas();
+}
+
 function renderDividas(){
   const body=document.getElementById('div-body');
   const empty=document.getElementById('div-empty');
   if(!body)return;
   if(!S.dividas.length){
     body.innerHTML='';if(empty)empty.style.display='block';
-    setText('div-kpi-saldo',fmt(0));setText('div-kpi-mensal',fmt(0));setText('div-kpi-total',fmt(0));return;
+    setText('div-kpi-saldo',fmt(0));setText('div-kpi-mensal',fmt(0));setText('div-kpi-total',fmt(0));
+    renderDonutByGroup('divTipoChart','div-chart-empty',[]);return;
   }
   if(empty)empty.style.display='none';
-  body.innerHTML=S.dividas.map(d=>{
+  let divList=S.dividas;
+  if(divSortKey){
+    divList=[...S.dividas].sort((a,b)=>{
+      let va,vb;
+      if(divSortKey==='saldoAberto'){va=calcDividaStats(a).saldoAberto;vb=calcDividaStats(b).saldoAberto;}
+      else if(divSortKey==='valorCont'||divSortKey==='valorParc'){va=a[divSortKey]||0;vb=b[divSortKey]||0;}
+      else{va=(a[divSortKey]||'').toLowerCase();vb=(b[divSortKey]||'').toLowerCase();}
+      if(va<vb)return -1*divSortDir;if(va>vb)return divSortDir;return 0;
+    });
+  }
+  body.innerHTML=divList.map(d=>{
     // Migrate old dataCont field to dataPrimParc
     if(!d.dataPrimParc&&d.dataCont)d.dataPrimParc=d.dataCont;
     const{totalAPagar,jaPago,saldoAberto}=calcDividaStats(d);
@@ -4154,15 +4232,15 @@ function renderDividas(){
         ${DIV_TIPOS.map(t=>`<option${d.tipo===t?' selected':''}>${t}</option>`).join('')}
       </select></td>
       <td><input class="div-inp" type="text" value="${d.inst||''}" placeholder="Banco/Inst." onchange="saveDivField('${d.id}','inst',this.value)"></td>
-      <td><input class="div-inp" type="number" value="${d.valorCont||0}" min="0" onchange="saveDivField('${d.id}','valorCont',parseFloat(this.value)||0)"></td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorCont||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorCont',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
       <td><input class="div-inp" type="number" value="${taxaMesToAno(d.taxaMes||0).toFixed(2)}" step="0.01" min="0" placeholder="19,56" style="width:65px" title="Taxa ao ano — convertida internamente pra taxa mensal usada no cálculo da amortização" onchange="saveDivField('${d.id}','taxaMes',taxaAnoToMes(parseFloat(this.value)||0))"></td>
       <td><select class="div-inp" style="min-width:72px" title="PRICE: parcela constante. SAC: amortização constante (parcelas decrescentes)." onchange="saveDivField('${d.id}','modalidade',this.value)">
         <option${(d.modalidade||'PRICE')==='PRICE'?' selected':''}>PRICE</option>
         <option${d.modalidade==='SAC'?' selected':''}>SAC</option>
       </select></td>
-      <td><input class="div-inp" type="date" value="${d.dataPrimParc||''}" onchange="saveDivField('${d.id}','dataPrimParc',this.value)"></td>
+      <td><input class="div-inp" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" style="width:88px" value="${isoToBr(d.dataPrimParc)}" oninput="brDateMask(this)" onchange="saveDivField('${d.id}','dataPrimParc',parseDateStr(this.value))"></td>
       <td><input class="div-inp" type="number" value="${d.nParc||0}" min="0" style="width:55px" onchange="saveDivField('${d.id}','nParc',parseInt(this.value)||0)"></td>
-      <td><input class="div-inp" type="number" value="${d.valorParc||0}" min="0" onchange="saveDivField('${d.id}','valorParc',parseFloat(this.value)||0)"></td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorParc||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorParc',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
       <td class="num" style="font-weight:600">${fmt(totalAPagar)}</td>
       <td class="num" style="color:var(--ok)">${fmt(jaPago)}</td>
       <td class="num" style="color:${saldoAberto>0?'var(--bad)':'var(--ok)'};font-weight:700">${fmt(saldoAberto)}</td>
@@ -4175,6 +4253,9 @@ function renderDividas(){
   setText('div-kpi-saldo',fmt(totalSaldo));
   setText('div-kpi-mensal',fmt(totalMensal));
   setText('div-kpi-total',fmt(totalCont));
+  const byTipo={};
+  S.dividas.forEach(d=>{const s=calcDividaStats(d).saldoAberto;if(s>0)byTipo[d.tipo]=(byTipo[d.tipo]||0)+s;});
+  renderDonutByGroup('divTipoChart','div-chart-empty',Object.entries(byTipo).sort((a,b)=>b[1]-a[1]));
 }
 
 // ── INVESTIMENTOS ─────────────────────────────────────────────────────────────
@@ -4207,6 +4288,9 @@ function saveInvAtual(id,val){
   const totalRent=totalInv>0?(totalAtu-totalInv)/totalInv*100:0;
   setText('inv-kpi-inv',fmt(totalInv));setText('inv-kpi-atu',fmt(totalAtu));
   setText('inv-kpi-rent',(totalRent>=0?'+':'')+totalRent.toFixed(1)+'%');
+  const byTipo={};
+  S.investimentos.forEach(i=>{if(i.valorAtual>0)byTipo[i.tipo]=(byTipo[i.tipo]||0)+i.valorAtual;});
+  renderDonutByGroup('invTipoChart','inv-chart-empty',Object.entries(byTipo).sort((a,b)=>b[1]-a[1]));
   renderPatrimonio();
 }
 
@@ -4223,7 +4307,8 @@ function renderInvestimentos(){
   if(!body)return;
   if(!S.investimentos.length){
     body.innerHTML='';if(empty)empty.style.display='block';
-    setText('inv-kpi-inv',fmt(0));setText('inv-kpi-atu',fmt(0));setText('inv-kpi-rent','0%');return;
+    setText('inv-kpi-inv',fmt(0));setText('inv-kpi-atu',fmt(0));setText('inv-kpi-rent','0%');
+    renderDonutByGroup('invTipoChart','inv-chart-empty',[]);return;
   }
   if(empty)empty.style.display='none';
   const goalOpts=(S.goals||[]).map(g=>`<option value="${g.id}">${esc(g.nome)}</option>`).join('');
@@ -4246,9 +4331,9 @@ function renderInvestimentos(){
         ${INV_TIPOS.map(t=>`<option${inv.tipo===t?' selected':''}>${t}</option>`).join('')}
       </select></td>
       <td><input class="inv-inp" type="text" value="${inv.nome||''}" placeholder="Nome do ativo" onchange="saveInvField('${inv.id}','nome',this.value)"></td>
-      <td><input class="inv-inp" type="date" value="${inv.dataInicio||''}" onchange="saveInvField('${inv.id}','dataInicio',this.value)"></td>
-      <td><input class="inv-inp" type="number" value="${inv.valorInv||0}" min="0" onchange="saveInvField('${inv.id}','valorInv',parseFloat(this.value)||0)"></td>
-      <td><input class="inv-val-cur" type="number" value="${inv.valorAtual||0}" min="0" onblur="saveInvAtual('${inv.id}',this.value)"></td>
+      <td><input class="inv-inp" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" style="width:88px" value="${isoToBr(inv.dataInicio)}" oninput="brDateMask(this)" onchange="saveInvField('${inv.id}','dataInicio',parseDateStr(this.value))"></td>
+      <td><input class="inv-inp val-inp" type="text" inputmode="decimal" value="${(inv.valorInv||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveInvField('${inv.id}','valorInv',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
+      <td><input class="inv-val-cur val-inp" type="text" inputmode="decimal" value="${(inv.valorAtual||0).toFixed(2)}" onblur="dec2Mask(this);saveInvAtual('${inv.id}',this.value)"></td>
       <td class="num" id="inv-rent-${inv.id}" style="color:${rent>=0?'var(--ok)':'var(--bad)'}">
         ${(rent>=0?'+':'')+rent.toFixed(1)}%
       </td>
@@ -4264,6 +4349,9 @@ function renderInvestimentos(){
   const totalRent=totalInv>0?(totalAtu-totalInv)/totalInv*100:0;
   setText('inv-kpi-inv',fmt(totalInv));setText('inv-kpi-atu',fmt(totalAtu));
   setText('inv-kpi-rent',(totalRent>=0?'+':'')+totalRent.toFixed(1)+'%');
+  const byTipo={};
+  S.investimentos.forEach(i=>{if(i.valorAtual>0)byTipo[i.tipo]=(byTipo[i.tipo]||0)+i.valorAtual;});
+  renderDonutByGroup('invTipoChart','inv-chart-empty',Object.entries(byTipo).sort((a,b)=>b[1]-a[1]));
 }
 
 // ── INVESTIMENTOS CSV IMPORT ──────────────────────────────────────────────────
@@ -5376,7 +5464,7 @@ function openTxEdit(id){
   document.getElementById('etx-date').value=tx.date||'';
   document.getElementById('etx-datapgto').value=tx.dataPgto||'';
   document.getElementById('etx-parcela').value=tx.parcela||'';
-  document.getElementById('etx-valor').value=tx.amount||'';
+  document.getElementById('etx-valor').value=tx.amount?tx.amount.toFixed(2):'';
   document.getElementById('etx-desc').value=tx.desc||'';
   // Build cascading cat selects
   const esg=document.getElementById('etx-cat-grp');
@@ -5478,6 +5566,7 @@ function clearTxFilters(){
   const s=document.getElementById('tx-search');if(s)s.value='';
   const fc=document.getElementById('tx-filter-cat');if(fc)fc.value='';
   const fg=document.getElementById('tx-filter-grp');if(fg)fg.value='';
+  const fp=document.getElementById('tx-filter-pgto');if(fp)fp.value='';
   const vmn=document.getElementById('tx-filter-val-min');if(vmn)vmn.value='';
   const vmx=document.getElementById('tx-filter-val-max');if(vmx)vmx.value='';
   renderTxList();
@@ -5491,6 +5580,15 @@ function buildTxCatFilter(){
     +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`
     +cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
 }
+// Monta o filtro de "forma de pagamento" a partir das formas já usadas nos
+// lançamentos (conta/cartão/pix/etc., o mesmo rótulo mostrado na coluna da tabela).
+function buildTxPgtoFilter(){
+  const sel=document.getElementById('tx-filter-pgto');if(!sel)return;
+  const cur=sel.value;
+  const lbls=[...new Set((S.transactions||[]).map(tx=>getPgtoLbl(tx)).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML='<option value="">Todas as formas de pgto</option>'
+    +lbls.map(l=>`<option value="${esc(l)}"${l===cur?' selected':''}>${esc(l)}</option>`).join('');
+}
 
 // Filtro+ordenação compartilhado entre a tabela de Lançamentos e a exportação
 // pra Excel — garante que o que a cliente vê na tela é exatamente o que sai no
@@ -5499,6 +5597,7 @@ function getFilteredTx(){
   const q=(document.getElementById('tx-search')?.value||'').toLowerCase().trim();
   const fCat=document.getElementById('tx-filter-cat')?.value||'';
   const fGrp=document.getElementById('tx-filter-grp')?.value||'';
+  const fPgto=document.getElementById('tx-filter-pgto')?.value||'';
 
   // Filter transactions for this month — use dataPgto (fatura due date) if set, else date
   let filtered=(S.transactions||[]).filter(tx=>{
@@ -5516,6 +5615,7 @@ function getFilteredTx(){
   if(fCat==='__sem_cat__') filtered=filtered.filter(tx=>!tx.catId);
   else if(fCat) filtered=filtered.filter(tx=>tx.catId===fCat);
   if(fGrp) filtered=filtered.filter(tx=>tx.grp===fGrp);
+  if(fPgto) filtered=filtered.filter(tx=>getPgtoLbl(tx)===fPgto);
   const vMin=parseFloat(document.getElementById('tx-filter-val-min')?.value);
   const vMax=parseFloat(document.getElementById('tx-filter-val-max')?.value);
   if(!isNaN(vMin)) filtered=filtered.filter(tx=>Math.abs(tx.amount)>=vMin);
@@ -5648,6 +5748,7 @@ function renderTxList(){
 
   // Build cat filter options
   buildTxCatFilter();
+  buildTxPgtoFilter();
 
   // Show total months available
   const allMonths=new Set((S.transactions||[]).filter(t=>t.dataPgto||t.date).map(t=>(t.dataPgto||t.date).slice(0,7)));
@@ -5661,9 +5762,9 @@ function renderTxList(){
 
   if(count===0){empty.style.display='block';table.style.display='none';
     setText('tx-tot-rec',fmt(0));setText('tx-tot-dep',fmt(0));setText('tx-tot-inv',fmt(0));setText('tx-tot-sal',fmt(0));
-    txUpdateBulkBar();txUpdatePlanComparison(0,0,0,0);return;}
+    txUpdateBulkBar();txUpdatePlanComparison(0,0,0,0);renderDonutByGroup('txCatChart','tx-chart-empty',[]);return;}
   empty.style.display='none';table.style.display='';
-  body.innerHTML='';let totRec=0,totDep=0,totInv=0;
+  body.innerHTML='';let totRec=0,totDep=0,totInv=0;const byCat={};
   filtered.forEach(tx=>{
     // Categorias "Neutro" (transferência entre contas, pgto de fatura, saldo, resgate,
     // reembolso) nunca entram em Receitas nem Despesas — verifica tanto tx.grp quanto
@@ -5674,6 +5775,10 @@ function renderTxList(){
     else if(tx.grp==='inv')totInv+=txSignedAmount(tx);
     else totDep+=txSignedAmount(tx);
     const catLbl=getCatLbl(tx.catId,tx.grp);
+    // Gráfico de gastos por categoria: só despesas de verdade (fixas/var/ct), sem reembolso/estorno
+    if(!isNeutral&&tx.grp!=='receita'&&tx.grp!=='inv'&&!tx.creditoNaCategoria){
+      byCat[catLbl]=(byCat[catLbl]||0)+Math.abs(tx.amount);
+    }
     const pgtoLbl=getPgtoLbl(tx);
     // Reembolso/estorno marcado numa categoria de despesa: mostra como crédito
     // (verde, "+") mesmo a categoria sendo de despesa — é ele que abate do total.
@@ -5702,6 +5807,7 @@ function renderTxList(){
   const se=document.getElementById('tx-tot-sal');
   if(se){se.textContent=fmt(Math.abs(saldo));se.className='val '+(saldo>=0?'pos':'neg');}
   txUpdatePlanComparison(totRec,totDep,totInv,saldo);
+  renderDonutByGroup('txCatChart','tx-chart-empty',Object.entries(byCat).sort((a,b)=>b[1]-a[1]));
 }
 // Compara Realizado (do mês em exibição na aba Lançamentos) x Planejado no Orçamento para o mesmo mês
 function txUpdatePlanComparison(totRec,totDep,totInv,saldo){
@@ -6772,6 +6878,22 @@ async function sbEditClientSlug(){
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function fmt(v=0){return'R$ '+Math.round(v||0).toLocaleString('pt-BR');}
+// Campo de valor em texto livre: ao sair do campo, trava em 2 casas decimais
+// (sem setinhas de número) — aceita tanto vírgula quanto ponto.
+function dec2Mask(el){
+  const raw=(el.value||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.\-]/g,'');
+  const n=parseFloat(raw);
+  el.value=isNaN(n)?'':n.toFixed(2);
+}
+// Campo de data em texto livre dd/mm/aaaa — digita o ano normalmente, sem o
+// comportamento de "pulo de segmento" do seletor nativo <input type=date>.
+function brDateMask(el){
+  let v=el.value.replace(/\D/g,'').slice(0,8);
+  if(v.length>4)v=v.slice(0,2)+'/'+v.slice(2,4)+'/'+v.slice(4);
+  else if(v.length>2)v=v.slice(0,2)+'/'+v.slice(2);
+  el.value=v;
+}
+function isoToBr(iso){if(!iso)return'';const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:'';}
 function pct(v,r){return r?Math.round((v||0)/(r||1)*100)+'%':'0%';}
 function sumF(arr,k){return arr.reduce((a,c)=>a+(c[k]||0),0);}
 function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
