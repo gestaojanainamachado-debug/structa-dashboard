@@ -154,7 +154,10 @@ input[type=number]{-moz-appearance:textfield}
 .parent-grp-hdr .grp-sum.real{color:var(--primary)}
 .subtype-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 1px;font-weight:500}
 .despesas-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);background:rgba(56,28,23,.07);padding:5px 10px;border-radius:5px;margin:8px 0 4px}
-.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04);cursor:grab}
+.cat-row.dragging{opacity:.4}
+.catmgr-item{cursor:grab}
+.catmgr-item.dragging{opacity:.4}
 .cat-row:hover{background:rgba(56,28,23,.02)}
 .cat-lbl{font-size:12px;padding:3px 0;border:none;background:transparent;font-family:inherit;width:100%;outline:none;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat-lbl:focus{border-bottom:1px dashed var(--lilac);white-space:normal}
@@ -3958,12 +3961,12 @@ function renderCatMgrList(key){
       if(done.has(nome)||!byNome[nome])return;done.add(nome);
       html+=`<div class="catmgr-subgrp-hdr">📁 ${nome}</div>`;
       byNome[nome].forEach(({c,i})=>{
-        html+=`<div class="catmgr-item"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`;
+        html+=`<div class="catmgr-item" draggable="true" ondragstart="catDragStart(event,'${key}','${c.id}')" ondragend="catDragEnd(event)" ondragover="catDragOver(event)" ondrop="catDropMgr(event,'${key}','${c.id}')" title="Arraste para reordenar"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`;
       });
     });
     el.innerHTML=html;
   } else {
-    el.innerHTML=cats.map((c,i)=>`<div class="catmgr-item"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`).join('');
+    el.innerHTML=cats.map((c,i)=>`<div class="catmgr-item" draggable="true" ondragstart="catDragStart(event,'${key}','${c.id}')" ondragend="catDragEnd(event)" ondragover="catDragOver(event)" ondrop="catDropMgr(event,'${key}','${c.id}')" title="Arraste para reordenar"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`).join('');
   }
 }
 function addCatMgr(key){
@@ -5268,6 +5271,11 @@ function renderGroup(grp){
 }
 function makeRow(grp,cat,fromTx,txVal){
   const d=document.createElement('div');d.className='cat-row';d.id='row-'+cat.id;
+  d.draggable=true;d.title='Arraste para reordenar';
+  d.addEventListener('dragstart',e=>catDragStart(e,grp,cat.id));
+  d.addEventListener('dragend',catDragEnd);
+  d.addEventListener('dragover',catDragOver);
+  d.addEventListener('drop',e=>catDropOrc(e,grp,cat.id));
   const rv=fromTx?txVal:cat.real;
   d.innerHTML=`
     <input class="cat-lbl" type="text" value="${esc(cat.lbl)}" placeholder="Nome"
@@ -5284,6 +5292,50 @@ function makeRow(grp,cat,fromTx,txVal){
   return d;
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+
+// ── DRAG-AND-DROP: reordenar categorias (Gerenciar Categorias e Orçamento) ──
+let dragCat=null;
+function catDragStart(e,grp,id){
+  dragCat={grp,id};
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id); // necessário pro Firefox habilitar o drag
+  e.currentTarget.classList.add('dragging');
+}
+function catDragEnd(e){e.currentTarget.classList.remove('dragging');dragCat=null;}
+function catDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+// Move o item `fromId` pra posição de `toId` dentro de S.cats[grp]. Em grupos
+// hierárquicos (fixas/var), também herda o grpNome do alvo, pra arrastar
+// entre classes (ex: de "Moradia" pra "Saúde") funcionar naturalmente.
+function reorderCat(grp,fromId,toId){
+  const arr=S.cats[grp];if(!arr||fromId===toId)return false;
+  const fromIdx=arr.findIndex(c=>c.id===fromId);
+  const toItem=arr.find(c=>c.id===toId);
+  if(fromIdx<0||!toItem)return false;
+  const[item]=arr.splice(fromIdx,1);
+  if(toItem.grpNome!==undefined)item.grpNome=toItem.grpNome;
+  const toIdx=arr.findIndex(c=>c.id===toId);
+  arr.splice(toIdx,0,item);
+  return true;
+}
+function catDropOrc(e,grp,toId){
+  e.preventDefault();
+  if(!dragCat||dragCat.grp!==grp){dragCat=null;return;}
+  if(reorderCat(grp,dragCat.id,toId)){
+    if(grp==='fixas'||grp==='var')renderDespesas();else renderGroup(grp);
+    buildCatSelect();recalc();save();
+  }
+  dragCat=null;
+}
+function catDropMgr(e,key,toId){
+  e.preventDefault();
+  if(!dragCat||dragCat.grp!==key){dragCat=null;return;}
+  const movedId=dragCat.id;
+  if(reorderCat(key,movedId,toId)){
+    renderCatMgrList(key);
+    buildCatSelect();renderAll();recalc();save();
+  }
+  dragCat=null;
+}
 function setCatLbl(grp,id,lbl){const c=S.cats[grp].find(x=>x.id===id);if(c){c.lbl=lbl;buildCatSelect();save();}}
 function setCatVal(grp,id,fld,val){const c=S.cats[grp].find(x=>x.id===id);if(c){c[fld]=val;recalc();save();}}
 function addCat(grp){
