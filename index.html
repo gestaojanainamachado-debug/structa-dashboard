@@ -2372,6 +2372,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="kpi"><div class="kpi-lbl">Saldo Total em Aberto</div><div class="kpi-val bad" id="div-kpi-saldo">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Comprometimento Mensal</div><div class="kpi-val warn" id="div-kpi-mensal">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Total Contratado</div><div class="kpi-val" id="div-kpi-total">R$ 0</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total p/ Quitação à Vista</div><div class="kpi-val" id="div-kpi-quitacao">R$ 0</div></div>
   </div>
   <div class="card gap" id="div-chart-card">
     <div class="ctitle">Saldo em aberto por tipo de dívida</div>
@@ -2392,7 +2393,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           <th style="cursor:pointer;user-select:none" onclick="divSort('valorParc')">Vl. Parcela <span id="dsrt-valorParc"></span></th>
           <th style="min-width:110px">Total a Pagar</th>
           <th style="min-width:90px">Já Pago</th>
-          <th style="min-width:110px;cursor:pointer;user-select:none" onclick="divSort('saldoAberto')">Saldo Aberto <span id="dsrt-saldoAberto"></span></th><th></th>
+          <th style="min-width:110px;cursor:pointer;user-select:none" onclick="divSort('saldoAberto')">Saldo Aberto <span id="dsrt-saldoAberto"></span></th>
+          <th style="min-width:110px" title="Valor informado pelo banco para quitação à vista (pode ser diferente do saldo nominal calculado)">Saldo p/ Quitação</th><th></th>
         </tr></thead>
         <tbody id="div-body"></tbody>
       </table>
@@ -4181,7 +4183,7 @@ function calcDividaStats(d){
 }
 
 function addDivida(){
-  S.dividas.push({id:'d'+Date.now(),tipo:'Outro',inst:'',valorCont:0,taxaMes:0,modalidade:'PRICE',dataPrimParc:'',nParc:0,valorParc:0});
+  S.dividas.push({id:'d'+Date.now(),tipo:'Outro',inst:'',valorCont:0,taxaMes:0,modalidade:'PRICE',dataPrimParc:'',nParc:0,valorParc:0,saldoQuitacao:0});
   save();renderDividas();renderPatrimonio();
 }
 
@@ -4244,15 +4246,18 @@ function renderDividas(){
       <td class="num" style="font-weight:600">${fmt(totalAPagar)}</td>
       <td class="num" style="color:var(--ok)">${fmt(jaPago)}</td>
       <td class="num" style="color:${saldoAberto>0?'var(--bad)':'var(--ok)'};font-weight:700">${fmt(saldoAberto)}</td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.saldoQuitacao||0).toFixed(2)}" placeholder="0,00" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','saldoQuitacao',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
       <td><button class="del-btn" onclick="delDivida('${d.id}')">×</button></td>
     </tr>`;
   }).join('');
   const totalSaldo=S.dividas.reduce((s,d)=>s+calcDividaStats(d).saldoAberto,0);
   const totalMensal=S.dividas.reduce((s,d)=>s+(d.valorParc||0),0);
   const totalCont=S.dividas.reduce((s,d)=>s+(d.valorCont||0),0);
+  const totalQuitacao=S.dividas.reduce((s,d)=>s+(d.saldoQuitacao||0),0);
   setText('div-kpi-saldo',fmt(totalSaldo));
   setText('div-kpi-mensal',fmt(totalMensal));
   setText('div-kpi-total',fmt(totalCont));
+  setText('div-kpi-quitacao',fmt(totalQuitacao));
   const byTipo={};
   S.dividas.forEach(d=>{const s=calcDividaStats(d).saldoAberto;if(s>0)byTipo[d.tipo]=(byTipo[d.tipo]||0)+s;});
   renderDonutByGroup('divTipoChart','div-chart-empty',Object.entries(byTipo).sort((a,b)=>b[1]-a[1]));
