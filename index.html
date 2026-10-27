@@ -5675,14 +5675,26 @@ function clearTxFilters(){
   const vmx=document.getElementById('tx-filter-val-max');if(vmx)vmx.value='';
   renderTxList();
 }
+// Agrupado pelos mesmos grupos de buildCatGrpOptionsHtml (fonte: S.cats,
+// editada em "Gerenciar Categorias"), pra não misturar categorias de grupos
+// diferentes com o mesmo nome (ex.: "Aluguel" pessoal x "Aluguel do Consultório").
 function buildTxCatFilter(){
   const sel=document.getElementById('tx-filter-cat');if(!sel)return;
   const cur=sel.value;
-  const cats=[...Object.values(S.cats)].flat().sort((a,b)=>a.lbl.localeCompare(b.lbl));
   const semCatSel=cur==='__sem_cat__'?' selected':'';
-  sel.innerHTML='<option value="">Todas as categorias</option>'
-    +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`
-    +cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
+  const opt=c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${esc(c.lbl)}</option>`;
+  const og=(lbl,items)=>items.length?`<optgroup label="${esc(lbl)}">${items.map(opt).join('')}</optgroup>`:'';
+  let html='<option value="">Todas as categorias</option>'
+    +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`;
+  html+=og('💰 Receita',[...(S.cats.receita||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  html+=og('🏥 Custos Profissionais',[...(S.cats.ct||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  GRP_ORDER.forEach(nome=>{
+    const items=['fixas','var'].flatMap(g=>(S.cats[g]||[]).filter(c=>c.grpNome===nome)).sort((a,b)=>a.lbl.localeCompare(b.lbl));
+    html+=og('📁 '+nome,items);
+  });
+  html+=og('📈 Investimentos',[...(S.cats.inv||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  html+=og('⚪ Neutro',[...(S.cats.neutro||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  sel.innerHTML=html;
 }
 // Monta o filtro de "forma de pagamento" a partir das formas já usadas nos
 // lançamentos (conta/cartão/pix/etc., o mesmo rótulo mostrado na coluna da tabela).
