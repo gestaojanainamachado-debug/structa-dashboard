@@ -1631,6 +1631,14 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div id="renda-detail"></div>
         <div class="sec-sep"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="sec-name" style="margin-bottom:0">Receita por Categoria (orçamento)</div>
+          <button class="add-cat-btn" style="margin:0" onclick="openCatManager()">⚙ Gerenciar categorias</button>
+        </div>
+        <div id="grp-receita"></div>
+        <button class="add-cat-btn" onclick="addCat('receita')">＋ Adicionar categoria de receita</button>
+        <div class="tot-row"><span>Total Receita Detalhada</span><span id="trc-o">R$ 0</span><span id="trc-r">R$ 0</span><span class="var-cell neutral" id="vrc">—</span><span></span><span></span></div>
+        <div class="sec-sep"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
           <div class="sec-name" style="margin-bottom:0">Custos com Trabalho</div>
           <button class="add-cat-btn" style="margin:0" onclick="openCatManager()">⚙ Gerenciar categorias</button>
         </div>
@@ -3801,7 +3809,7 @@ function getOrcVal(catId,y,m){
   const mb=_getMB(orcMonthKey(y,m));
   if(mb.cats&&mb.cats[catId]!==undefined)return mb.cats[catId];
   // fallback: global cat.orc
-  for(const g of['ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
+  for(const g of['receita','ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
   return 0;
 }
 function setOrcVal(catId,val){
@@ -3840,7 +3848,7 @@ function renderOrcMonth(){
   const el=document.getElementById('orc-month-label');
   if(el)el.textContent=`${ORC_MONTHS[orcViewMonth]} ${orcViewYear}`;
   const ri=document.getElementById('rendaOrc');if(ri)ri.value=getOrcRendaOrc()||'';
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();
 }
 function orcCopyFromPrev(){
@@ -3849,7 +3857,7 @@ function orcCopyFromPrev(){
   if(!S.monthlyBudgets)S.monthlyBudgets={};
   const prev=S.monthlyBudgets[prevKey]||{};
   const cats={};
-  for(const g of['ct','fixas','var','inv']){
+  for(const g of['receita','ct','fixas','var','inv']){
     (S.cats[g]||[]).forEach(c=>{cats[c.id]=(prev.cats&&prev.cats[c.id]!==undefined)?prev.cats[c.id]:(c.orc||0);});
   }
   const rendaOrc=prev.rendaOrc!==undefined?prev.rendaOrc:S.rendaOrc||0;
@@ -3859,7 +3867,7 @@ function orcCopyFromPrev(){
 function orcSetDefault(){
   // Save current month budget as global template (cat.orc + S.rendaOrc)
   const mb=_getMB(orcMonthKey());
-  for(const g of['ct','fixas','var','inv']){
+  for(const g of['receita','ct','fixas','var','inv']){
     (S.cats[g]||[]).forEach(c=>{
       c.orc=mb.cats&&mb.cats[c.id]!==undefined?mb.cats[c.id]:c.orc||0;
     });
@@ -3871,7 +3879,7 @@ function orcSetDefault(){
 
 // ── GERENCIAR CATEGORIAS ────────────────────────────────────────────────────
 const CAT_GROUPS=[
-  {key:'receita',lbl:'💰 Receita',               hasOrc:false},
+  {key:'receita',lbl:'💰 Receita',               hasOrc:true},
   {key:'ct',    lbl:'🏥 Custos do Consultório', hasOrc:true},
   {key:'fixas', lbl:'🏠 Despesas Fixas',         hasOrc:true},
   {key:'var',   lbl:'🛍 Despesas Variáveis',      hasOrc:true},
@@ -5201,7 +5209,7 @@ function renderAll(){
   document.getElementById('clientName').value=S.name||'';
   document.getElementById('rendaOrc').value=getOrcRendaOrc()||'';
   document.getElementById('rendaReal').value=S.rendaReal||'';
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   sbUpdateProfile();
   renderInicio();
   renderSaudeFinanceira();
@@ -5252,7 +5260,7 @@ function renderGroup(grp){
   const el=document.getElementById('grp-'+grp);
   if(!el)return;
   el.innerHTML='';
-  const txMap=getTxMap();
+  const txMap=grp==='receita'?getTxRendaMap():getTxMap();
   (S.cats[grp]||[]).forEach(cat=>{
     const fromTx=txMap[cat.id]!==undefined;
     el.appendChild(makeRow(grp,cat,fromTx,txMap[cat.id]||0));
@@ -5479,19 +5487,19 @@ function addTx(){
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-val').value='';
   if(creditoCatEl)creditoCatEl.checked=false;
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 function delTx(id){
   if(!confirm('Excluir este lançamento?'))return;
   S.transactions=S.transactions.filter(t=>t.id!==id);
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 function clearTx(){
   if(!S.transactions.length)return;
   if(!confirm('Remover todos os lançamentos?'))return;
-  S.transactions=[];['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  S.transactions=[];['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
@@ -5560,7 +5568,7 @@ function saveTxEdit(){
   tx.cartaoId=isCard?contaVal:null;
   tx.pgto=(contaVal&&!isConta&&!isCard)?contaVal:null;
   closeModal();
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
@@ -5587,7 +5595,7 @@ function clearTxMonth(){
   if(!qtd){alert('Não há lançamentos em '+lbl+'.');return;}
   if(!confirm('Limpar os '+qtd+' lançamentos de '+lbl+'?'))return;
   S.transactions=S.transactions.filter(tx=>!inMonth(tx));
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
@@ -6266,6 +6274,9 @@ function getTxRendaMap(yr,mo){
 function recalc(){
   const txMap=getTxMap(orcViewYear,orcViewMonth),txRenda=getTxRenda(orcViewYear,orcViewMonth),hasTx=S.transactions.length>0;
   function realOf(cats){return(cats||[]).reduce((s,c)=>s+(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),0);}
+  const rdMapForTotals=getTxRendaMap(orcViewYear,orcViewMonth);
+  function realOfRenda(cats){return(cats||[]).reduce((s,c)=>s+(rdMapForTotals[c.id]!==undefined?rdMapForTotals[c.id]:c.real||0),0);}
+  const tRo=sumOrc(S.cats.receita||[]), tRr=realOfRenda(S.cats.receita);
   const tCo=sumOrc(S.cats.ct||[]),   tCr=realOf(S.cats.ct);
   const tFo=sumOrc(S.cats.fixas),    tFr=realOf(S.cats.fixas);
   const tVo=sumOrc(S.cats.var),      tVr=realOf(S.cats.var);
@@ -6291,6 +6302,10 @@ function recalc(){
   }
 
   // per-cat
+  (S.cats.receita||[]).forEach(c=>{
+    if(rdMapForTotals[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=rdMapForTotals[c.id]||'';}
+    setVarCat('var-'+c.id,(rdMapForTotals[c.id]!==undefined?rdMapForTotals[c.id]:c.real||0)-getOrcVal(c.id),true);
+  });
   (S.cats.ct||[]).forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
     setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
@@ -6327,6 +6342,7 @@ function recalc(){
   updateGrpSums('var',S.cats.var);
 
   // Group totals
+  setText('trc-o',fmt(tRo));setText('trc-r',fmt(tRr));setVar('vrc',tRr-tRo,true);
   setText('tct-o',fmt(tCo));setText('tct-r',fmt(tCr));
   setText('tfx-o',fmt(tFo));setText('tfx-r',fmt(tFr)); // total fixo
   setText('tvr-o',fmt(tVo));setText('tvr-r',fmt(tVr)); // total variável
