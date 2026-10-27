@@ -1771,9 +1771,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <!-- Barra de ações em lote (aparece ao selecionar transações) -->
     <div id="tx-bulk-bar" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;align-items:center;gap:10px;flex-wrap:wrap">
       <span id="tx-bulk-count" style="font-size:13px;font-weight:600;white-space:nowrap;color:var(--primary)"></span>
-      <span style="color:var(--muted);font-size:12px;white-space:nowrap">→ categoria:</span>
-      <div id="tx-bulk-catsel" style="flex:1;min-width:180px;max-width:300px"></div>
-      <button class="btn btn-p btn-sm" onclick="applyBulkCat()" style="white-space:nowrap">✓ Aplicar</button>
+      <button class="btn btn-p btn-sm" onclick="openBulkCatModal()" style="white-space:nowrap">→ Classificar categoria</button>
       <button class="btn btn-o btn-sm" onclick="txDeselectAll()" style="white-space:nowrap">Desmarcar</button>
     </div>
 
@@ -2885,6 +2883,20 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="m-foot">
         <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-p" onclick="saveTxEdit()">Salvar</button>
+      </div>
+    </div>
+
+    <!-- BULK CLASSIFY TRANSACTIONS -->
+    <div id="m-bulk-cat" style="display:none">
+      <div class="m-title">Classificar em lote</div>
+      <div class="m-sub" id="btx-count-lbl">Escolha o grupo e a subcategoria para aplicar a todos os selecionados.</div>
+      <div class="tx-edit-grid">
+        <div class="fld"><label>Grupo</label><select id="btx-cat-grp" onchange="filterCatSub('btx-cat-grp','btx-cat')"></select></div>
+        <div class="fld"><label>Subcategoria</label><select id="btx-cat"></select></div>
+      </div>
+      <div class="m-foot">
+        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-p" onclick="applyBulkCat()">✓ Aplicar</button>
       </div>
     </div>
 
@@ -5315,7 +5327,7 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
   const sc=document.getElementById(catSelId);
   if(!sg||!sc)return;
   const key=sg.value;
-  const isEdit=(catSelId==='etx-cat');
+  const isEdit=(catSelId==='etx-cat'||catSelId==='btx-cat');
   const prev=restoreVal!==undefined?restoreVal:sc.value;
   sc.innerHTML='<option value="">-- Subcategoria --</option>';
   if(!key)return;
@@ -5483,6 +5495,22 @@ function clearTx(){
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
+// Monta as opções de "Grupo" (Receita/Custos/Despesas Fixas e Variáveis por
+// grupo nomeado/Investimentos/Neutro) a partir de S.cats — fonte de verdade
+// editada em "Gerenciar Categorias". Reaproveitado pelo modal de edição
+// individual e pelo modal de classificação em lote, pra nunca dessincronizar.
+function buildCatGrpOptionsHtml(){
+  let ghml='<option value="">-- Grupo --</option>';
+  ghml+='<option value="receita">💰 Receita</option>';
+  ghml+='<option value="ct">🏥 Custos Profissionais</option>';
+  GRP_ORDER.forEach(nome=>{
+    const has=['fixas','var'].some(g=>(S.cats[g]||[]).some(c=>c.grpNome===nome));
+    if(has) ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
+  });
+  ghml+='<option value="inv">📈 Investimentos</option>';
+  ghml+='<option value="neutro">⚪ Neutro</option>';
+  return ghml;
+}
 function openTxEdit(id){
   const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
   document.getElementById('etx-id').value=id;
@@ -5493,16 +5521,7 @@ function openTxEdit(id){
   document.getElementById('etx-desc').value=tx.desc||'';
   // Build cascading cat selects
   const esg=document.getElementById('etx-cat-grp');
-  let ghml='<option value="">-- Grupo --</option>';
-  ghml+='<option value="receita">💰 Receita</option>';
-  ghml+='<option value="ct">🏥 Custos Profissionais</option>';
-  GRP_ORDER.forEach(nome=>{
-    const has=['fixas','var'].some(g=>(S.cats[g]||[]).some(c=>c.grpNome===nome));
-    if(has) ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
-  });
-  ghml+='<option value="inv">📈 Investimentos</option>';
-  ghml+='<option value="neutro">⚪ Neutro</option>';
-  esg.innerHTML=ghml;
+  esg.innerHTML=buildCatGrpOptionsHtml();
   // Determine group key from transaction
   let txGrpKey='';
   if(tx.grp==='receita') txGrpKey='receita';
@@ -6722,6 +6741,7 @@ function openModal(type,goalId){
   document.getElementById('m-pgto').style.display=type==='pgto'?'block':'none';
   document.getElementById('m-goal').style.display=type==='goal'?'block':'none';
   document.getElementById('m-edit-tx').style.display=type==='edit-tx'?'block':'none';
+  document.getElementById('m-bulk-cat').style.display=type==='bulk-cat'?'block':'none';
   document.getElementById('m-import-orc').style.display=type==='import-orc'?'block':'none';
   document.getElementById('m-copy-prev').style.display=type==='copy-prev'?'block':'none';
   document.getElementById('m-contas').style.display=type==='contas'?'block':'none';
@@ -12582,39 +12602,34 @@ function txUpdateBulkBar(){
   bar.style.display='flex';
   const cnt=document.getElementById('tx-bulk-count');
   if(cnt)cnt.textContent=`${n} selecionado${n>1?'s':''}`;
-  // Build category select once
-  const catSel=document.getElementById('tx-bulk-catsel');
-  if(catSel&&!catSel.querySelector('select')){
-    const groups=[
-      ['💰 Receita',k=>k.startsWith('r_')],
-      ['🔒 Fixo',k=>k.startsWith('f_')],
-      ['📦 Variável',k=>k.startsWith('v_')],
-      ['🏥 Custo de Trabalho',k=>k.startsWith('ct_')],
-      ['📈 Investimento',k=>k.startsWith('i_')],
-      ['⚪ Neutro',k=>k.startsWith('n_')],
-    ];
-    let h='<select id="tx-bulk-cat-sel" style="width:100%;font-size:13px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#fff"><option value="">Selecionar categoria…</option>';
-    for(const[grp,test]of groups){
-      h+=`<optgroup label="${grp}">`;
-      for(const k of Object.keys(CAT).filter(test))h+=`<option value="${k}">${CAT[k]}</option>`;
-      h+='</optgroup>';
-    }
-    h+='</select>';
-    catSel.innerHTML=h;
-  }
+}
+// Abre o mesmo seletor de Grupo/Subcategoria do "Editar Lançamento" (sempre
+// construído a partir de S.cats, nunca da lista estática de import) pra
+// classificar todos os lançamentos selecionados de uma vez.
+function openBulkCatModal(){
+  if(!txSelectedIds.size)return;
+  const n=txSelectedIds.size;
+  const lbl=document.getElementById('btx-count-lbl');
+  if(lbl)lbl.textContent=`Escolha o grupo e a subcategoria para aplicar aos ${n} lançamento${n>1?'s':''} selecionado${n>1?'s':''}.`;
+  const bsg=document.getElementById('btx-cat-grp');
+  bsg.innerHTML=buildCatGrpOptionsHtml();
+  filterCatSub('btx-cat-grp','btx-cat');
+  openModal('bulk-cat');
 }
 function applyBulkCat(){
-  const sel=document.getElementById('tx-bulk-cat-sel');
-  const catId=sel?.value;
-  if(!catId){alert('Selecione uma categoria antes de aplicar.');return;}
+  const cv=document.getElementById('btx-cat').value;
+  if(!cv||cv==='|'){alert('Selecione uma subcategoria antes de aplicar.');return;}
   if(!txSelectedIds.size)return;
+  const[catId,grp]=cv.split('|');
   S.transactions.forEach(tx=>{
     if(!txSelectedIds.has(tx.id))return;
     tx.catId=catId;
-    tx.grp=convTxGrp(catId);
+    tx.grp=grp;
+    tx.isRec=grp==='receita';
   });
   const n=txSelectedIds.size;
   txSelectedIds.clear();
+  closeModal();
   save();recalc();renderTxList();renderAll();
   setTimeout(()=>alert(`✅ Categoria alterada em ${n} lançamento${n>1?'s':''}.`),50);
 }
