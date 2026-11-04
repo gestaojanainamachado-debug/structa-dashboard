@@ -1774,6 +1774,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <span style="color:var(--muted);font-size:12px;white-space:nowrap">→ categoria:</span>
       <div id="tx-bulk-catsel" style="flex:1;min-width:180px;max-width:300px"></div>
       <button class="btn btn-p btn-sm" onclick="applyBulkCat()" style="white-space:nowrap">✓ Aplicar</button>
+      <button class="btn btn-o btn-sm" onclick="applyBulkDelete()" style="white-space:nowrap;color:#c0392b;border-color:#c0392b">🗑 Excluir selecionados</button>
       <button class="btn btn-o btn-sm" onclick="txDeselectAll()" style="white-space:nowrap">Desmarcar</button>
     </div>
 
@@ -12612,6 +12613,15 @@ function applyBulkCat(){
   txSelectedIds.clear();
   save();recalc();renderTxList();renderAll();
   setTimeout(()=>alert(`✅ Categoria alterada em ${n} lançamento${n>1?'s':''}.`),50);
+}
+function applyBulkDelete(){
+  if(!txSelectedIds.size)return;
+  const n=txSelectedIds.size;
+  if(!confirm(`Excluir ${n} lançamento${n>1?'s':''} selecionado${n>1?'s':''}? Essa ação não pode ser desfeita.`))return;
+  S.transactions=S.transactions.filter(tx=>!txSelectedIds.has(tx.id));
+  txSelectedIds.clear();
+  save();recalc();renderTxList();renderAll();
+  setTimeout(()=>alert(`🗑 ${n} lançamento${n>1?'s':''} excluído${n>1?'s':''}.`),50);
 }
 
 (function initConvListeners(){
