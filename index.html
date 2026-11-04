@@ -1627,8 +1627,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div class="sec-sep" style="margin-top:6px"></div><div class="sec-name">Renda</div>
         <div class="renda-row">
           <div class="rl">Renda líquida mensal<span id="renda-tx-ind" style="font-size:9px;color:var(--ok);font-weight:700;margin-left:4px"></span></div>
-          <input class="inp" type="number" id="rendaOrc" min="0" placeholder="0" oninput="setOrcRendaOrc(+this.value||0)">
-          <input class="inp real" type="number" id="rendaReal" min="0" placeholder="0" oninput="S.rendaReal=+this.value||0;recalc();save()">
+          <span id="rendaOrc" style="font-size:12px;font-weight:700;text-align:right;color:var(--primary)">R$ 0</span>
+          <span id="rendaReal" style="font-size:12px;font-weight:700;text-align:right;color:var(--primary)">R$ 0</span>
           <div class="var-cell neutral" id="var-renda">—</div><div></div><div></div>
         </div>
         <div id="grp-receita"></div>
@@ -3818,18 +3818,10 @@ function setOrcVal(catId,val){
   S.monthlyBudgets[key].cats[catId]=val;
   recalc();save();
 }
-function getOrcRendaOrc(y,m){
-  const mb=_getMB(orcMonthKey(y,m));
-  return mb.rendaOrc!==undefined?mb.rendaOrc:S.rendaOrc||0;
-}
-function setOrcRendaOrc(val){
-  const key=orcMonthKey();
-  if(!S.monthlyBudgets)S.monthlyBudgets={};
-  if(!S.monthlyBudgets[key])S.monthlyBudgets[key]={};
-  S.monthlyBudgets[key].rendaOrc=val;
-  recalc();save();
-}
 function sumOrc(cats,y,m){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id,y,m)||0),0);}
+// Renda líquida mensal é só o somatório do orçado das categorias de receita
+// abaixo (igual às seções de despesas) — não é mais um valor digitado à parte.
+function getOrcRendaOrc(y,m){return sumOrc(S.cats.receita||[],y,m);}
 
 function orcPrevMonth(){
   orcViewMonth--;if(orcViewMonth<0){orcViewMonth=11;orcViewYear--;}
@@ -3845,7 +3837,6 @@ const ORC_MONTHS=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','N
 function renderOrcMonth(){
   const el=document.getElementById('orc-month-label');
   if(el)el.textContent=`${ORC_MONTHS[orcViewMonth]} ${orcViewYear}`;
-  const ri=document.getElementById('rendaOrc');if(ri)ri.value=getOrcRendaOrc()||'';
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();
 }
@@ -5205,8 +5196,6 @@ function renderInicio(){
 }
 function renderAll(){
   document.getElementById('clientName').value=S.name||'';
-  document.getElementById('rendaOrc').value=getOrcRendaOrc()||'';
-  document.getElementById('rendaReal').value=S.rendaReal||'';
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   sbUpdateProfile();
   renderInicio();
@@ -6342,34 +6331,39 @@ function recalc(){
   const tVo=sumOrc(S.cats.var),      tVr=realOf(S.cats.var);
   const tIo=sumOrc(S.cats.inv),      tIr=realOf(S.cats.inv);
   const tDo=tCo+tFo+tVo+tIo, tDr=tCr+tFr+tVr+tIr;
-  const orcRenda=getOrcRendaOrc();
-  const rendaReal=hasTx&&txRenda>0?txRenda:S.rendaReal;
+  const orcRenda=tRo;
+  const rendaReal=tRr;
+  // Mantém os campos legados sincronizados (usados por relatório, fluxo de
+  // pagamento, projeção etc.) com o somatório por categoria, agora a única
+  // fonte de verdade — não é mais possível digitar um total à parte.
+  S.rendaReal=rendaReal;
   const slO=Math.max(orcRenda-tDo,0),slR=Math.max(rendaReal-tDr,0);
   const rR=rendaReal||1; // usado só para % de investimento sobre a renda (só faz sentido havendo renda real)
 
   // tx indicators
   const ri=document.getElementById('renda-tx-ind');if(ri)ri.textContent=txRenda>0?' ●':'';
-  if(hasTx&&txRenda>0){const el=document.getElementById('rendaReal');if(el)el.value=txRenda;}
+  setText('rendaOrc',fmt(orcRenda));
+  setText('rendaReal',fmt(rendaReal));
 
   // per-cat
   (S.cats.receita||[]).forEach(c=>{
-    if(rdMapForTotals[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=rdMapForTotals[c.id]||'';}
+    if(rdMapForTotals[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=round2(rdMapForTotals[c.id])||'';}
     setVarCat('var-'+c.id,(rdMapForTotals[c.id]!==undefined?rdMapForTotals[c.id]:c.real||0)-getOrcVal(c.id),true);
   });
   (S.cats.ct||[]).forEach(c=>{
-    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
+    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=round2(txMap[c.id])||'';}
     setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.fixas.forEach(c=>{
-    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
+    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=round2(txMap[c.id])||'';}
     setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.var.forEach(c=>{
-    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
+    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=round2(txMap[c.id])||'';}
     setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
   });
   S.cats.inv.forEach(c=>{
-    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
+    if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=round2(txMap[c.id])||'';}
     setVarCat('var-'+c.id,(txMap[c.id]!==undefined?txMap[c.id]:c.real||0)-getOrcVal(c.id),true);
   });
   setVar('var-renda',rendaReal-orcRenda,true);
@@ -6995,6 +6989,9 @@ async function sbEditClientSlug(){
 
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function fmt(v=0){return'R$ '+Math.round(v||0).toLocaleString('pt-BR');}
+// Arredonda pra 2 casas decimais — evita o acúmulo de imprecisão de ponto
+// flutuante ao somar vários lançamentos (ex.: "29120,059999" em vez de "29120,06").
+function round2(v){return Math.round((v||0)*100)/100;}
 // Campo de valor em texto livre: ao sair do campo, trava em 2 casas decimais
 // (sem setinhas de número) — aceita tanto vírgula quanto ponto.
 function dec2Mask(el){
