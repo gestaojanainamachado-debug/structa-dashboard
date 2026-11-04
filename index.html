@@ -154,7 +154,10 @@ input[type=number]{-moz-appearance:textfield}
 .parent-grp-hdr .grp-sum.real{color:var(--primary)}
 .subtype-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;padding:4px 2px 1px;font-weight:500}
 .despesas-sec-hdr{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--primary);background:rgba(56,28,23,.07);padding:5px 10px;border-radius:5px;margin:8px 0 4px}
-.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04)}
+.cat-row{display:grid;grid-template-columns:1fr 98px 98px 78px 150px 28px;gap:6px;align-items:center;padding:4px 0;border-bottom:1px solid rgba(0,0,0,.04);cursor:grab}
+.cat-row.dragging{opacity:.4}
+.catmgr-item{cursor:grab}
+.catmgr-item.dragging{opacity:.4}
 .cat-row:hover{background:rgba(56,28,23,.02)}
 .cat-lbl{font-size:12px;padding:3px 0;border:none;background:transparent;font-family:inherit;width:100%;outline:none;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cat-lbl:focus{border-bottom:1px dashed var(--lilac);white-space:normal}
@@ -1661,7 +1664,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="card">
         <div class="ctitle">Distribuição do Realizado</div>
         <div class="donut-wrap"><canvas id="donutChart"></canvas>
-          <div class="donut-center" title="Total de despesas + investimentos realizados no mês, dividido pela renda líquida já lançada no mês"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">da renda lançada</div></div>
+          <div class="donut-center" title="Total de despesas + investimentos realizados no mês, dividido pelo maior valor entre a renda já lançada e a renda orçada do mês"><div class="donut-big" id="donut-c">—</div><div class="donut-sm">da renda</div></div>
         </div>
         <div class="legend">
           <div class="leg-row"><div class="leg-l"><div class="dot" style="background:#a08060"></div><span>Trabalho</span></div><div class="leg-r"><span class="pct" id="lct-p">0%</span><span class="val" id="lct-v"> — R$ 0</span></div></div>
@@ -1771,9 +1774,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <!-- Barra de ações em lote (aparece ao selecionar transações) -->
     <div id="tx-bulk-bar" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;align-items:center;gap:10px;flex-wrap:wrap">
       <span id="tx-bulk-count" style="font-size:13px;font-weight:600;white-space:nowrap;color:var(--primary)"></span>
-      <span style="color:var(--muted);font-size:12px;white-space:nowrap">→ categoria:</span>
-      <div id="tx-bulk-catsel" style="flex:1;min-width:180px;max-width:300px"></div>
-      <button class="btn btn-p btn-sm" onclick="applyBulkCat()" style="white-space:nowrap">✓ Aplicar</button>
+      <button class="btn btn-p btn-sm" onclick="openBulkCatModal()" style="white-space:nowrap">→ Classificar categoria</button>
       <button class="btn btn-o btn-sm" onclick="applyBulkDelete()" style="white-space:nowrap;color:#c0392b;border-color:#c0392b">🗑 Excluir selecionados</button>
       <button class="btn btn-o btn-sm" onclick="txDeselectAll()" style="white-space:nowrap">Desmarcar</button>
     </div>
@@ -2373,6 +2374,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div class="kpi"><div class="kpi-lbl">Saldo Total em Aberto</div><div class="kpi-val bad" id="div-kpi-saldo">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Comprometimento Mensal</div><div class="kpi-val warn" id="div-kpi-mensal">R$ 0</div></div>
     <div class="kpi"><div class="kpi-lbl">Total Contratado</div><div class="kpi-val" id="div-kpi-total">R$ 0</div></div>
+    <div class="kpi"><div class="kpi-lbl">Total p/ Quitação à Vista</div><div class="kpi-val" id="div-kpi-quitacao">R$ 0</div></div>
   </div>
   <div class="card gap" id="div-chart-card">
     <div class="ctitle">Saldo em aberto por tipo de dívida</div>
@@ -2393,7 +2395,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           <th style="cursor:pointer;user-select:none" onclick="divSort('valorParc')">Vl. Parcela <span id="dsrt-valorParc"></span></th>
           <th style="min-width:110px">Total a Pagar</th>
           <th style="min-width:90px">Já Pago</th>
-          <th style="min-width:110px;cursor:pointer;user-select:none" onclick="divSort('saldoAberto')">Saldo Aberto <span id="dsrt-saldoAberto"></span></th><th></th>
+          <th style="min-width:110px;cursor:pointer;user-select:none" onclick="divSort('saldoAberto')">Saldo Aberto <span id="dsrt-saldoAberto"></span></th>
+          <th style="min-width:110px" title="Valor informado pelo banco para quitação à vista (pode ser diferente do saldo nominal calculado)">Saldo p/ Quitação</th><th></th>
         </tr></thead>
         <tbody id="div-body"></tbody>
       </table>
@@ -2884,6 +2887,20 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
       <div class="m-foot">
         <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-p" onclick="saveTxEdit()">Salvar</button>
+      </div>
+    </div>
+
+    <!-- BULK CLASSIFY TRANSACTIONS -->
+    <div id="m-bulk-cat" style="display:none">
+      <div class="m-title">Classificar em lote</div>
+      <div class="m-sub" id="btx-count-lbl">Escolha o grupo e a subcategoria para aplicar a todos os selecionados.</div>
+      <div class="tx-edit-grid">
+        <div class="fld"><label>Grupo</label><select id="btx-cat-grp" onchange="filterCatSub('btx-cat-grp','btx-cat')"></select></div>
+        <div class="fld"><label>Subcategoria</label><select id="btx-cat"></select></div>
+      </div>
+      <div class="m-foot">
+        <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-p" onclick="applyBulkCat()">✓ Aplicar</button>
       </div>
     </div>
 
@@ -3788,7 +3805,7 @@ function getOrcVal(catId,y,m){
   const mb=_getMB(orcMonthKey(y,m));
   if(mb.cats&&mb.cats[catId]!==undefined)return mb.cats[catId];
   // fallback: global cat.orc
-  for(const g of['ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
+  for(const g of['receita','ct','fixas','var','inv']){const c=(S.cats[g]||[]).find(x=>x.id===catId);if(c)return c.orc||0;}
   return 0;
 }
 function setOrcVal(catId,val){
@@ -3827,7 +3844,7 @@ function renderOrcMonth(){
   const el=document.getElementById('orc-month-label');
   if(el)el.textContent=`${ORC_MONTHS[orcViewMonth]} ${orcViewYear}`;
   const ri=document.getElementById('rendaOrc');if(ri)ri.value=getOrcRendaOrc()||'';
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();
 }
 function orcCopyFromPrev(){
@@ -3836,7 +3853,7 @@ function orcCopyFromPrev(){
   if(!S.monthlyBudgets)S.monthlyBudgets={};
   const prev=S.monthlyBudgets[prevKey]||{};
   const cats={};
-  for(const g of['ct','fixas','var','inv']){
+  for(const g of['receita','ct','fixas','var','inv']){
     (S.cats[g]||[]).forEach(c=>{cats[c.id]=(prev.cats&&prev.cats[c.id]!==undefined)?prev.cats[c.id]:(c.orc||0);});
   }
   const rendaOrc=prev.rendaOrc!==undefined?prev.rendaOrc:S.rendaOrc||0;
@@ -3846,7 +3863,7 @@ function orcCopyFromPrev(){
 function orcSetDefault(){
   // Save current month budget as global template (cat.orc + S.rendaOrc)
   const mb=_getMB(orcMonthKey());
-  for(const g of['ct','fixas','var','inv']){
+  for(const g of['receita','ct','fixas','var','inv']){
     (S.cats[g]||[]).forEach(c=>{
       c.orc=mb.cats&&mb.cats[c.id]!==undefined?mb.cats[c.id]:c.orc||0;
     });
@@ -3858,7 +3875,7 @@ function orcSetDefault(){
 
 // ── GERENCIAR CATEGORIAS ────────────────────────────────────────────────────
 const CAT_GROUPS=[
-  {key:'receita',lbl:'💰 Receita',               hasOrc:false},
+  {key:'receita',lbl:'💰 Receita',               hasOrc:true},
   {key:'ct',    lbl:'🏥 Custos do Consultório', hasOrc:true},
   {key:'fixas', lbl:'🏠 Despesas Fixas',         hasOrc:true},
   {key:'var',   lbl:'🛍 Despesas Variáveis',      hasOrc:true},
@@ -3937,12 +3954,12 @@ function renderCatMgrList(key){
       if(done.has(nome)||!byNome[nome])return;done.add(nome);
       html+=`<div class="catmgr-subgrp-hdr">📁 ${nome}</div>`;
       byNome[nome].forEach(({c,i})=>{
-        html+=`<div class="catmgr-item"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`;
+        html+=`<div class="catmgr-item" draggable="true" ondragstart="catDragStart(event,'${key}','${c.id}')" ondragend="catDragEnd(event)" ondragover="catDragOver(event)" ondrop="catDropMgr(event,'${key}','${c.id}')" title="Arraste para reordenar"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`;
       });
     });
     el.innerHTML=html;
   } else {
-    el.innerHTML=cats.map((c,i)=>`<div class="catmgr-item"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`).join('');
+    el.innerHTML=cats.map((c,i)=>`<div class="catmgr-item" draggable="true" ondragstart="catDragStart(event,'${key}','${c.id}')" ondragend="catDragEnd(event)" ondragover="catDragOver(event)" ondrop="catDropMgr(event,'${key}','${c.id}')" title="Arraste para reordenar"><input type="text" value="${esc(c.lbl)}" oninput="renameCatMgr('${key}',${i},this.value)" title="Renomear"><button class="del-btn" onclick="delCatMgr('${key}','${c.id}')" title="Remover">×</button></div>`).join('');
   }
 }
 function addCatMgr(key){
@@ -4182,7 +4199,7 @@ function calcDividaStats(d){
 }
 
 function addDivida(){
-  S.dividas.push({id:'d'+Date.now(),tipo:'Outro',inst:'',valorCont:0,taxaMes:0,modalidade:'PRICE',dataPrimParc:'',nParc:0,valorParc:0});
+  S.dividas.push({id:'d'+Date.now(),tipo:'Outro',inst:'',valorCont:0,taxaMes:0,modalidade:'PRICE',dataPrimParc:'',nParc:0,valorParc:0,saldoQuitacao:0});
   save();renderDividas();renderPatrimonio();
 }
 
@@ -4245,15 +4262,18 @@ function renderDividas(){
       <td class="num" style="font-weight:600">${fmt(totalAPagar)}</td>
       <td class="num" style="color:var(--ok)">${fmt(jaPago)}</td>
       <td class="num" style="color:${saldoAberto>0?'var(--bad)':'var(--ok)'};font-weight:700">${fmt(saldoAberto)}</td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.saldoQuitacao||0).toFixed(2)}" placeholder="0,00" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','saldoQuitacao',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
       <td><button class="del-btn" onclick="delDivida('${d.id}')">×</button></td>
     </tr>`;
   }).join('');
   const totalSaldo=S.dividas.reduce((s,d)=>s+calcDividaStats(d).saldoAberto,0);
   const totalMensal=S.dividas.reduce((s,d)=>s+(d.valorParc||0),0);
   const totalCont=S.dividas.reduce((s,d)=>s+(d.valorCont||0),0);
+  const totalQuitacao=S.dividas.reduce((s,d)=>s+(d.saldoQuitacao||0),0);
   setText('div-kpi-saldo',fmt(totalSaldo));
   setText('div-kpi-mensal',fmt(totalMensal));
   setText('div-kpi-total',fmt(totalCont));
+  setText('div-kpi-quitacao',fmt(totalQuitacao));
   const byTipo={};
   S.dividas.forEach(d=>{const s=calcDividaStats(d).saldoAberto;if(s>0)byTipo[d.tipo]=(byTipo[d.tipo]||0)+s;});
   renderDonutByGroup('divTipoChart','div-chart-empty',Object.entries(byTipo).sort((a,b)=>b[1]-a[1]));
@@ -5185,7 +5205,7 @@ function renderAll(){
   document.getElementById('clientName').value=S.name||'';
   document.getElementById('rendaOrc').value=getOrcRendaOrc()||'';
   document.getElementById('rendaReal').value=S.rendaReal||'';
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   sbUpdateProfile();
   renderInicio();
   renderSaudeFinanceira();
@@ -5236,7 +5256,7 @@ function renderGroup(grp){
   const el=document.getElementById('grp-'+grp);
   if(!el)return;
   el.innerHTML='';
-  const txMap=getTxMap();
+  const txMap=grp==='receita'?getTxRendaMap():getTxMap();
   (S.cats[grp]||[]).forEach(cat=>{
     const fromTx=txMap[cat.id]!==undefined;
     el.appendChild(makeRow(grp,cat,fromTx,txMap[cat.id]||0));
@@ -5244,6 +5264,11 @@ function renderGroup(grp){
 }
 function makeRow(grp,cat,fromTx,txVal){
   const d=document.createElement('div');d.className='cat-row';d.id='row-'+cat.id;
+  d.draggable=true;d.title='Arraste para reordenar';
+  d.addEventListener('dragstart',e=>catDragStart(e,grp,cat.id));
+  d.addEventListener('dragend',catDragEnd);
+  d.addEventListener('dragover',catDragOver);
+  d.addEventListener('drop',e=>catDropOrc(e,grp,cat.id));
   const rv=fromTx?txVal:cat.real;
   d.innerHTML=`
     <input class="cat-lbl" type="text" value="${esc(cat.lbl)}" placeholder="Nome"
@@ -5260,6 +5285,50 @@ function makeRow(grp,cat,fromTx,txVal){
   return d;
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
+
+// ── DRAG-AND-DROP: reordenar categorias (Gerenciar Categorias e Orçamento) ──
+let dragCat=null;
+function catDragStart(e,grp,id){
+  dragCat={grp,id};
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',id); // necessário pro Firefox habilitar o drag
+  e.currentTarget.classList.add('dragging');
+}
+function catDragEnd(e){e.currentTarget.classList.remove('dragging');dragCat=null;}
+function catDragOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';}
+// Move o item `fromId` pra posição de `toId` dentro de S.cats[grp]. Em grupos
+// hierárquicos (fixas/var), também herda o grpNome do alvo, pra arrastar
+// entre classes (ex: de "Moradia" pra "Saúde") funcionar naturalmente.
+function reorderCat(grp,fromId,toId){
+  const arr=S.cats[grp];if(!arr||fromId===toId)return false;
+  const fromIdx=arr.findIndex(c=>c.id===fromId);
+  const toItem=arr.find(c=>c.id===toId);
+  if(fromIdx<0||!toItem)return false;
+  const[item]=arr.splice(fromIdx,1);
+  if(toItem.grpNome!==undefined)item.grpNome=toItem.grpNome;
+  const toIdx=arr.findIndex(c=>c.id===toId);
+  arr.splice(toIdx,0,item);
+  return true;
+}
+function catDropOrc(e,grp,toId){
+  e.preventDefault();
+  if(!dragCat||dragCat.grp!==grp){dragCat=null;return;}
+  if(reorderCat(grp,dragCat.id,toId)){
+    if(grp==='fixas'||grp==='var')renderDespesas();else renderGroup(grp);
+    buildCatSelect();recalc();save();
+  }
+  dragCat=null;
+}
+function catDropMgr(e,key,toId){
+  e.preventDefault();
+  if(!dragCat||dragCat.grp!==key){dragCat=null;return;}
+  const movedId=dragCat.id;
+  if(reorderCat(key,movedId,toId)){
+    renderCatMgrList(key);
+    buildCatSelect();renderAll();recalc();save();
+  }
+  dragCat=null;
+}
 function setCatLbl(grp,id,lbl){const c=S.cats[grp].find(x=>x.id===id);if(c){c.lbl=lbl;buildCatSelect();save();}}
 function setCatVal(grp,id,fld,val){const c=S.cats[grp].find(x=>x.id===id);if(c){c[fld]=val;recalc();save();}}
 function addCat(grp){
@@ -5311,7 +5380,7 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
   const sc=document.getElementById(catSelId);
   if(!sg||!sc)return;
   const key=sg.value;
-  const isEdit=(catSelId==='etx-cat');
+  const isEdit=(catSelId==='etx-cat'||catSelId==='btx-cat');
   const prev=restoreVal!==undefined?restoreVal:sc.value;
   sc.innerHTML='<option value="">-- Subcategoria --</option>';
   if(!key)return;
@@ -5463,22 +5532,38 @@ function addTx(){
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-val').value='';
   if(creditoCatEl)creditoCatEl.checked=false;
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 function delTx(id){
   if(!confirm('Excluir este lançamento?'))return;
   S.transactions=S.transactions.filter(t=>t.id!==id);
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 function clearTx(){
   if(!S.transactions.length)return;
   if(!confirm('Remover todos os lançamentos?'))return;
-  S.transactions=[];['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  S.transactions=[];['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
+// Monta as opções de "Grupo" (Receita/Custos/Despesas Fixas e Variáveis por
+// grupo nomeado/Investimentos/Neutro) a partir de S.cats — fonte de verdade
+// editada em "Gerenciar Categorias". Reaproveitado pelo modal de edição
+// individual e pelo modal de classificação em lote, pra nunca dessincronizar.
+function buildCatGrpOptionsHtml(){
+  let ghml='<option value="">-- Grupo --</option>';
+  ghml+='<option value="receita">💰 Receita</option>';
+  ghml+='<option value="ct">🏥 Custos Profissionais</option>';
+  GRP_ORDER.forEach(nome=>{
+    const has=['fixas','var'].some(g=>(S.cats[g]||[]).some(c=>c.grpNome===nome));
+    if(has) ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
+  });
+  ghml+='<option value="inv">📈 Investimentos</option>';
+  ghml+='<option value="neutro">⚪ Neutro</option>';
+  return ghml;
+}
 function openTxEdit(id){
   const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
   document.getElementById('etx-id').value=id;
@@ -5489,16 +5574,7 @@ function openTxEdit(id){
   document.getElementById('etx-desc').value=tx.desc||'';
   // Build cascading cat selects
   const esg=document.getElementById('etx-cat-grp');
-  let ghml='<option value="">-- Grupo --</option>';
-  ghml+='<option value="receita">💰 Receita</option>';
-  ghml+='<option value="ct">🏥 Custos Profissionais</option>';
-  GRP_ORDER.forEach(nome=>{
-    const has=['fixas','var'].some(g=>(S.cats[g]||[]).some(c=>c.grpNome===nome));
-    if(has) ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
-  });
-  ghml+='<option value="inv">📈 Investimentos</option>';
-  ghml+='<option value="neutro">⚪ Neutro</option>';
-  esg.innerHTML=ghml;
+  esg.innerHTML=buildCatGrpOptionsHtml();
   // Determine group key from transaction
   let txGrpKey='';
   if(tx.grp==='receita') txGrpKey='receita';
@@ -5537,7 +5613,7 @@ function saveTxEdit(){
   tx.cartaoId=isCard?contaVal:null;
   tx.pgto=(contaVal&&!isConta&&!isCard)?contaVal:null;
   closeModal();
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
@@ -5564,7 +5640,7 @@ function clearTxMonth(){
   if(!qtd){alert('Não há lançamentos em '+lbl+'.');return;}
   if(!confirm('Limpar os '+qtd+' lançamentos de '+lbl+'?'))return;
   S.transactions=S.transactions.filter(tx=>!inMonth(tx));
-  ['ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
 
@@ -5592,14 +5668,26 @@ function clearTxFilters(){
   const vmx=document.getElementById('tx-filter-val-max');if(vmx)vmx.value='';
   renderTxList();
 }
+// Agrupado pelos mesmos grupos de buildCatGrpOptionsHtml (fonte: S.cats,
+// editada em "Gerenciar Categorias"), pra não misturar categorias de grupos
+// diferentes com o mesmo nome (ex.: "Aluguel" pessoal x "Aluguel do Consultório").
 function buildTxCatFilter(){
   const sel=document.getElementById('tx-filter-cat');if(!sel)return;
   const cur=sel.value;
-  const cats=[...Object.values(S.cats)].flat().sort((a,b)=>a.lbl.localeCompare(b.lbl));
   const semCatSel=cur==='__sem_cat__'?' selected':'';
-  sel.innerHTML='<option value="">Todas as categorias</option>'
-    +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`
-    +cats.map(c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${c.lbl}</option>`).join('');
+  const opt=c=>`<option value="${c.id}"${c.id===cur?' selected':''}>${esc(c.lbl)}</option>`;
+  const og=(lbl,items)=>items.length?`<optgroup label="${esc(lbl)}">${items.map(opt).join('')}</optgroup>`:'';
+  let html='<option value="">Todas as categorias</option>'
+    +`<option value="__sem_cat__"${semCatSel}>⚠ Sem categoria</option>`;
+  html+=og('💰 Receita',[...(S.cats.receita||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  html+=og('🏥 Custos Profissionais',[...(S.cats.ct||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  GRP_ORDER.forEach(nome=>{
+    const items=['fixas','var'].flatMap(g=>(S.cats[g]||[]).filter(c=>c.grpNome===nome)).sort((a,b)=>a.lbl.localeCompare(b.lbl));
+    html+=og('📁 '+nome,items);
+  });
+  html+=og('📈 Investimentos',[...(S.cats.inv||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  html+=og('⚪ Neutro',[...(S.cats.neutro||[])].sort((a,b)=>a.lbl.localeCompare(b.lbl)));
+  sel.innerHTML=html;
 }
 // Monta o filtro de "forma de pagamento" a partir das formas já usadas nos
 // lançamentos (conta/cartão/pix/etc., o mesmo rótulo mostrado na coluna da tabela).
@@ -6243,6 +6331,9 @@ function getTxRendaMap(yr,mo){
 function recalc(){
   const txMap=getTxMap(orcViewYear,orcViewMonth),txRenda=getTxRenda(orcViewYear,orcViewMonth),hasTx=S.transactions.length>0;
   function realOf(cats){return(cats||[]).reduce((s,c)=>s+(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),0);}
+  const rdMapForTotals=getTxRendaMap(orcViewYear,orcViewMonth);
+  function realOfRenda(cats){return(cats||[]).reduce((s,c)=>s+(rdMapForTotals[c.id]!==undefined?rdMapForTotals[c.id]:c.real||0),0);}
+  const tRo=sumOrc(S.cats.receita||[]), tRr=realOfRenda(S.cats.receita);
   const tCo=sumOrc(S.cats.ct||[]),   tCr=realOf(S.cats.ct);
   const tFo=sumOrc(S.cats.fixas),    tFr=realOf(S.cats.fixas);
   const tVo=sumOrc(S.cats.var),      tVr=realOf(S.cats.var);
@@ -6268,6 +6359,10 @@ function recalc(){
   }
 
   // per-cat
+  (S.cats.receita||[]).forEach(c=>{
+    if(rdMapForTotals[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=rdMapForTotals[c.id]||'';}
+    setVarCat('var-'+c.id,(rdMapForTotals[c.id]!==undefined?rdMapForTotals[c.id]:c.real||0)-getOrcVal(c.id),true);
+  });
   (S.cats.ct||[]).forEach(c=>{
     if(txMap[c.id]!==undefined){const e=document.getElementById('real-'+c.id);if(e)e.value=txMap[c.id]||'';}
     setVarCat('var-'+c.id,getOrcVal(c.id)-(txMap[c.id]!==undefined?txMap[c.id]:c.real||0),false);
@@ -6304,6 +6399,7 @@ function recalc(){
   updateGrpSums('var',S.cats.var);
 
   // Group totals
+  setText('trc-o',fmt(tRo));setText('trc-r',fmt(tRr));setVar('vrc',tRr-tRo,true);
   setText('tct-o',fmt(tCo));setText('tct-r',fmt(tCr));
   setText('tfx-o',fmt(tFo));setText('tfx-r',fmt(tFr)); // total fixo
   setText('tvr-o',fmt(tVo));setText('tvr-r',fmt(tVr)); // total variável
@@ -6349,11 +6445,17 @@ function recalc(){
   // e confundia (ex: "228%" no centro vs. fatias que somam 100% na legenda).
   // Passa de 100% quando a renda lançada no mês ainda está incompleta frente
   // às despesas já lançadas — nesse caso o número fica vermelho como alerta.
+  // Base do % do centro do donut: o maior entre renda já lançada e renda
+  // orçada. Usar só a renda lançada fazia o % disparar pra bem além de 100%
+  // sempre que o mês ainda estava com pouca receita registrada (ex.: receita
+  // de dia 31 ainda não lançada) frente a despesas já todas lançadas — o %
+  // "explodia" por falta de receita no sistema, não por excesso real de gasto.
   const dcEl=document.getElementById('donut-c');
+  const baseRenda=Math.max(rendaReal,orcRenda);
   if(dcEl){
-    if(rendaReal>=1){
-      const compDonut=tDr/rendaReal;
-      dcEl.textContent=pct(tDr,rendaReal);
+    if(baseRenda>=1){
+      const compDonut=tDr/baseRenda;
+      dcEl.textContent=pct(tDr,baseRenda);
       dcEl.style.color=compDonut>1?'var(--bad)':compDonut>.85?'var(--warn)':'var(--text)';
     }else{
       dcEl.textContent='—';
@@ -6718,6 +6820,7 @@ function openModal(type,goalId){
   document.getElementById('m-pgto').style.display=type==='pgto'?'block':'none';
   document.getElementById('m-goal').style.display=type==='goal'?'block':'none';
   document.getElementById('m-edit-tx').style.display=type==='edit-tx'?'block':'none';
+  document.getElementById('m-bulk-cat').style.display=type==='bulk-cat'?'block':'none';
   document.getElementById('m-import-orc').style.display=type==='import-orc'?'block':'none';
   document.getElementById('m-copy-prev').style.display=type==='copy-prev'?'block':'none';
   document.getElementById('m-contas').style.display=type==='contas'?'block':'none';
@@ -12578,39 +12681,34 @@ function txUpdateBulkBar(){
   bar.style.display='flex';
   const cnt=document.getElementById('tx-bulk-count');
   if(cnt)cnt.textContent=`${n} selecionado${n>1?'s':''}`;
-  // Build category select once
-  const catSel=document.getElementById('tx-bulk-catsel');
-  if(catSel&&!catSel.querySelector('select')){
-    const groups=[
-      ['💰 Receita',k=>k.startsWith('r_')],
-      ['🔒 Fixo',k=>k.startsWith('f_')],
-      ['📦 Variável',k=>k.startsWith('v_')],
-      ['🏥 Custo de Trabalho',k=>k.startsWith('ct_')],
-      ['📈 Investimento',k=>k.startsWith('i_')],
-      ['⚪ Neutro',k=>k.startsWith('n_')],
-    ];
-    let h='<select id="tx-bulk-cat-sel" style="width:100%;font-size:13px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;background:#fff"><option value="">Selecionar categoria…</option>';
-    for(const[grp,test]of groups){
-      h+=`<optgroup label="${grp}">`;
-      for(const k of Object.keys(CAT).filter(test))h+=`<option value="${k}">${CAT[k]}</option>`;
-      h+='</optgroup>';
-    }
-    h+='</select>';
-    catSel.innerHTML=h;
-  }
+}
+// Abre o mesmo seletor de Grupo/Subcategoria do "Editar Lançamento" (sempre
+// construído a partir de S.cats, nunca da lista estática de import) pra
+// classificar todos os lançamentos selecionados de uma vez.
+function openBulkCatModal(){
+  if(!txSelectedIds.size)return;
+  const n=txSelectedIds.size;
+  const lbl=document.getElementById('btx-count-lbl');
+  if(lbl)lbl.textContent=`Escolha o grupo e a subcategoria para aplicar aos ${n} lançamento${n>1?'s':''} selecionado${n>1?'s':''}.`;
+  const bsg=document.getElementById('btx-cat-grp');
+  bsg.innerHTML=buildCatGrpOptionsHtml();
+  filterCatSub('btx-cat-grp','btx-cat');
+  openModal('bulk-cat');
 }
 function applyBulkCat(){
-  const sel=document.getElementById('tx-bulk-cat-sel');
-  const catId=sel?.value;
-  if(!catId){alert('Selecione uma categoria antes de aplicar.');return;}
+  const cv=document.getElementById('btx-cat').value;
+  if(!cv||cv==='|'){alert('Selecione uma subcategoria antes de aplicar.');return;}
   if(!txSelectedIds.size)return;
+  const[catId,grp]=cv.split('|');
   S.transactions.forEach(tx=>{
     if(!txSelectedIds.has(tx.id))return;
     tx.catId=catId;
-    tx.grp=convTxGrp(catId);
+    tx.grp=grp;
+    tx.isRec=grp==='receita';
   });
   const n=txSelectedIds.size;
   txSelectedIds.clear();
+  closeModal();
   save();recalc();renderTxList();renderAll();
   setTimeout(()=>alert(`✅ Categoria alterada em ${n} lançamento${n>1?'s':''}.`),50);
 }
