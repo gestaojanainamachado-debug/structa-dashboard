@@ -10516,6 +10516,13 @@ function detectBank(lines){
   if((t.includes('itaú')||t.includes('itau'))
      &&(t.includes('fatura')||t.includes('estabelecimento')))return'itau_fatura';
   if(t.includes('itaú')||t.includes('itau'))return'itau_extrato';
+  // Bradesco precisa vir antes do InfinitePay: um estabelecimento que usa a
+  // InfinitePay como maquininha pode aparecer como nome de lançamento dentro
+  // de uma fatura Bradesco normal (ex.: "JIM.COM INFINITEPAY"), e a palavra
+  // sozinha em qualquer lugar do texto não basta pra identificar o banco —
+  // sem essa prioridade, a fatura inteira era desviada pro parser errado.
+  if(t.includes('bradesco')&&t.includes('fatura mensal'))return'bradesco_fatura';
+  if(t.includes('bradesco')&&(t.includes('histórico')||t.includes('historico'))&&t.includes('docto'))return'bradesco_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
   // Extrato de conta Mercado Pago — "EXTRATO DE CONTA" + colunas "Data Descrição
   // ID da operação Valor Saldo". Precisa vir antes da fatura (ambos citam
@@ -10529,8 +10536,6 @@ function detectBank(lines){
   // senão o texto "sicoob" sozinho cai no parser de extrato de conta corrente
   // e embaralha tudo (fatura tem layout de LANÇAMENTOS totalmente diferente).
   if(t.includes('sicoob')&&t.includes('fatura'))return'sicoob_fatura';
-  if(t.includes('bradesco')&&t.includes('fatura mensal'))return'bradesco_fatura';
-  if(t.includes('bradesco')&&(t.includes('histórico')||t.includes('historico'))&&t.includes('docto'))return'bradesco_extrato';
   if(t.includes('sicoob')||t.includes('sisbr')||t.includes('coop.:'))return'sicoob_sisbr';
   if(t.includes('coop:')||t.includes('cooperativa de cr'))return'coop_extrato';
   // Banco Inter: "Despesas da fatura" + colunas "Data Movimentação Beneficiário"
@@ -12046,7 +12051,11 @@ function parseInterExtrato(lines){
 function parseInterFatura(lines){
   const txns=[];
   const MO={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12};
-  const re=/^(\d{1,2})\s*de\s+([a-zç]{3})\.?\s*(?:de\s+)?(\d{4})\s+(.+?)\s*-?\s+(\+\s*)?R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})$/i;
+  // \s* (não \s+) entre "de" e o mês/ano: o pdf.js às vezes extrai essa data
+  // sem nenhum espaço real ("10dejun.2026"), o mesmo problema de kerning que
+  // afeta outras faturas — com \s+ a data inteira falhava o match e a
+  // transação inteira desaparecia (fatura "não lida").
+  const re=/^(\d{1,2})\s*de\s*([a-zç]{3})\.?\s*(?:de\s*)?(\d{4})\s+(.+?)\s*-?\s+(\+\s*)?R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2})$/i;
   for(const l of lines){
     const text=l.text.trim();
     if(/^total cart/i.test(text)||/^data\s+movimenta/i.test(text))continue;
