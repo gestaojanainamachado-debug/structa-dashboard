@@ -1651,6 +1651,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         </div>
         <div id="grp-despesas"></div>
         <div class="tot-row"><span>Total Fixo</span><span id="tfx-o">R$ 0</span><span id="tfx-r">R$ 0</span><span class="var-cell neutral" id="vfx">—</span><span></span><span></span></div>
+        <div style="margin:2px 0 8px"><button class="add-cat-btn" style="margin:0" onclick="orcReplicateFixedForward()" title="Copia o orçado das Despesas Fixas (acima) para os próximos 12 meses, mês a mês, já no ano certo">📤 Replicar Fixo para os próximos 12 meses</button></div>
         <div class="tot-row"><span>Total Variável</span><span id="tvr-o">R$ 0</span><span id="tvr-r">R$ 0</span><span class="var-cell neutral" id="vvr">—</span><span></span><span></span></div>
         <div class="tot-row"><span>Total Despesas</span><span id="tf-o">R$ 0</span><span id="tf-r">R$ 0</span><span class="var-cell neutral" id="vf">—</span><span></span><span></span></div>
         <!-- hidden compat elements -->
@@ -3853,6 +3854,29 @@ function orcCopyFromPrev(){
   S.monthlyBudgets[curKey]={cats,rendaOrc};
   renderOrcMonth();save();
 }
+// Copia o orçado das Despesas Fixas do mês em exibição para os próximos 12
+// meses, mês a mês — inclusive virando o ano quando necessário (orcMonthKey
+// já separa por ano, então Jan/2026 e Jan/2027 nunca se misturam). Sobrescreve
+// qualquer valor já definido nesses meses futuros para essas categorias.
+function orcReplicateFixedForward(){
+  const months=12;
+  const baseVals={};
+  (S.cats.fixas||[]).forEach(c=>{baseVals[c.id]=getOrcVal(c.id,orcViewYear,orcViewMonth)||0;});
+  if(!Object.keys(baseVals).length){alert('Não há categorias de Despesas Fixas para replicar.');return;}
+  if(!confirm(`Replicar o orçado das Despesas Fixas de ${ORC_MONTHS[orcViewMonth]}/${orcViewYear} para os próximos ${months} meses? Isso substitui qualquer valor já definido para essas categorias nesses meses.`))return;
+  if(!S.monthlyBudgets)S.monthlyBudgets={};
+  let y=orcViewYear,m=orcViewMonth,lastY=y,lastM=m;
+  for(let i=0;i<months;i++){
+    m++;if(m>11){m=0;y++;}
+    lastY=y;lastM=m;
+    const key=orcMonthKey(y,m);
+    if(!S.monthlyBudgets[key])S.monthlyBudgets[key]={};
+    if(!S.monthlyBudgets[key].cats)S.monthlyBudgets[key].cats={};
+    Object.keys(baseVals).forEach(catId=>{S.monthlyBudgets[key].cats[catId]=baseVals[catId];});
+  }
+  renderOrcMonth();save();
+  alert(`✅ Despesas fixas replicadas até ${ORC_MONTHS[lastM]}/${lastY}.`);
+}
 function orcSetDefault(){
   // Save current month budget as global template (cat.orc + S.rendaOrc)
   const mb=_getMB(orcMonthKey());
@@ -5538,6 +5562,50 @@ function clearTx(){
   S.transactions=[];['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
 }
+// Dada uma compra parcelada (parcela "N/M", N<M), cria as parcelas que ainda
+// faltam (N+1/M até M/M) com os mesmos dados (descrição, categoria, valor,
+// forma de pgto), uma por mês a partir da data desta. Não duplica parcelas
+// que já existam (mesma descrição+categoria+número de parcela).
+function replicateInstallments(id){
+  const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
+  const m=/^(\d+)\s*\/\s*(\d+)$/.exec((tx.parcela||'').trim());
+  if(!m)return;
+  const cur=parseInt(m[1],10),total=parseInt(m[2],10);
+  if(!(cur<total))return;
+  const remaining=total-cur;
+  if(!confirm(`Criar as próximas ${remaining} parcela${remaining>1?'s':''} de "${tx.desc}" (${cur+1}/${total} até ${total}/${total}), uma por mês, com os mesmos dados?`))return;
+  const existingParcs=new Set(S.transactions.filter(t=>t.desc===tx.desc&&t.catId===tx.catId).map(t=>t.parcela));
+  function addMonths(iso,n){
+    if(!iso)return '';
+    const d=new Date(iso+'T00:00:00');
+    d.setMonth(d.getMonth()+n);
+    return d.toISOString().slice(0,10);
+  }
+  let created=0;
+  for(let i=1;i<=remaining;i++){
+    const parcNum=cur+i,parcStr=parcNum+'/'+total;
+    if(existingParcs.has(parcStr))continue; // já existe — não duplica
+    S.transactions.push({
+      id:'tx_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6),
+      date:addMonths(tx.date,i),
+      dataPgto:tx.dataPgto?addMonths(tx.dataPgto,i):'',
+      desc:tx.desc,
+      catId:tx.catId,
+      grp:tx.grp,
+      amount:tx.amount,
+      parcela:parcStr,
+      pgto:tx.pgto||null,
+      contaId:tx.contaId||null,
+      cartaoId:tx.cartaoId||null,
+      creditoNaCategoria:tx.creditoNaCategoria||false,
+      isRec:tx.isRec||false,
+    });
+    created++;
+  }
+  ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
+  recalc();renderTxList();renderFluxoPgto();save();
+  alert(created>0?`✅ ${created} parcela${created>1?'s':''} futura${created>1?'s':''} criada${created>1?'s':''} (até ${total}/${total}).`:'As demais parcelas já existiam — nada foi criado.');
+}
 
 // Monta as opções de "Grupo" (Receita/Custos/Despesas Fixas e Variáveis por
 // grupo nomeado/Investimentos/Neutro) a partir de S.cats — fonte de verdade
@@ -5892,6 +5960,12 @@ function renderTxList(){
     const ds=effDate?new Date(effDate+'T00:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}):'—';
     const dtTitle=tx.dataPgto&&tx.date!==tx.dataPgto?` title="Compra: ${new Date(tx.date+'T00:00:00').toLocaleDateString('pt-BR')}"`:''  ;
     const parcBadge=tx.parcela?`<span class="badge-parc">${tx.parcela}</span>`:'';
+    // Se a parcela for do tipo "N/M" e ainda faltarem parcelas (N<M), mostra o
+    // botão de replicar as parcelas futuras até a última (ver replicateInstallments).
+    const parcM=/^(\d+)\s*\/\s*(\d+)$/.exec((tx.parcela||'').trim());
+    const parcTotal=parcM?parseInt(parcM[2],10):0;
+    const replBtn=parcM&&parseInt(parcM[1],10)<parcTotal
+      ?`<button class="edit-btn" onclick="replicateInstallments('${tx.id}')" title="Criar as próximas parcelas (até ${parcTotal}/${parcTotal}), uma por mês">🔁</button>`:'';
     body.innerHTML+=`<tr>
       <td class="td-chk" style="padding:0 0 0 10px;width:36px"><input type="checkbox" data-id="${tx.id}" onchange="txToggleRow(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--primary)"></td>
       <td class="td-date"${dtTitle}>${ds}</td>
@@ -5899,7 +5973,7 @@ function renderTxList(){
       <td class="td-cat"><span class="badge ${bClass}">${catLbl}</span></td>
       <td class="td-pgto" style="font-size:11px;color:var(--muted)">${pgtoLbl}</td>
       <td class="${amtClass} td-amt">${prefix} ${fmt(tx.amount)}</td>
-      <td class="td-del td-act"><button class="edit-btn" onclick="openTxEdit('${tx.id}')" title="Editar">✏<span class="edit-btn-lbl">Editar</span></button><button class="del-btn" onclick="delTx('${tx.id}')" title="Excluir">×</button></td>
+      <td class="td-del td-act">${replBtn}<button class="edit-btn" onclick="openTxEdit('${tx.id}')" title="Editar">✏<span class="edit-btn-lbl">Editar</span></button><button class="del-btn" onclick="delTx('${tx.id}')" title="Excluir">×</button></td>
     </tr>`;
   });
   txUpdateBulkBar();
