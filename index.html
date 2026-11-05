@@ -5615,9 +5615,15 @@ function buildCatGrpOptionsHtml(){
   let ghml='<option value="">-- Grupo --</option>';
   ghml+='<option value="receita">💰 Receita</option>';
   ghml+='<option value="ct">🏥 Custos Profissionais</option>';
-  GRP_ORDER.forEach(nome=>{
-    const has=['fixas','var'].some(g=>(S.cats[g]||[]).some(c=>c.grpNome===nome));
-    if(has) ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
+  // GRP_ORDER é só a lista padrão — grupos personalizados criados em "Gerenciar
+  // categorias" (ex.: "Dívida de terceiros") não estão nela e ficavam de fora
+  // deste dropdown, impedindo classificar lançamentos nessas categorias. Usa a
+  // união dos nomes de grupo realmente existentes em fixas/var (mesmo padrão já
+  // usado em cmGetGrps/renderDespesas), com os da lista padrão primeiro.
+  const existing=[...new Set(['fixas','var'].flatMap(g=>(S.cats[g]||[]).map(c=>c.grpNome).filter(Boolean)))];
+  const allGrps=[...GRP_ORDER.filter(n=>existing.includes(n)),...existing.filter(n=>!GRP_ORDER.includes(n))];
+  allGrps.forEach(nome=>{
+    ghml+=`<option value="grp:${nome}">📁 ${nome}</option>`;
   });
   ghml+='<option value="inv">📈 Investimentos</option>';
   ghml+='<option value="neutro">⚪ Neutro</option>';
