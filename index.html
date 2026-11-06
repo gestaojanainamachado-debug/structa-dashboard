@@ -4268,7 +4268,7 @@ function renderDividas(){
         ${DIV_TIPOS.map(t=>`<option${d.tipo===t?' selected':''}>${t}</option>`).join('')}
       </select></td>
       <td><input class="div-inp" type="text" value="${d.inst||''}" placeholder="Banco/Inst." onchange="saveDivField('${d.id}','inst',this.value)"></td>
-      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorCont||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorCont',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorCont||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorCont',parseDecInput(this.value)||0)"></td>
       <td><input class="div-inp" type="number" value="${taxaMesToAno(d.taxaMes||0).toFixed(2)}" step="0.01" min="0" placeholder="19,56" style="width:65px" title="Taxa ao ano — convertida internamente pra taxa mensal usada no cálculo da amortização" onchange="saveDivField('${d.id}','taxaMes',taxaAnoToMes(parseFloat(this.value)||0))"></td>
       <td><select class="div-inp" style="min-width:72px" title="PRICE: parcela constante. SAC: amortização constante (parcelas decrescentes)." onchange="saveDivField('${d.id}','modalidade',this.value)">
         <option${(d.modalidade||'PRICE')==='PRICE'?' selected':''}>PRICE</option>
@@ -4276,11 +4276,11 @@ function renderDividas(){
       </select></td>
       <td><input class="div-inp" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" style="width:88px" value="${isoToBr(d.dataPrimParc)}" oninput="brDateMask(this)" onchange="saveDivField('${d.id}','dataPrimParc',parseDateStr(this.value))"></td>
       <td><input class="div-inp" type="number" value="${d.nParc||0}" min="0" style="width:55px" onchange="saveDivField('${d.id}','nParc',parseInt(this.value)||0)"></td>
-      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorParc||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorParc',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.valorParc||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','valorParc',parseDecInput(this.value)||0)"></td>
       <td class="num" style="font-weight:600">${fmt(totalAPagar)}</td>
       <td class="num" style="color:var(--ok)">${fmt(jaPago)}</td>
       <td class="num" style="color:${saldoAberto>0?'var(--bad)':'var(--ok)'};font-weight:700">${fmt(saldoAberto)}</td>
-      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.saldoQuitacao||0).toFixed(2)}" placeholder="0,00" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','saldoQuitacao',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
+      <td><input class="div-inp val-inp" type="text" inputmode="decimal" value="${(d.saldoQuitacao||0).toFixed(2)}" placeholder="0,00" onblur="dec2Mask(this)" onchange="saveDivField('${d.id}','saldoQuitacao',parseDecInput(this.value)||0)"></td>
       <td><button class="del-btn" onclick="delDivida('${d.id}')">×</button></td>
     </tr>`;
   }).join('');
@@ -4371,7 +4371,7 @@ function renderInvestimentos(){
       </select></td>
       <td><input class="inv-inp" type="text" value="${inv.nome||''}" placeholder="Nome do ativo" onchange="saveInvField('${inv.id}','nome',this.value)"></td>
       <td><input class="inv-inp" type="text" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa" style="width:88px" value="${isoToBr(inv.dataInicio)}" oninput="brDateMask(this)" onchange="saveInvField('${inv.id}','dataInicio',parseDateStr(this.value))"></td>
-      <td><input class="inv-inp val-inp" type="text" inputmode="decimal" value="${(inv.valorInv||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveInvField('${inv.id}','valorInv',parseFloat((this.value||'0').replace(',','.'))||0)"></td>
+      <td><input class="inv-inp val-inp" type="text" inputmode="decimal" value="${(inv.valorInv||0).toFixed(2)}" onblur="dec2Mask(this)" onchange="saveInvField('${inv.id}','valorInv',parseDecInput(this.value)||0)"></td>
       <td><input class="inv-val-cur val-inp" type="text" inputmode="decimal" value="${(inv.valorAtual||0).toFixed(2)}" onblur="dec2Mask(this);saveInvAtual('${inv.id}',this.value)"></td>
       <td class="num" id="inv-rent-${inv.id}" style="color:${rent>=0?'var(--ok)':'var(--bad)'}">
         ${(rent>=0?'+':'')+rent.toFixed(1)}%
@@ -7149,11 +7149,32 @@ function fmt(v=0){return'R$ '+Math.round(v||0).toLocaleString('pt-BR');}
 // Arredonda pra 2 casas decimais — evita o acúmulo de imprecisão de ponto
 // flutuante ao somar vários lançamentos (ex.: "29120,059999" em vez de "29120,06").
 function round2(v){return Math.round((v||0)*100)/100;}
+// Interpreta um número digitado em qualquer convenção comum: "16605.60"
+// (decimal com ponto), "16605,60" (decimal com vírgula), "1.234,56" (BR
+// agrupado+decimal) ou "15.000" (BR agrupado sem decimal). Usada por
+// dec2Mask e pelos campos de valor que salvam direto no onchange.
+function parseDecInput(raw){
+  raw=(raw||'').trim();
+  if(!raw)return 0;
+  const neg=raw.startsWith('-');
+  const abs=raw.replace(/^[-–]/,'').trim();
+  let n;
+  if(/\d\.\d{3},\d{2}$/.test(abs)){
+    n=parseFloat(abs.replace(/\./g,'').replace(',','.'));  // "1.234,56" (BR agrupado+decimal)
+  } else if(/^\d{1,3}(\.\d{3})+$/.test(abs)){
+    n=parseFloat(abs.replace(/\./g,''));                   // "15.000" (BR agrupado sem decimal)
+  } else {
+    n=parseFloat(abs.replace(',','.'));                    // "16605.60", "16605,60", "15000"
+  }
+  if(isNaN(n))return NaN;
+  return neg?-n:n;
+}
 // Campo de valor em texto livre: ao sair do campo, trava em 2 casas decimais
 // (sem setinhas de número) — aceita tanto vírgula quanto ponto.
 function dec2Mask(el){
-  const raw=(el.value||'').replace(/\./g,'').replace(',','.').replace(/[^0-9.\-]/g,'');
-  const n=parseFloat(raw);
+  const raw=(el.value||'').trim();
+  if(!raw){el.value='';return;}
+  const n=parseDecInput(raw);
   el.value=isNaN(n)?'':n.toFixed(2);
 }
 // Campo de data em texto livre dd/mm/aaaa — digita o ano normalmente, sem o
