@@ -3764,6 +3764,7 @@ function freshState(){
     merchants:{},  // {normalizedKey: catId} — memória de estabelecimentos (persiste com o cliente)
     merchantNames:{}, // {normalizedKey: nomeLimpo} — memória de nomes de estabelecimento corrigidos
     calcInputs:{}, // {inputId: valor} — campos das calculadoras (IR/PGBL, Aposentadoria, Simulador), por cliente
+    autoFixoDone:{}, // {"catId|AAAA-MM": true} — meses já checados pra geração automática de despesa fixa recorrente (ver autoGenerateFixedTx)
   };
 }
 let S=freshState();
@@ -4816,6 +4817,7 @@ function bootApp(){
   if(!S.merchants)S.merchants={};
   if(!S.merchantNames)S.merchantNames={};
   if(!S.calcInputs)S.calcInputs={};
+  if(!S.autoFixoDone)S.autoFixoDone={};
   seedMerchants();
   renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
@@ -5296,8 +5298,16 @@ function makeRow(grp,cat,fromTx,txVal){
     <div class="var-cell neutral" id="var-${cat.id}">—</div>
     <input class="obs-cell" type="text" placeholder="Observação…" value="${esc(cat.obs||'')}"
       oninput="setCatVal('${grp}','${cat.id}','obs',this.value)">
-    <button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button>`;
+    <span style="display:flex;gap:2px">${grp==='fixas'?`<button class="del-btn" style="color:${cat.recFixo?'var(--ok)':'var(--muted)'}" onclick="toggleCatRecFixo('${cat.id}')" title="${cat.recFixo?'Recorrente: lança o lançamento sozinho todo mês (clique pra desativar)':'Marcar como recorrente — lançar o lançamento sozinho todo mês, com o último valor conhecido'}">🔁</button>`:''}<button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button></span>`;
   return d;
+}
+// Liga/desliga a geração automática do lançamento mensal pra uma categoria
+// fixa (ver autoGenerateFixedTx) — ao navegar pra um mês sem lançamento
+// dessa categoria, o sistema cria um sozinho com o último valor conhecido.
+function toggleCatRecFixo(catId){
+  const c=(S.cats.fixas||[]).find(x=>x.id===catId);if(!c)return;
+  c.recFixo=!c.recFixo;
+  renderDespesas();save();
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
 
@@ -5566,29 +5576,33 @@ function clearTx(){
 // faltam (N+1/M até M/M) com os mesmos dados (descrição, categoria, valor,
 // forma de pgto), uma por mês a partir da data desta. Não duplica parcelas
 // que já existam (mesma descrição+categoria+número de parcela).
-function replicateInstallments(id){
-  const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
+function addMonthsIso(iso,n){
+  if(!iso)return '';
+  const d=new Date(iso+'T00:00:00');
+  d.setMonth(d.getMonth()+n);
+  return d.toISOString().slice(0,10);
+}
+// Núcleo sem confirm()/alert() — usado tanto pelo clique manual (🔁) quanto
+// automaticamente (import de CSV, edição de lançamento) sempre que uma
+// transação ganha ou já tem parcela "N/M" com N<M. Não duplica parcelas que
+// já existam (mesma descrição+categoria+número da parcela), então é seguro
+// chamar repetidas vezes sobre o mesmo lançamento.
+function autoReplicateInstallments(tx){
+  if(!tx)return 0;
   const m=/^(\d+)\s*\/\s*(\d+)$/.exec((tx.parcela||'').trim());
-  if(!m)return;
+  if(!m)return 0;
   const cur=parseInt(m[1],10),total=parseInt(m[2],10);
-  if(!(cur<total))return;
+  if(!(cur<total))return 0;
   const remaining=total-cur;
-  if(!confirm(`Criar as próximas ${remaining} parcela${remaining>1?'s':''} de "${tx.desc}" (${cur+1}/${total} até ${total}/${total}), uma por mês, com os mesmos dados?`))return;
   const existingParcs=new Set(S.transactions.filter(t=>t.desc===tx.desc&&t.catId===tx.catId).map(t=>t.parcela));
-  function addMonths(iso,n){
-    if(!iso)return '';
-    const d=new Date(iso+'T00:00:00');
-    d.setMonth(d.getMonth()+n);
-    return d.toISOString().slice(0,10);
-  }
   let created=0;
   for(let i=1;i<=remaining;i++){
     const parcNum=cur+i,parcStr=parcNum+'/'+total;
     if(existingParcs.has(parcStr))continue; // já existe — não duplica
     S.transactions.push({
       id:'tx_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6),
-      date:addMonths(tx.date,i),
-      dataPgto:tx.dataPgto?addMonths(tx.dataPgto,i):'',
+      date:addMonthsIso(tx.date,i),
+      dataPgto:tx.dataPgto?addMonthsIso(tx.dataPgto,i):'',
       desc:tx.desc,
       catId:tx.catId,
       grp:tx.grp,
@@ -5602,6 +5616,17 @@ function replicateInstallments(id){
     });
     created++;
   }
+  return created;
+}
+function replicateInstallments(id){
+  const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
+  const m=/^(\d+)\s*\/\s*(\d+)$/.exec((tx.parcela||'').trim());
+  if(!m)return;
+  const cur=parseInt(m[1],10),total=parseInt(m[2],10);
+  if(!(cur<total))return;
+  const remaining=total-cur;
+  if(!confirm(`Criar as próximas ${remaining} parcela${remaining>1?'s':''} de "${tx.desc}" (${cur+1}/${total} até ${total}/${total}), uma por mês, com os mesmos dados?`))return;
+  const created=autoReplicateInstallments(tx);
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
   alert(created>0?`✅ ${created} parcela${created>1?'s':''} futura${created>1?'s':''} criada${created>1?'s':''} (até ${total}/${total}).`:'As demais parcelas já existiam — nada foi criado.');
@@ -5677,6 +5702,9 @@ function saveTxEdit(){
   tx.contaId=isConta?contaVal:null;
   tx.cartaoId=isCard?contaVal:null;
   tx.pgto=(contaVal&&!isConta&&!isCard)?contaVal:null;
+  // Parcela "N/M" definida ou corrigida na edição já cria as parcelas
+  // futuras sozinha, sem precisar clicar no botão 🔁 depois.
+  autoReplicateInstallments(tx);
   closeModal();
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
@@ -5904,7 +5932,56 @@ function exportAllTxExcel(){
   const hoje=new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb,`lancamentos_${clientName}_todos_${hoje}.xlsx`);
 }
+// Gera sozinho o lançamento do mês em exibição em Lançamentos pra cada
+// categoria fixa marcada como recorrente (cat.recFixo) — com o valor do
+// lançamento mais recente dessa categoria (ou o orçado, se não houver
+// histórico). Roda uma vez por categoria+mês (controlado por
+// S.autoFixoDone): nunca recria se a pessoa apagar o lançamento gerado
+// depois, e nunca mexe num mês que já tem algum lançamento de verdade pra
+// essa categoria (importado ou manual) — só preenche a lacuna.
+function autoGenerateFixedTx(y,m){
+  if(!S.cats.fixas||!S.cats.fixas.some(c=>c.recFixo))return;
+  if(!S.autoFixoDone)S.autoFixoDone={};
+  const monthKey=`${y}-${String(m+1).padStart(2,'0')}`;
+  let changed=false;
+  S.cats.fixas.forEach(cat=>{
+    if(!cat.recFixo)return;
+    const doneKey=cat.id+'|'+monthKey;
+    if(S.autoFixoDone[doneKey])return;
+    S.autoFixoDone[doneKey]=true;
+    changed=true;
+    const inMonth=t=>{
+      const effDate=t.dataPgto||t.date;if(!effDate)return false;
+      const d=new Date(effDate+'T00:00:00');
+      return d.getFullYear()===y&&d.getMonth()===m;
+    };
+    if(S.transactions.some(t=>t.catId===cat.id&&inMonth(t)))return; // já tem lançamento de verdade
+    const prior=S.transactions
+      .filter(t=>t.catId===cat.id&&(t.dataPgto||t.date))
+      .filter(t=>{
+        const d=new Date((t.dataPgto||t.date)+'T00:00:00');
+        return d.getFullYear()<y||(d.getFullYear()===y&&d.getMonth()<m);
+      })
+      .sort((a,b)=>(b.dataPgto||b.date).localeCompare(a.dataPgto||a.date))[0];
+    const amount=prior?prior.amount:(getOrcVal(cat.id,y,m)||0);
+    if(!amount)return; // sem valor nenhum (nem histórico, nem orçado) — nada a lançar
+    S.transactions.push({
+      id:'tx_auto_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      date:`${y}-${String(m+1).padStart(2,'0')}-01`,
+      dataPgto:'',
+      desc:prior?prior.desc:cat.lbl,
+      catId:cat.id,grp:'fixas',
+      amount,
+      pgto:prior?(prior.pgto||null):null,
+      contaId:prior?(prior.contaId||null):null,
+      cartaoId:prior?(prior.cartaoId||null):null,
+      autoFixo:true,
+    });
+  });
+  if(changed)save();
+}
 function renderTxList(){
+  autoGenerateFixedTx(txViewYear,txViewMonth);
   // Update month label
   const monthLabel=new Date(txViewYear,txViewMonth).toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
   const mlEl=document.getElementById('tx-month-label');if(mlEl)mlEl.textContent=monthLabel;
@@ -7742,6 +7819,14 @@ function confirmCsvImport(){
     if(r.meioPgto)tx.meioPgto=r.meioPgto;
     S.transactions.unshift(tx);
   });
+  // Compra parcelada importada ("01/04" etc.) já entra com as parcelas
+  // futuras criadas sozinhas, sem precisar clicar no botão 🔁 depois.
+  let autoCreated=0;
+  toImport.forEach(r=>{
+    if(!r.parcela)return;
+    const tx=S.transactions.find(t=>t.desc===r.desc&&t.date===r.date&&t.parcela===r.parcela);
+    if(tx)autoCreated+=autoReplicateInstallments(tx);
+  });
   save();
   // Navigate to the month of the first imported transaction (use dataPgto if set)
   const navDate=toImport[0]?.dataPgto||toImport[0]?.date;
@@ -7751,7 +7836,7 @@ function confirmCsvImport(){
   }
   renderTxList();recalc();
   document.getElementById('csv-review-overlay').classList.remove('open');
-  alert(`${added} lançamentos importados com sucesso!`);
+  alert(`${added} lançamentos importados com sucesso!`+(autoCreated>0?` (+ ${autoCreated} parcela${autoCreated>1?'s':''} futura${autoCreated>1?'s':''} já criada${autoCreated>1?'s':''} automaticamente)`:''));
 }
 
 // ── MULTI-CLIENTE ─────────────────────────────────────────────────────────────
@@ -12779,13 +12864,16 @@ function applyBulkCat(){
   if(!cv||cv==='|'){alert('Selecione uma subcategoria antes de aplicar.');return;}
   if(!txSelectedIds.size)return;
   const[catId,grp]=cv.split('|');
-  S.transactions.forEach(tx=>{
-    if(!txSelectedIds.has(tx.id))return;
+  const changed=S.transactions.filter(tx=>txSelectedIds.has(tx.id));
+  changed.forEach(tx=>{
     tx.catId=catId;
     tx.grp=grp;
     tx.isRec=grp==='receita';
     rememberCat(tx.desc,catId);
   });
+  // Lançamentos com parcela "N/M" já ganham as parcelas futuras sozinhas
+  // ao serem classificados em lote, sem precisar clicar no botão 🔁 depois.
+  changed.forEach(tx=>autoReplicateInstallments(tx));
   const n=txSelectedIds.size;
   txSelectedIds.clear();
   closeModal();
