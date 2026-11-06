@@ -10863,33 +10863,53 @@ function parseCaixaExtrato(lines){
 
 // ── CEF Fatura ─────────────────────────────────────────────────────────────────
 // Line: DD/MM DESCRIÇÃO [CIDADE] VALOR D|C
+// A página "Informações Complementares" (compras parceladas de meses
+// anteriores) imprime DUAS tabelas lado a lado — como o pdf.js agrupa texto
+// por coordenada Y, as duas colunas caem numa linha só (ex.: "02/10 GuicheWeb
+// VOTUPORANGA 15,00D 12/01 Smiles Club Smil 10DE12 Barueri 43,70D"). Sem
+// separar por X, o regex pegava a linha inteira, grudava a descrição da
+// direita na da esquerda e descartava o lançamento da coluna direita
+// inteiro — a "segunda coluna" nunca era lida. x>=300 é a coluna direita em
+// todas as variações observadas desse layout (coluna esquerda nunca passa de
+// ~280; a direita sempre começa a partir de ~305).
+const CEF_FATURA_COL2_X=300;
 function parseCEFFatura(lines){
   const txns=[];
   const yr=new Date().getFullYear();
   const lineRe=/^(\d{1,2}\/\d{2})\s+(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s*([DC])$/i;
 
-  // Try to find year from fatura period
-  for(const line of lines){
-    const text=line.text;
-    if(shouldSkip(text))continue;
+  function parseCol(text){
+    if(shouldSkip(text))return;
     const m=text.match(lineRe);
-    if(!m)continue;
+    if(!m)return;
 
     const [,rawDate,rawDesc,amtStr,dc]=m;
     const [day,month]=rawDate.split('/');
     const date=`${day.padStart(2,'0')}/${month.padStart(2,'0')}/${yr}`;
     const amt=convParseBR(amtStr);
-    if(amt===null)continue;
+    if(amt===null)return;
     const isDebit=dc.toUpperCase()==='D';
     const value=isDebit?-amt:amt;
 
-    if(/pagamento|credito em conta|total da fatura anterior|total fatura anterior|obrigado pelo pagamento/i.test(rawDesc))continue;
+    if(/pagamento|credito em conta|total da fatura anterior|total fatura anterior|obrigado pelo pagamento/i.test(rawDesc))return;
 
     // Remove trailing city/country (all-caps, last word(s))
     const desc=rawDesc.replace(/\s+[A-ZÁÉÍÓÚ]{2,}(?:\/[A-ZÁÉÍÓÚ]{2,})?$/, '').trim();
-    if(shouldSkip(desc))continue;
+    if(shouldSkip(desc))return;
 
     txns.push({date,desc,value,cat:classifyTx(desc,value)});
+  }
+
+  for(const line of lines){
+    if(shouldSkip(line.text))continue;
+    if(line.items&&line.items.some(it=>it.x>=CEF_FATURA_COL2_X)){
+      const left=line.items.filter(it=>it.x<CEF_FATURA_COL2_X).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+      const right=line.items.filter(it=>it.x>=CEF_FATURA_COL2_X).map(it=>it.text).join(' ').replace(/\s+/g,' ').trim();
+      if(left)parseCol(left);
+      if(right)parseCol(right);
+    } else {
+      parseCol(line.text);
+    }
   }
   return txns;
 }
