@@ -2813,6 +2813,10 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <input type="checkbox" id="pgto-rec" checked style="width:16px;height:16px">
         <label for="pgto-rec" style="font-size:12px;color:var(--muted)">Recorrente — aparece todos os meses</label>
       </div>
+      <div id="pgto-month-only-wrap" style="display:none;margin-top:6px;align-items:center;gap:8px">
+        <input type="checkbox" id="pgto-month-only" style="width:16px;height:16px">
+        <label for="pgto-month-only" style="font-size:12px;color:var(--muted)">Alterar só <span id="pgto-month-only-lbl"></span> — não mexe nos outros meses</label>
+      </div>
       <div class="m-foot">
         <button class="btn btn-o" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-p" id="pgto-modal-btn" onclick="savePgto()">Adicionar</button>
@@ -6137,6 +6141,9 @@ function renderCardsBar(){
 }
 
 // ── PGTO ENTRIES ──────────────────────────────────────────────────────────────
+// Chave "AAAA-MM" do mês em exibição no Fluxo de Pgto — usada pra excluir ou
+// editar um lançamento recorrente só naquele mês (ver skipMonths/overrides).
+function pgtoMonthKey(y,m){return `${y}-${String(m+1).padStart(2,'0')}`;}
 function savePgto(){
   const desc=document.getElementById('pgto-desc').value.trim();
   const dia=parseInt(document.getElementById('pgto-dia').value)||0;
@@ -6145,30 +6152,77 @@ function savePgto(){
   const rec=document.getElementById('pgto-rec').checked;
   if(!desc||!dia||val<=0){alert('Preencha todos os campos.');return;}
   const editId=document.getElementById('pgto-edit-id').value;
+  const monthOnly=document.getElementById('pgto-month-only').checked;
   if(editId){
     const e=S.pgtoEntries.find(x=>x.id===editId);
     if(e){
-      e.desc=desc;e.dia=dia;e.tipo=tipo;e.valor=val;e.recorrente=rec;
-      e.year=rec?null:(e.year!=null?e.year:pgtoYear);
-      e.month=rec?null:(e.month!=null?e.month:pgtoMonth);
+      if(e.recorrente&&monthOnly){
+        // Só este mês: guarda como exceção, sem tocar no lançamento base
+        // (que continua valendo nos outros meses) nem nos outros meses já
+        // lançados.
+        if(!e.overrides)e.overrides={};
+        const key=pgtoMonthKey(pgtoYear,pgtoMonth);
+        e.overrides[key]={desc,dia,tipo,valor:val};
+        if(e.skipMonths)e.skipMonths=e.skipMonths.filter(k=>k!==key);
+      } else {
+        e.desc=desc;e.dia=dia;e.tipo=tipo;e.valor=val;e.recorrente=rec;
+        e.year=rec?null:(e.year!=null?e.year:pgtoYear);
+        e.month=rec?null:(e.month!=null?e.month:pgtoMonth);
+      }
     }
   }else{
     S.pgtoEntries.push({id:'pe_'+Date.now(),desc,dia,tipo,valor:val,recorrente:rec,year:rec?null:pgtoYear,month:rec?null:pgtoMonth});
   }
   renderFluxoPgto();save();closeModal();
 }
-function delPgtoEntry(id){S.pgtoEntries=S.pgtoEntries.filter(e=>e.id!==id);renderFluxoPgto();save();}
+// Excluir um lançamento recorrente pergunta se é só deste mês (vira uma
+// exceção em skipMonths, os outros meses continuam normais) ou a recorrência
+// inteira (remove de verdade, afeta todos os meses). Lançamento de um mês só
+// (não recorrente) sempre exclui direto, como já era.
+function delPgtoEntry(id){
+  const e=S.pgtoEntries.find(x=>x.id===id);if(!e)return;
+  if(e.recorrente){
+    const key=pgtoMonthKey(pgtoYear,pgtoMonth);
+    const lbl=MESES_PT[pgtoMonth]+'/'+pgtoYear;
+    if(confirm(`Excluir "${e.desc}" só de ${lbl}? Os outros meses continuam com esse lançamento normalmente.\n\nClique Cancelar para excluir a recorrência inteira (todos os meses).`)){
+      if(!e.skipMonths)e.skipMonths=[];
+      if(!e.skipMonths.includes(key))e.skipMonths.push(key);
+      if(e.overrides)delete e.overrides[key];
+    } else {
+      if(!confirm(`Tem certeza? Isso remove "${e.desc}" de TODOS os meses, não só de ${lbl}.`))return;
+      S.pgtoEntries=S.pgtoEntries.filter(x=>x.id!==id);
+    }
+  } else {
+    S.pgtoEntries=S.pgtoEntries.filter(x=>x.id!==id);
+  }
+  renderFluxoPgto();save();
+}
 // Abre o modal de Entrada/Saída já preenchido com o lançamento existente do
 // Fluxo de Pgto, permitindo editar em vez de só excluir e recriar do zero.
+// Pra um lançamento recorrente, pré-preenche com a exceção deste mês se já
+// existir uma (ver savePgto/pgto-month-only), senão com o valor base.
 function editPgtoEntry(id){
   const e=S.pgtoEntries.find(x=>x.id===id);if(!e)return;
   openModal('pgto');
+  const key=pgtoMonthKey(pgtoYear,pgtoMonth);
+  const ov=e.recorrente&&e.overrides?e.overrides[key]:null;
+  const eff=ov||e;
   document.getElementById('pgto-edit-id').value=e.id;
-  document.getElementById('pgto-desc').value=e.desc||'';
-  document.getElementById('pgto-dia').value=e.dia||'';
-  document.getElementById('pgto-tipo').value=e.tipo||'saida';
-  document.getElementById('pgto-val').value=e.valor||'';
+  document.getElementById('pgto-desc').value=eff.desc||'';
+  document.getElementById('pgto-dia').value=eff.dia||'';
+  document.getElementById('pgto-tipo').value=eff.tipo||'saida';
+  document.getElementById('pgto-val').value=eff.valor||'';
   document.getElementById('pgto-rec').checked=!!e.recorrente;
+  const moWrap=document.getElementById('pgto-month-only-wrap');
+  const moChk=document.getElementById('pgto-month-only');
+  if(e.recorrente){
+    moWrap.style.display='flex';
+    document.getElementById('pgto-month-only-lbl').textContent=MESES_PT[pgtoMonth]+'/'+pgtoYear;
+    moChk.checked=!!ov;
+  } else {
+    moWrap.style.display='none';
+    moChk.checked=false;
+  }
   document.getElementById('pgto-modal-title').textContent='Editar Entrada / Saída';
   document.getElementById('pgto-modal-btn').textContent='Salvar';
 }
@@ -6339,9 +6393,18 @@ function renderFluxoPgto(){
   const events=[];
 
   // 1. Pgto entries (recorrente or matching this month)
+  const pgtoKey=pgtoMonthKey(y,m);
   S.pgtoEntries.forEach(e=>{
     const matches=e.recorrente||(e.year===y&&e.month===m);
-    if(matches) events.push({dia:e.dia,desc:e.desc,tipo:e.tipo,valor:e.valor,isCard:false,id:e.id,canDel:true});
+    if(!matches)return;
+    // Exceção "excluir só este mês" (ver delPgtoEntry) — não entra no fluxo
+    // deste mês, mas continua normal nos demais.
+    if(e.recorrente&&e.skipMonths&&e.skipMonths.includes(pgtoKey))return;
+    // Exceção "alterar só este mês" (ver savePgto/pgto-month-only) — usa os
+    // dados da exceção em vez do lançamento base, só neste mês.
+    const ov=e.recorrente&&e.overrides?e.overrides[pgtoKey]:null;
+    const eff=ov||e;
+    events.push({dia:eff.dia,desc:eff.desc,tipo:eff.tipo,valor:eff.valor,isCard:false,id:e.id,canDel:true});
   });
 
   // 2. Credit card bills
@@ -6974,6 +7037,8 @@ function openModal(type,goalId){
     document.getElementById('pgto-edit-id').value='';
     document.getElementById('pgto-desc').value='';document.getElementById('pgto-dia').value='';document.getElementById('pgto-val').value='';
     document.getElementById('pgto-tipo').value='entrada';document.getElementById('pgto-rec').checked=true;
+    document.getElementById('pgto-month-only-wrap').style.display='none';
+    document.getElementById('pgto-month-only').checked=false;
     document.getElementById('pgto-modal-title').textContent='Adicionar Entrada / Saída';
     document.getElementById('pgto-modal-btn').textContent='Adicionar';
   }
