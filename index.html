@@ -1777,6 +1777,8 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <div id="tx-bulk-bar" style="display:none;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:10px;align-items:center;gap:10px;flex-wrap:wrap">
       <span id="tx-bulk-count" style="font-size:13px;font-weight:600;white-space:nowrap;color:var(--primary)"></span>
       <button class="btn btn-p btn-sm" onclick="openBulkCatModal()" style="white-space:nowrap">→ Classificar categoria</button>
+      <button class="btn btn-o btn-sm" onclick="applyBulkPago(true)" style="white-space:nowrap;color:var(--ok);border-color:var(--ok)">✓ Marcar como pago</button>
+      <button class="btn btn-o btn-sm" onclick="applyBulkPago(false)" style="white-space:nowrap">↺ Desmarcar pago</button>
       <button class="btn btn-o btn-sm" onclick="applyBulkDelete()" style="white-space:nowrap;color:#c0392b;border-color:#c0392b">🗑 Excluir selecionados</button>
       <button class="btn btn-o btn-sm" onclick="txDeselectAll()" style="white-space:nowrap">Desmarcar</button>
     </div>
@@ -1791,6 +1793,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
           <th style="cursor:pointer;user-select:none" onclick="txSort('cat')">Categoria <span id="srt-cat"></span></th>
           <th>Pgto</th>
           <th class="r" style="cursor:pointer;user-select:none" onclick="txSort('amount')">Valor <span id="srt-amount"></span></th>
+          <th style="text-align:center" title="Confirma que essa despesa/entrada já aconteceu de verdade — útil pra lançamentos futuros gerados automaticamente (recorrentes/parcelas)">Pago</th>
           <th></th>
         </tr></thead>
         <tbody id="tx-body"></tbody>
@@ -5557,7 +5560,7 @@ function addTx(){
   // marca o lançamento pra ele ABATER da categoria em vez de somar (encontro de contas).
   const creditoCatEl=document.getElementById('tx-credito-cat');
   const creditoNaCategoria=!!(creditoCatEl&&creditoCatEl.checked&&['fixas','var','ct'].includes(grp));
-  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,cartaoId:isCard?pgtoVal:null,amount,creditoNaCategoria,contaId});
+  S.transactions.unshift({id:'tx_'+Date.now(),date,desc,catId,grp,pgto,cartaoId:isCard?pgtoVal:null,amount,creditoNaCategoria,contaId,pago:true});
   document.getElementById('tx-desc').value='';
   document.getElementById('tx-val').value='';
   if(creditoCatEl)creditoCatEl.checked=false;
@@ -5569,6 +5572,29 @@ function delTx(id){
   S.transactions=S.transactions.filter(t=>t.id!==id);
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();renderTxList();renderFluxoPgto();save();
+}
+// Confirma que um lançamento (em especial os futuros gerados sozinhos por
+// recorrência/parcela — ver autoGenerateFixedTx/autoReplicateInstallments)
+// já aconteceu de verdade. Só atualiza o estilo da linha, sem recarregar a
+// tabela inteira (evita perder o scroll/foco a cada clique).
+function toggleTxPago(id,checked){
+  const tx=S.transactions.find(t=>t.id===id);if(!tx)return;
+  tx.pago=checked;
+  save();
+  const chk=document.querySelector(`#tx-body input[data-pago-id="${id}"]`);
+  const row=chk?chk.closest('tr'):null;
+  if(row){
+    const isFutureUnpaid=!checked&&(tx.autoFixo||(tx.id||'').startsWith('tx_auto_'));
+    row.style.opacity=checked?'.6':(isFutureUnpaid?'.75':'');
+  }
+}
+function applyBulkPago(paid){
+  if(!txSelectedIds.size)return;
+  S.transactions.forEach(tx=>{if(txSelectedIds.has(tx.id))tx.pago=paid;});
+  const n=txSelectedIds.size;
+  txSelectedIds.clear();
+  save();renderTxList();
+  setTimeout(()=>alert(`${paid?'✓':'↺'} ${n} lançamento${n>1?'s':''} ${paid?'marcado(s) como pago':'desmarcado(s)'}.`),50);
 }
 function clearTx(){
   if(!S.transactions.length)return;
@@ -5617,6 +5643,8 @@ function autoReplicateInstallments(tx){
       cartaoId:tx.cartaoId||null,
       creditoNaCategoria:tx.creditoNaCategoria||false,
       isRec:tx.isRec||false,
+      autoFixo:true, // parcela futura prevista — só confirmada quando marcada como "Pago"
+      pago:false,
     });
     created++;
   }
@@ -5980,6 +6008,7 @@ function autoGenerateFixedTx(y,m){
       contaId:prior?(prior.contaId||null):null,
       cartaoId:prior?(prior.cartaoId||null):null,
       autoFixo:true,
+      pago:false, // previsão — só vira confirmado quando a pessoa marcar "Pago"
     });
   });
   if(changed)save();
@@ -6053,13 +6082,18 @@ function renderTxList(){
     const parcTotal=parcM?parseInt(parcM[2],10):0;
     const replBtn=parcM&&parseInt(parcM[1],10)<parcTotal
       ?`<button class="edit-btn" onclick="replicateInstallments('${tx.id}')" title="Criar as próximas parcelas (até ${parcTotal}/${parcTotal}), uma por mês">🔁</button>`:'';
-    body.innerHTML+=`<tr>
+    // Linha de um lançamento futuro (gerado sozinho por recorrência/parcela,
+    // ainda não confirmado) fica meio apagada até a pessoa marcar como pago —
+    // ajuda a diferenciar previsão de dinheiro que já saiu/entrou de verdade.
+    const isFutureUnpaid=!tx.pago&&(tx.autoFixo||(tx.id||'').startsWith('tx_auto_'));
+    body.innerHTML+=`<tr${tx.pago?' style="opacity:.6"':isFutureUnpaid?' style="opacity:.75"':''}>
       <td class="td-chk" style="padding:0 0 0 10px;width:36px"><input type="checkbox" data-id="${tx.id}" onchange="txToggleRow(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--primary)"></td>
       <td class="td-date"${dtTitle}>${ds}</td>
       <td class="td-desc">${tx.desc}${parcBadge}</td>
       <td class="td-cat"><span class="badge ${bClass}">${catLbl}</span></td>
       <td class="td-pgto" style="font-size:11px;color:var(--muted)">${pgtoLbl}</td>
       <td class="${amtClass} td-amt">${prefix} ${fmt(tx.amount)}</td>
+      <td class="td-pago" style="text-align:center"><input type="checkbox" data-pago-id="${tx.id}" ${tx.pago?'checked':''} onchange="toggleTxPago('${tx.id}',this.checked)" title="Marcar como pago" style="cursor:pointer;width:16px;height:16px;accent-color:var(--ok)"></td>
       <td class="td-del td-act">${replBtn}<button class="edit-btn" onclick="openTxEdit('${tx.id}')" title="Editar">✏<span class="edit-btn-lbl">Editar</span></button><button class="del-btn" onclick="delTx('${tx.id}')" title="Excluir">×</button></td>
     </tr>`;
   });
@@ -7899,6 +7933,7 @@ function confirmCsvImport(){
       pgto: r.meioPgto&&(PGTO_LBLS[r.meioPgto]||isCartaoCredito(r.meioPgto)) ? r.meioPgto : 'pix',
       cartaoId: isCartaoCredito(r.meioPgto) ? r.meioPgto : null,
       amount:r.amount,
+      pago:true, // veio de um extrato/fatura de verdade — já aconteceu
     };
     if(r.parcela)tx.parcela=r.parcela;
     if(r.dataPgto)tx.dataPgto=r.dataPgto;
