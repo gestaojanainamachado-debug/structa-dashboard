@@ -3870,6 +3870,7 @@ function renderOrcMonth(){
   if(el)el.textContent=`${ORC_MONTHS[orcViewMonth]} ${orcViewYear}`;
   ['receita','ct','fixas','var','inv'].forEach(g=>renderGroup(g));
   recalc();
+  renderSaudeFinanceira(); // o painel precisa recalcular ao trocar de mês (⬅️➡️), senão fica com o % do mês anterior
 }
 function orcCopyFromPrev(){
   let py=orcViewYear,pm=orcViewMonth-1;if(pm<0){pm=11;py--;}
@@ -4893,8 +4894,10 @@ function renderSaudeFinanceira(){
     return;
   }
   const txMap=getTxMap(orcViewYear,orcViewMonth);
+  // Comprometimento = Despesas Fixas + Variáveis apenas (sem Custos com
+  // Trabalho e sem Investimento, que tem seu próprio pilar/meta ao lado).
   let totalDesp=0,totalInv=0;
-  ['ct','fixas','var'].forEach(g=>{
+  ['fixas','var'].forEach(g=>{
     (S.cats[g]||[]).forEach(cat=>{
       totalDesp+=txMap[cat.id]!==undefined?(txMap[cat.id]||0):0;
     });
@@ -4909,7 +4912,7 @@ function renderSaudeFinanceira(){
   // aconteceu, sem misturar as duas bases num único número (ver correção acima).
   const rendaOrc=getOrcRendaOrc(orcViewYear,orcViewMonth)||0;
   let totalDespOrc=0;
-  ['ct','fixas','var'].forEach(g=>{
+  ['fixas','var'].forEach(g=>{
     (S.cats[g]||[]).forEach(cat=>{totalDespOrc+=getOrcVal(cat.id,orcViewYear,orcViewMonth)||0;});
   });
   const pctCompOrc=rendaOrc>0?Math.round(totalDespOrc/rendaOrc*100):0;
