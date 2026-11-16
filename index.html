@@ -3833,6 +3833,22 @@ function setOrcVal(catId,val){
   recalc();save();
 }
 function sumOrc(cats,y,m){return(cats||[]).reduce((s,c)=>s+(getOrcVal(c.id,y,m)||0),0);}
+// Observação é por mês (ex.: "13º + plantão" só faz sentido em Dezembro) —
+// ao contrário do orçado (que repete todo mês até a pessoa mudar), ela NÃO
+// tem fallback pro valor de outro mês: cada mês começa em branco e só mostra
+// o que foi escrito nele mesmo.
+function getOrcObs(catId,y,m){
+  const mb=_getMB(orcMonthKey(y,m));
+  return(mb.obs&&mb.obs[catId]!==undefined)?mb.obs[catId]:'';
+}
+function setOrcObs(catId,val){
+  const key=orcMonthKey();
+  if(!S.monthlyBudgets)S.monthlyBudgets={};
+  if(!S.monthlyBudgets[key])S.monthlyBudgets[key]={};
+  if(!S.monthlyBudgets[key].obs)S.monthlyBudgets[key].obs={};
+  S.monthlyBudgets[key].obs[catId]=val;
+  save();
+}
 // Renda líquida mensal é só o somatório do orçado das categorias de receita
 // abaixo (igual às seções de despesas) — não é mais um valor digitado à parte.
 function getOrcRendaOrc(y,m){return sumOrc(S.cats.receita||[],y,m);}
@@ -4830,6 +4846,18 @@ function bootApp(){
   if(!S.merchantNames)S.merchantNames={};
   if(!S.calcInputs)S.calcInputs={};
   if(!S.autoFixoDone)S.autoFixoDone={};
+  // Observação de categoria era global (mesma em todo mês) — agora é por mês
+  // (ver getOrcObs/setOrcObs). Migra o que já tinha sido escrito pro mês
+  // atual (orcViewYear/orcViewMonth, já o mês real no momento do boot) em vez
+  // de simplesmente descartar, e limpa o campo antigo pra rodar só uma vez.
+  ['receita','ct','fixas','var','inv'].forEach(g=>{
+    (S.cats[g]||[]).forEach(cat=>{
+      if(cat.obs){
+        setOrcObs(cat.id,cat.obs);
+        delete cat.obs;
+      }
+    });
+  });
   seedMerchants();
   renderAll();buildCatSelect();buildPgtoSelect();buildContaSelects();initCharts();recalc();renderTxList();renderFluxoPgto();renderGoals();initGoalIcons();renderFases();
   renderOrcMonth();
@@ -5308,8 +5336,8 @@ function makeRow(grp,cat,fromTx,txVal){
       value="${rv||''}" ${fromTx?'readonly title="Calculado dos lançamentos"':''}
       oninput="${fromTx?'':'setCatVal(\''+grp+'\',\''+cat.id+'\',\'real\',+this.value||0)'}">
     <div class="var-cell neutral" id="var-${cat.id}">—</div>
-    <input class="obs-cell" type="text" placeholder="Observação…" value="${esc(cat.obs||'')}"
-      oninput="setCatVal('${grp}','${cat.id}','obs',this.value)">
+    <input class="obs-cell" type="text" placeholder="Observação…" value="${esc(getOrcObs(cat.id,orcViewYear,orcViewMonth))}"
+      oninput="setOrcObs('${cat.id}',this.value)">
     <button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button>`;
   return d;
 }
