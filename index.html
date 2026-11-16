@@ -1080,6 +1080,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
 .saude-item{border-radius:9px;padding:13px 15px;border:1.5px solid var(--border)}
 .saude-item-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
 .saude-item-val{font-size:16px;font-weight:700}
+#si-comp-val{font-size:14px;white-space:nowrap}
 .saude-item-status{font-size:10px;margin-top:3px}
 
 /* ── EXPANSÃO PATRIMONIAL ───────────────────────────────────────────── */
@@ -4903,6 +4904,15 @@ function renderSaudeFinanceira(){
   });
   const pctInvest=rendaReal>0?Math.round(totalInv/rendaReal*100):0;
   const pctComp=rendaReal>0?Math.round(totalDesp/rendaReal*100):0;
+  // Comprometimento orçado = despesas orçadas / renda orçada do mês — mostrado
+  // ao lado do realizado pra comparar o que foi planejado com o que de fato
+  // aconteceu, sem misturar as duas bases num único número (ver correção acima).
+  const rendaOrc=getOrcRendaOrc(orcViewYear,orcViewMonth)||0;
+  let totalDespOrc=0;
+  ['ct','fixas','var'].forEach(g=>{
+    (S.cats[g]||[]).forEach(cat=>{totalDespOrc+=getOrcVal(cat.id,orcViewYear,orcViewMonth)||0;});
+  });
+  const pctCompOrc=rendaOrc>0?Math.round(totalDespOrc/rendaOrc*100):0;
   const reservaAtual=parseFloat(document.getElementById('seg-reserva-atual')?.value)||S.segReservaAtual||0;
   const mesesCobrir=parseInt(document.getElementById('seg-reserva-meses')?.value)||6;
   const despMensal=totalDesp/1||1;
@@ -4944,7 +4954,7 @@ function renderSaudeFinanceira(){
     if(el)el.style.background=cls==='ok'?'#e2f0e8':cls==='warn'?'#fef5e0':'#fde8e8';
   }
   setItem('si-invest',pctInvest+'%',pctInvest>=15?'ok':pctInvest>=10?'warn':'bad','Meta: ≥ 15% da renda');
-  setItem('si-comp',pctComp+'%',pctComp<=70?'ok':pctComp<=85?'warn':'bad','Ideal: ≤ 70% da renda');
+  setItem('si-comp','Orç '+pctCompOrc+'% · Real '+pctComp+'%',pctComp<=70?'ok':pctComp<=85?'warn':'bad','Ideal: ≤ 70% da renda');
   setItem('si-reserva',mesesCobertos+' meses',mesesCobertos>=mesesCobrir?'ok':mesesCobertos>=mesesCobrir/2?'warn':'bad','Meta: '+mesesCobrir+' meses');
 }
 
