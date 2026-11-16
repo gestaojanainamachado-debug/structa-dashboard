@@ -8014,15 +8014,26 @@ async function renderClientScreen(){
       masterRenderConsultores();
     }
   }
-  // Merge: evita duplicatas por slug
-  const localSlugs=new Set(localClients.map(c=>c.slug));
-  const allClients=[
-    ...localClients,
-    ...sbClients.filter(c=>!localSlugs.has(c.slug))
-  ];
+  // Merge: evita duplicatas por slug E por nome. Um cliente pode existir tanto
+  // localmente (sobra de testes de antes da migração pra nuvem) quanto no
+  // Supabase sob um slug DIFERENTE (ex.: local "luisa_borges" x nuvem
+  // "luisa_analise_base") — aí o dedup só por slug não pegava e ele aparecia
+  // duas vezes na lista, dando a impressão de "duplicar de novo" ao excluir
+  // só uma das cópias. O Supabase é a fonte de verdade (sincroniza entre
+  // dispositivos e já tem o consultor certo), então ele tem prioridade:
+  // some a cópia local de mesmo nome, mesmo com slug diferente.
+  const normName=s=>convNorm(s||'').replace(/\s+/g,' ').trim();
+  const sbSlugs=new Set(sbClients.map(c=>c.slug));
+  const sbNamesNorm=new Set(sbClients.map(c=>normName(c.name)).filter(Boolean));
+  const localOnly=localClients.filter(c=>!sbSlugs.has(c.slug)&&!sbNamesNorm.has(normName(c.name)));
+  const allClients=[...sbClients, ...localOnly];
   if(!allClients.length){el.innerHTML='<div class="cs-empty">Nenhum cliente cadastrado ainda.</div>';updateBackupStatus();return;}
   el.innerHTML=allClients.map(c=>{
-    const consultorTag=isMaster()&&c.advisorId
+    // advisor_id vem preenchido com o id do próprio master pra cliente que
+    // ele mesmo cadastrou (não repassado a um consultor) — sem checar isso,
+    // caía no fallback "—" porque advisorNameById só tem perfis role='advisor'.
+    const isOwnedByMaster=!c.advisorId||(_sbUser&&c.advisorId===_sbUser.id);
+    const consultorTag=isMaster()&&!isOwnedByMaster
       ?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: ${esc(advisorNameById[c.advisorId]||'—')}</div>`
       :(isMaster()?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: você (master)</div>`:'');
     return `
