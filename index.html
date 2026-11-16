@@ -4879,23 +4879,27 @@ function bootApp(){
 // ── SAÚDE FINANCEIRA ───────────────────────────────────────────────────────
 let _saudeChart=null;
 function renderSaudeFinanceira(){
-  const rendaReal=S.rendaReal||getOrcRendaOrc()||0;
+  // Usa sempre o REALIZADO do mês em exibição no Orçamento (txMap/getTxRenda),
+  // nunca o orçado como substituto: antes, categoria sem lançamento caía no
+  // fallback cat.real||cat.orc e, como cat.real também é 0 (falsy), acabava
+  // usando o valor ORÇADO da categoria como se fosse realizado — inflando o
+  // % de comprometimento para além de 100% mesmo sem nenhum gasto de fato
+  // lançado (ex.: 168% só por causa do orçamento planejado).
+  const rendaReal=getTxRenda(orcViewYear,orcViewMonth)||0;
   if(!rendaReal){
     document.getElementById('saude-label-sub').textContent='Preencha o orçamento do mês para calcular.';
     if(_saudeChart){_saudeChart.destroy();_saudeChart=null;}
     return;
   }
-  const txMap=typeof getTxMap==='function'?getTxMap():{};
+  const txMap=getTxMap(orcViewYear,orcViewMonth);
   let totalDesp=0,totalInv=0;
   ['ct','fixas','var'].forEach(g=>{
     (S.cats[g]||[]).forEach(cat=>{
-      const v=txMap[cat.id]!==undefined?(txMap[cat.id]||0):(cat.real||cat.orc||0);
-      totalDesp+=v;
+      totalDesp+=txMap[cat.id]!==undefined?(txMap[cat.id]||0):0;
     });
   });
   (S.cats.inv||[]).forEach(cat=>{
-    const v=txMap[cat.id]!==undefined?(txMap[cat.id]||0):(cat.real||cat.orc||0);
-    totalInv+=v;
+    totalInv+=txMap[cat.id]!==undefined?(txMap[cat.id]||0):0;
   });
   const pctInvest=rendaReal>0?Math.round(totalInv/rendaReal*100):0;
   const pctComp=rendaReal>0?Math.round(totalDesp/rendaReal*100):0;
