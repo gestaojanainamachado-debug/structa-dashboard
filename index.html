@@ -5281,11 +5281,12 @@ function renderDespesas(){
   function renderSection(byNome,grp,label){
     if(!Object.keys(byNome).length)return;
     const sh=document.createElement('div');sh.className='despesas-sec-hdr';sh.textContent=label;el.appendChild(sh);
-    const done=new Set();
-    [...GRP_ORDER,...Object.keys(byNome)].forEach(nome=>{
-      if(done.has(nome)||!byNome[nome])return;done.add(nome);
+    // Grupo (classe) e categorias dentro dele em ordem alfabética — não mais
+    // a ordem fixa de GRP_ORDER nem a ordem de arrastar-e-soltar.
+    Object.keys(byNome).sort((a,b)=>a.localeCompare(b,'pt')).forEach(nome=>{
       let orcSum=0,realSum=0;
-      byNome[nome].forEach(cat=>{
+      const catsOrdenadas=[...byNome[nome]].sort((a,b)=>a.lbl.localeCompare(b.lbl,'pt'));
+      catsOrdenadas.forEach(cat=>{
         orcSum+=getOrcVal(cat.id)||0;
         const ft=txMap[cat.id]!==undefined;
         realSum+=ft?(txMap[cat.id]||0):(cat.real||0);
@@ -5295,7 +5296,7 @@ function renderDespesas(){
       const sid=grpSumId(grp,nome);
       hdr.innerHTML=`<span>📁 ${esc(nome)}</span><span class="grp-sum orc" id="${sid}-o">${fmt(orcSum)}</span><span class="grp-sum real" id="${sid}-r">${fmt(realSum)}</span><span></span><span></span><span></span>`;
       wrap.appendChild(hdr);
-      byNome[nome].forEach(cat=>{
+      catsOrdenadas.forEach(cat=>{
         const ft=txMap[cat.id]!==undefined;
         wrap.appendChild(makeRow(grp,cat,ft,txMap[cat.id]||0));
       });
