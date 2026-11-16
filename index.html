@@ -2884,12 +2884,17 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
         <div class="fld"><label>Parcela (ex: 2/6)</label><input type="text" id="etx-parcela" placeholder="ex: 2/6 ou vazio"></div>
         <div class="fld"><label>Valor (R$)</label><input type="text" inputmode="decimal" class="val-inp" id="etx-valor" placeholder="0,00" onblur="dec2Mask(this)"></div>
         <div class="fld"><label>Grupo</label><select id="etx-cat-grp" onchange="filterCatSub('etx-cat-grp','etx-cat')"></select></div>
-        <div class="fld"><label>Subcategoria</label><select id="etx-cat"></select></div>
+        <div class="fld"><label>Subcategoria</label><select id="etx-cat" onchange="etxUpdateRecFixo()"></select></div>
         <div class="fld"><label>Conta/Cartão/Forma de Pgto</label><select id="etx-conta"><option value="">— não informado —</option></select></div>
         <div class="fld full"><label>Descrição</label><input type="text" id="etx-desc" maxlength="80"></div>
         <div class="fld full" id="etx-credito-wrap">
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer" title="Marque quando este valor é um reembolso/estorno que reduz o gasto da categoria escolhida (ex: um amigo te devolveu parte de uma despesa)">
             <input type="checkbox" id="etx-credito-cat" style="width:14px;height:14px;accent-color:var(--primary)"> É reembolso/estorno (abate da categoria)
+          </label>
+        </div>
+        <div class="fld full" id="etx-recfixo-wrap" style="display:none">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer" title="Quando marcado, essa categoria (Despesa Fixa) passa a lançar sozinha todo mês, com o último valor conhecido, sem precisar importar ou digitar de novo">
+            <input type="checkbox" id="etx-recfixo" style="width:14px;height:14px;accent-color:var(--primary)"> 🔁 Categoria recorrente — lançar sozinha todo mês
           </label>
         </div>
       </div>
@@ -5305,16 +5310,8 @@ function makeRow(grp,cat,fromTx,txVal){
     <div class="var-cell neutral" id="var-${cat.id}">—</div>
     <input class="obs-cell" type="text" placeholder="Observação…" value="${esc(cat.obs||'')}"
       oninput="setCatVal('${grp}','${cat.id}','obs',this.value)">
-    <span style="display:flex;gap:2px">${grp==='fixas'?`<button class="del-btn" style="color:${cat.recFixo?'var(--ok)':'var(--muted)'}" onclick="toggleCatRecFixo('${cat.id}')" title="${cat.recFixo?'Recorrente: lança o lançamento sozinho todo mês (clique pra desativar)':'Marcar como recorrente — lançar o lançamento sozinho todo mês, com o último valor conhecido'}">🔁</button>`:''}<button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button></span>`;
+    <button class="del-btn" onclick="delCat('${grp}','${cat.id}')" title="Remover">×</button>`;
   return d;
-}
-// Liga/desliga a geração automática do lançamento mensal pra uma categoria
-// fixa (ver autoGenerateFixedTx) — ao navegar pra um mês sem lançamento
-// dessa categoria, o sistema cria um sozinho com o último valor conhecido.
-function toggleCatRecFixo(catId){
-  const c=(S.cats.fixas||[]).find(x=>x.id===catId);if(!c)return;
-  c.recFixo=!c.recFixo;
-  renderDespesas();save();
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
 
@@ -5451,6 +5448,26 @@ function filterCatSub(grpSelId,catSelId,restoreVal){
   } else {
     const chk=document.getElementById('tx-credito-cat');
     if(chk){const fld=chk.closest('.fld');if(fld)fld.style.display=isDespGrp?'':'none';}
+  }
+  if(catSelId==='etx-cat')etxUpdateRecFixo();
+}
+// Mostra o checkbox "Categoria recorrente" (ver autoGenerateFixedTx) só
+// quando a subcategoria escolhida na edição do lançamento é uma Despesa
+// Fixa de verdade — recFixo é um atributo da categoria, não da transação,
+// então o checkbox reflete/grava direto em S.cats.fixas.
+function etxUpdateRecFixo(){
+  const sel=document.getElementById('etx-cat');
+  const wrap=document.getElementById('etx-recfixo-wrap');
+  const chk=document.getElementById('etx-recfixo');
+  if(!sel||!wrap||!chk)return;
+  const [catId,grp]=(sel.value||'').split('|');
+  if(grp==='fixas'&&catId){
+    const cat=(S.cats.fixas||[]).find(c=>c.id===catId);
+    wrap.style.display='';
+    chk.checked=!!(cat&&cat.recFixo);
+  } else {
+    wrap.style.display='none';
+    chk.checked=false;
   }
 }
 const PGTO_LBLS={
@@ -5726,6 +5743,13 @@ function saveTxEdit(){
   tx.desc=document.getElementById('etx-desc').value.trim()||tx.desc;
   const cv=document.getElementById('etx-cat').value;
   if(cv&&cv!=='|'){const[catId,grp]=cv.split('|');tx.catId=catId;tx.grp=grp;tx.isRec=grp==='receita';rememberCat(tx.desc,catId);}
+  // Liga/desliga a geração automática do lançamento mensal pra essa categoria
+  // (ver autoGenerateFixedTx) — só existe quando a subcategoria é Despesa Fixa.
+  if(tx.grp==='fixas'){
+    const cat=(S.cats.fixas||[]).find(c=>c.id===tx.catId);
+    const recEl=document.getElementById('etx-recfixo');
+    if(cat&&recEl)cat.recFixo=recEl.checked;
+  }
   const creditoEl=document.getElementById('etx-credito-cat');
   tx.creditoNaCategoria=!!(creditoEl&&creditoEl.checked&&['fixas','var','ct'].includes(tx.grp));
   const contaVal=document.getElementById('etx-conta')?.value||'';
@@ -8035,15 +8059,26 @@ async function renderClientScreen(){
       masterRenderConsultores();
     }
   }
-  // Merge: evita duplicatas por slug
-  const localSlugs=new Set(localClients.map(c=>c.slug));
-  const allClients=[
-    ...localClients,
-    ...sbClients.filter(c=>!localSlugs.has(c.slug))
-  ];
+  // Merge: evita duplicatas por slug E por nome. Um cliente pode existir tanto
+  // localmente (sobra de testes de antes da migração pra nuvem) quanto no
+  // Supabase sob um slug DIFERENTE (ex.: local "luisa_borges" x nuvem
+  // "luisa_analise_base") — aí o dedup só por slug não pegava e ele aparecia
+  // duas vezes na lista, dando a impressão de "duplicar de novo" ao excluir
+  // só uma das cópias. O Supabase é a fonte de verdade (sincroniza entre
+  // dispositivos e já tem o consultor certo), então ele tem prioridade:
+  // some a cópia local de mesmo nome, mesmo com slug diferente.
+  const normName=s=>convNorm(s||'').replace(/\s+/g,' ').trim();
+  const sbSlugs=new Set(sbClients.map(c=>c.slug));
+  const sbNamesNorm=new Set(sbClients.map(c=>normName(c.name)).filter(Boolean));
+  const localOnly=localClients.filter(c=>!sbSlugs.has(c.slug)&&!sbNamesNorm.has(normName(c.name)));
+  const allClients=[...sbClients, ...localOnly];
   if(!allClients.length){el.innerHTML='<div class="cs-empty">Nenhum cliente cadastrado ainda.</div>';updateBackupStatus();return;}
   el.innerHTML=allClients.map(c=>{
-    const consultorTag=isMaster()&&c.advisorId
+    // advisor_id vem preenchido com o id do próprio master pra cliente que
+    // ele mesmo cadastrou (não repassado a um consultor) — sem checar isso,
+    // caía no fallback "—" porque advisorNameById só tem perfis role='advisor'.
+    const isOwnedByMaster=!c.advisorId||(_sbUser&&c.advisorId===_sbUser.id);
+    const consultorTag=isMaster()&&!isOwnedByMaster
       ?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: ${esc(advisorNameById[c.advisorId]||'—')}</div>`
       :(isMaster()?`<div style="font-size:10px;color:var(--muted);margin-top:2px">Consultor: você (master)</div>`:'');
     return `
