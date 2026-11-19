@@ -425,7 +425,7 @@ canvas{max-width:100%}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{background:#fff;margin:0}
   /* Dashboard print: só painel ativo */
-  #client-screen,#report-overlay,.admin-bar,.tab-bar,.fab,.backdrop,.abar,.sidebar,.topbar,.sb-overlay{display:none!important}
+  #client-screen,#report-overlay,#acf-overlay,.admin-bar,.tab-bar,.fab,.backdrop,.abar,.sidebar,.topbar,.sb-overlay{display:none!important}
   .hdr,.main{display:block!important}
   .app-shell{display:block!important}
   .app-content{display:block!important}
@@ -438,6 +438,13 @@ canvas{max-width:100%}
   body.printing-report #report-overlay{display:block!important;position:static!important;background:#fff}
   .rpt-toolbar{display:none!important}
   .rpt-page{margin:0!important;box-shadow:none!important;padding:32px 40px!important}
+  /* Fluxo de Caixa Anual print: esconde tudo, mostra só a tabela */
+  body.printing-acf .hdr,
+  body.printing-acf .main,
+  body.printing-acf .fab{display:none!important}
+  body.printing-acf #acf-overlay{display:block!important;position:static!important;background:#fff}
+  body.printing-acf .acf-year-nav{display:none!important}
+  .acf-page{margin:0!important;box-shadow:none!important;padding:0!important;max-width:none!important}
 }
 
 /* ── CLIENTE SELECTOR ── */
@@ -497,6 +504,26 @@ canvas{max-width:100%}
 .rpt-btn-print{background:#c7c3db;color:#381c17}
 .rpt-btn-close{background:rgba(255,255,255,.1);color:#e8ddcd;border:1px solid rgba(255,255,255,.2)}
 .rpt-page{background:#fff;max-width:794px;margin:24px auto;padding:48px 56px;box-shadow:0 2px 16px rgba(0,0,0,.08);font-family:Inter,sans-serif}
+
+/* ── FLUXO DE CAIXA ANUAL ── */
+#acf-overlay{display:none;position:fixed;inset:0;background:#f4f4f4;z-index:600;overflow-y:auto}
+#acf-overlay.open{display:block}
+.acf-page{background:#fff;max-width:1400px;margin:24px auto;padding:32px 36px;box-shadow:0 2px 16px rgba(0,0,0,.08);font-family:Inter,sans-serif;overflow-x:auto}
+.acf-year-nav{display:flex;align-items:center;gap:10px}
+.acf-year-nav button{background:rgba(255,255,255,.1);color:#e8ddcd;border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:13px}
+.acf-table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+.acf-table th,.acf-table td{padding:6px 10px;border-bottom:1px solid #eee2d4;text-align:right}
+.acf-table thead th{position:sticky;top:0;background:#f4ede4;color:#381c17;font-size:10px;text-transform:uppercase;letter-spacing:.04em;z-index:2}
+.acf-table th:first-child,.acf-table td:first-child{text-align:left;position:sticky;left:0;background:#fff;z-index:1;min-width:220px}
+.acf-table thead th:first-child{background:#f4ede4;z-index:3}
+.acf-table tr.acf-sec td{background:#381c17;color:#f4ede4;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;position:static}
+.acf-table tr.acf-sec td:first-child{position:sticky;left:0;background:#381c17}
+.acf-table tr.acf-sub td{font-weight:700;background:#f4ede4}
+.acf-table tr.acf-sub td:first-child{position:sticky;left:0;background:#f4ede4}
+.acf-table tr.acf-saldo td{font-weight:700;background:#e2f0e8;color:#2e5c3e}
+.acf-table tr.acf-saldo td:first-child{position:sticky;left:0;background:#e2f0e8}
+.acf-table td.acf-neg{color:#b03030}
+.acf-table td.acf-total{font-weight:700}
 .rpt-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:36px;padding-bottom:24px;border-bottom:2px solid #381c17}
 .rpt-logo-area svg{height:40px}
 .rpt-meta{text-align:right;font-size:12px;color:#8a7068}
@@ -1585,6 +1612,7 @@ td.td-act{display:flex;gap:3px;align-items:center;justify-content:flex-end}
     <button class="btn btn-o" onclick="orcCopyFromPrev()" title="Copiar orçamento do mês anterior">📋 Mês anterior</button>
     <button class="btn btn-o" onclick="orcSetDefault()" title="Salvar como padrão para meses sem orçamento definido">⭐ Salvar como padrão</button>
     <div class="sp"></div>
+    <button class="btn btn-o" onclick="openAnnualCashFlow()" title="Ver o ano inteiro, categoria por categoria, com o total de cada uma">📅 Ver Ano</button>
     <button class="btn btn-o" onclick="window.print()">🖨 Imprimir</button>
   </div>
   <!-- Saúde Financeira -->
@@ -8810,6 +8838,71 @@ function closeReport(){
   document.body.classList.remove('printing-report');
 }
 
+// ── FLUXO DE CAIXA ANUAL (Orçamento → 📅 Ver Ano) ──────────────────────────
+// Visão do ano inteiro, categoria por categoria, igual à planilha Excel que
+// a Janaína usava antes (meses em coluna + total), mas usando o REALIZADO
+// (lançamentos) de cada categoria em cada mês, agrupado do mesmo jeito que
+// o Orçamento (Receita / Custos com Trabalho / Despesas Fixas / Variáveis /
+// Investimentos), com subtotal por grupo e uma linha de Saldo no fim.
+let acfYear=null;
+function openAnnualCashFlow(){
+  if(acfYear===null)acfYear=orcViewYear;
+  document.getElementById('acf-client-name').textContent=S.name||_rawCid||'Cliente';
+  renderAnnualCashFlow();
+  document.getElementById('acf-overlay').classList.add('open');
+  document.body.classList.add('printing-acf');
+}
+function closeAnnualCashFlow(){
+  document.getElementById('acf-overlay').classList.remove('open');
+  document.body.classList.remove('printing-acf');
+}
+function acfPrevYear(){acfYear--;renderAnnualCashFlow();}
+function acfNextYear(){acfYear++;renderAnnualCashFlow();}
+function renderAnnualCashFlow(){
+  const y=acfYear;
+  document.getElementById('acf-year-label').textContent=y;
+  // Mapa catId→valor por mês, pré-calculado uma vez pros 12 meses do ano.
+  const rendaMaps=[],despMaps=[];
+  for(let m=0;m<12;m++){rendaMaps.push(getTxRendaMap(y,m));despMaps.push(getTxMap(y,m));}
+  const MESES3=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  let thead=`<thead><tr><th>Categoria</th>${MESES3.map(mm=>`<th>${mm}</th>`).join('')}<th class="acf-total">Total</th></tr></thead>`;
+  let body='';
+  // Linha de totais por mês (pra cada grupo) e totais gerais
+  const grpTotals={}; // grp -> [12 valores]
+  function catRow(cat,map){
+    const vals=[];let tot=0;
+    for(let m=0;m<12;m++){const v=round2(map[m][cat.id]||0);vals.push(v);tot+=v;}
+    return{vals,tot};
+  }
+  function section(title,grp,cats,map){
+    if(!cats.length)return;
+    body+=`<tr class="acf-sec"><td colspan="${14}">${esc(title)}</td></tr>`;
+    const sumVals=new Array(12).fill(0);let sumTot=0;
+    cats.forEach(cat=>{
+      const{vals,tot}=catRow(cat,map);
+      vals.forEach((v,i)=>sumVals[i]+=v);sumTot+=tot;
+      body+=`<tr><td>${esc(cat.lbl)}</td>${vals.map(v=>`<td${v<0?' class="acf-neg"':''}>${v?fmt(v):'—'}</td>`).join('')}<td class="acf-total">${fmt(tot)}</td></tr>`;
+    });
+    body+=`<tr class="acf-sub"><td>Total ${esc(title)}</td>${sumVals.map(v=>`<td>${fmt(v)}</td>`).join('')}<td class="acf-total">${fmt(sumTot)}</td></tr>`;
+    grpTotals[grp]={vals:sumVals,tot:sumTot};
+  }
+  section('Receita','receita',S.cats.receita||[],rendaMaps);
+  section('Custos com Trabalho','ct',S.cats.ct||[],despMaps);
+  section('Despesas Fixas','fixas',S.cats.fixas||[],despMaps);
+  section('Despesas Variáveis','var',S.cats.var||[],despMaps);
+  section('Investimentos','inv',S.cats.inv||[],despMaps);
+
+  // Saldo = Receita − (Custos com Trabalho + Fixas + Variáveis + Investimentos)
+  const rec=grpTotals.receita||{vals:new Array(12).fill(0),tot:0};
+  const desp=['ct','fixas','var','inv'].map(g=>grpTotals[g]||{vals:new Array(12).fill(0),tot:0});
+  const saldoVals=rec.vals.map((v,i)=>v-desp.reduce((s,d)=>s+d.vals[i],0));
+  const saldoTot=rec.tot-desp.reduce((s,d)=>s+d.tot,0);
+  body+=`<tr class="acf-saldo"><td>Saldo</td>${saldoVals.map(v=>`<td${v<0?' class="acf-neg"':''}>${fmt(v)}</td>`).join('')}<td class="acf-total${saldoTot<0?' acf-neg':''}">${fmt(saldoTot)}</td></tr>`;
+
+  document.getElementById('acf-table').innerHTML=thead+'<tbody>'+body+'</tbody>';
+}
+
 // ── IR / PGBL ────────────────────────────────────────────────────────────────
 // 2024 IR brackets (annual)
 const IR_FAIXAS=[
@@ -10085,6 +10178,23 @@ function renderGoals(){
     </div>
   </div>
   <div class="rpt-page" id="rpt-page"><!-- gerado por generateReport() --></div>
+</div>
+
+<!-- FLUXO DE CAIXA ANUAL -->
+<div id="acf-overlay">
+  <div class="rpt-toolbar">
+    <span>📅 Fluxo de Caixa — <span id="acf-client-name"></span></span>
+    <div class="acf-year-nav">
+      <button onclick="acfPrevYear()">←</button>
+      <span id="acf-year-label">—</span>
+      <button onclick="acfNextYear()">→</button>
+    </div>
+    <div class="rpt-toolbar-btns">
+      <button class="rpt-btn rpt-btn-print" onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+      <button class="rpt-btn rpt-btn-close" onclick="closeAnnualCashFlow()">✕ Fechar</button>
+    </div>
+  </div>
+  <div class="acf-page"><table class="acf-table" id="acf-table"><!-- gerado por renderAnnualCashFlow() --></table></div>
 </div>
 
 <script>
