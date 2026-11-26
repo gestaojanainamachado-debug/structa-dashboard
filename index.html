@@ -10839,6 +10839,7 @@ const BANK_NAMES={
   sicoob_sisbr:   'Sicoob – Extrato SISBR',
   sicoob_fatura:  'Sicoob – Fatura Cartão',
   bradesco_fatura:'Bradesco – Fatura Cartão',
+  bradesco_fatura_app:'Bradesco – Fatura Cartão (App)',
   bradesco_extrato:'Bradesco – Extrato Conta Corrente',
   coop_extrato:   'Cooperativa – Extrato Conta Corrente',
   cef_app:        'Caixa – Extrato por Período (App)',
@@ -10909,7 +10910,12 @@ function detectBank(lines){
   // Fatura de cartão BB (Ourocard) — precisa vir antes do extrato, senão "ouvidoria bb"
   // (rodapé padrão de toda fatura BB) cai no parser de extrato de conta corrente.
   if(t.includes('ourocard')&&(t.includes('fatura')||t.includes('lançamentos nesta fatura')||t.includes('lancamentos nesta fatura')))return'bb_fatura';
-  if(t.includes('banco do brasil')||t.includes('dt. balancete')
+  // "banco do brasil" sozinho não basta: pode ser só o nome do banco de
+  // origem/destino de um PIX/TED num extrato de OUTRO banco (ex.: "TED
+  // RECEBIDA BANCO DO BRASIL" numa conta Itaú) — só conta quando aparece
+  // numa linha que não é claramente a descrição de uma transação (pix/ted/doc).
+  if(lines.some(l=>/banco do brasil/i.test(l.text)&&!/\b(pix|ted|doc|transfer[êe]ncia)\b/i.test(l.text))
+     ||t.includes('dt. balancete')
      ||t.includes('rende facil')||t.includes('rende fácil')
      ||t.includes('ouvidoria bb'))return'bb_extrato';
   if(t.includes('unicred')&&(t.includes('lançamentos')
@@ -10925,6 +10931,10 @@ function detectBank(lines){
   // sozinha em qualquer lugar do texto não basta pra identificar o banco —
   // sem essa prioridade, a fatura inteira era desviada pro parser errado.
   if(t.includes('bradesco')&&t.includes('fatura mensal'))return'bradesco_fatura';
+  // Exportação pelo Aplicativo Bradesco Cartões (extrato "EM ABERTO" com
+  // vários titulares/dependentes, cada um com seção própria "Total para
+  // NOME") — layout totalmente diferente da fatura mensal fechada.
+  if(t.includes('aplicativo bradesco cart'))return'bradesco_fatura_app';
   if(t.includes('bradesco')&&(t.includes('histórico')||t.includes('historico'))&&t.includes('docto'))return'bradesco_extrato';
   if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
   // Extrato de conta Mercado Pago — "EXTRATO DE CONTA" + colunas "Data Descrição
@@ -11893,6 +11903,91 @@ function parseBradescoFatura(lines,allText){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PARSER: BRADESCO — Fatura exportada pelo Aplicativo Bradesco Cartões
+// Layout bem diferente da "fatura mensal" fechada acima: fatura "EM ABERTO",
+// com uma seção por titular/dependente ("NOME - VISA INFINITE XXXX...XXXX"),
+// cada lançamento em colunas (Data | Descrição | BRL valor_origem | cotação |
+// R$ | valor final em R$) e terminando em "Total para NOME". O nome do
+// estabelecimento às vezes quebra em 2-3 linhas (própria + a quebra some da
+// linha numérica, que fica só com Data/valores) — reconstituído juntando a
+// linha órfã ANTES do lançamento (prefixo) com a de DEPOIS (sufixo), quando
+// a linha do lançamento em si não trouxer nenhum texto de descrição.
+// ═══════════════════════════════════════════════════════════════════════════════
+const BRADESCO_APP_CARDHOLDER_RE=/^(.+?)\s+-\s+.*xxxx\.xxxx\.xxxx\.\d{3,4}/i;
+function parseBradescoFaturaApp(lines,allText){
+  let refMonth=new Date().getMonth()+1,refYear=new Date().getFullYear();
+  const gm=(allText||'').match(/data:\s*(\d{2})\/(\d{2})\/(\d{4})/i);
+  if(gm){refMonth=parseInt(gm[2],10);refYear=parseInt(gm[3],10);}
+
+  const DATE_X_MAX=100,DESC_X_MAX=290,VAL_X_MIN=480;
+  const HEADER_RE=/^(aplicativo bradesco cart|data:\s*\d{2}\/\d{2}\/\d{4}|situa[çc][ãa]o do extrato|moeda de cota[çc][ãa]o|data hist[óo]rico|origem\b|\*\s*extrato em aberto)/i;
+
+  const byPage={};
+  lines.forEach(l=>{(byPage[l.page]=byPage[l.page]||[]).push(l);});
+  const pages=Object.keys(byPage).map(Number).sort((a,b)=>a-b);
+
+  const txns=[];
+  let cardholder='';
+  let curMonth=refMonth,curYear=refYear;
+  let pendingPrefix=null,lastTxn=null,afterTotal=false;
+  function resetSection(){curMonth=refMonth;curYear=refYear;pendingPrefix=null;lastTxn=null;afterTotal=false;}
+
+  for(const pg of pages){
+    const plines=byPage[pg].slice().sort((a,b)=>b.y-a.y);
+    for(const line of plines){
+      const items=(line.items||[]).slice().sort((a,b)=>a.x-b.x);
+      if(!items.length)continue;
+      const joined=line.text;
+
+      const chm=joined.match(BRADESCO_APP_CARDHOLDER_RE);
+      if(chm){cardholder=chm[1].trim();resetSection();continue;}
+      if(/^total\b/i.test(joined)){afterTotal=true;pendingPrefix=null;lastTxn=null;continue;}
+      if(HEADER_RE.test(joined)){pendingPrefix=null;lastTxn=null;continue;}
+
+      const dateItem=items.find(it=>it.x<DATE_X_MAX&&/^\d{2}\/\d{2}$/.test(it.text));
+      const valItem=[...items].reverse().find(it=>it.x>=VAL_X_MIN&&/^-?[\d.]+,\d{2}$/.test(it.text));
+
+      if(dateItem&&valItem){
+        afterTotal=false;
+        const inlineDesc=items.filter(it=>it.x>=DATE_X_MAX&&it.x<DESC_X_MAX).map(it=>it.text).join(' ').trim();
+        const desc=(pendingPrefix?pendingPrefix+(inlineDesc?' '+inlineDesc:''):inlineDesc).trim();
+        pendingPrefix=null;
+        const dm=dateItem.text.match(/^(\d{2})\/(\d{2})$/);
+        const mnum=parseInt(dm[2],10);
+        if(mnum>curMonth)curYear--;
+        curMonth=mnum;
+        const iso=`${curYear}-${dm[2]}-${dm[1]}`;
+        const value=convParseBR(valItem.text);
+        if(value===null){lastTxn=null;continue;}
+        const txn={date:iso,desc,value,cardholder};
+        txns.push(txn);
+        // Só espera um sufixo em linha seguinte quando o próprio lançamento
+        // não trouxe descrição nenhuma (nome do estabelecimento todo nas
+        // linhas órfãs vizinhas) — senão "AQUINO"/dicas do bloco de Total
+        // da PRÓXIMA compra acabariam grudadas numa compra já completa.
+        lastTxn=inlineDesc?null:txn;
+        continue;
+      }
+
+      const isDescOnly=items.length&&items.every(it=>it.x>=DATE_X_MAX&&it.x<DESC_X_MAX)&&!/^\.+/.test(joined);
+      if(isDescOnly&&!afterTotal){
+        if(lastTxn){
+          lastTxn.desc=(lastTxn.desc?lastTxn.desc+(/^\//.test(joined)?'':' '):'')+joined;
+          lastTxn=null;
+        } else {
+          pendingPrefix=(pendingPrefix?pendingPrefix+' ':'')+joined;
+        }
+      }
+    }
+  }
+  return txns.map(t=>{
+    const desc=t.desc||'Compra Bradesco';
+    const fullDesc=t.cardholder?`${desc} (${t.cardholder})`:desc;
+    return{date:t.date,desc:fullDesc,value:t.value,cat:classifyTx(fullDesc,t.value)};
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PARSER: BRADESCO — EXTRATO CONTA CORRENTE (App Bradesco Celular)
 // Colunas: Data | Histórico | Docto. | Crédito (R$) | Débito (R$) | Saldo (R$)
 // Data só na 1ª transação do dia; transações seguintes do mesmo dia vêm sem data.
@@ -12002,7 +12097,10 @@ function parseBradescoExtrato(lines,allText){
 function parseInfinitePay(lines){
   const txns=[];
   const MO={jan:1,fev:2,feb:2,mar:3,abr:4,apr:4,mai:5,may:5,jun:6,jul:7,ago:8,aug:8,set:9,sep:9,out:10,oct:10,nov:11,dez:12,dec:12};
-  const dayRe=/^(\d{1,2})\s+([A-Za-zç]{3})\w*,?\s+(\d{4})\s+(\d{2}:\d{2})\s+(.+?)\s*([+-]\s?\d{1,3}(?:\.\d{3})*,\d{2})$/;
+  // "28Ago,2026" — esse PDF (exportado pelo Chromium a partir da web) às vezes
+  // não grava espaço real nem entre o dia e o mês nem entre a vírgula e o ano,
+  // por isso \s* (não \s+) nos dois pontos.
+  const dayRe=/^(\d{1,2})\s*([A-Za-zç]{3})\w*,?\s*(\d{4})\s+(\d{2}:\d{2})\s+(.+?)\s*([+-]\s?\d{1,3}(?:\.\d{3})*,\d{2})$/;
   const contRe=/^(\d{2}:\d{2})\s+(.+?)\s*([+-]\s?\d{1,3}(?:\.\d{3})*,\d{2})$/;
   let curDate=null;
   function cleanIP(d){
@@ -12906,6 +13004,7 @@ async function convProcessPDF(file){
       case'sicoob_sisbr':    txns=parseSicoobSisbr(lines);break;
       case'sicoob_fatura':   txns=parseSicoobFatura(lines,allText);break;
       case'bradesco_fatura': txns=parseBradescoFatura(lines,allText);break;
+      case'bradesco_fatura_app':txns=parseBradescoFaturaApp(lines,allText);break;
       case'bradesco_extrato':txns=parseBradescoExtrato(lines,allText);break;
       case'coop_extrato':    txns=parseCoopExtrato(lines);break;
       case'cef_app':         txns=parseCefApp(lines);break;
