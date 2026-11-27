@@ -10936,7 +10936,12 @@ function detectBank(lines){
   // NOME") — layout totalmente diferente da fatura mensal fechada.
   if(t.includes('aplicativo bradesco cart'))return'bradesco_fatura_app';
   if(t.includes('bradesco')&&(t.includes('histórico')||t.includes('historico'))&&t.includes('docto'))return'bradesco_extrato';
-  if(t.includes('infinitepay')||t.includes('cloudwalk'))return'infinitepay';
+  // "infinitepay" sozinho não basta: um Pix pode citar "Pix feito com JIM
+  // InfinitePay" (o app usado pela CONTRAPARTE) dentro de um extrato de
+  // OUTRO banco (ex.: Sicoob) — só conta com o domínio (rodapé de ajuda,
+  // exclusivo dos PDFs de verdade da InfinitePay) ou "cloudwalk" (razão
+  // social, só aparece no cabeçalho/rodapé institucional do próprio PDF).
+  if(t.includes('infinitepay.io')||t.includes('cloudwalk'))return'infinitepay';
   // Extrato de conta Mercado Pago — "EXTRATO DE CONTA" + colunas "Data Descrição
   // ID da operação Valor Saldo". Precisa vir antes da fatura (ambos citam
   // "mercado pago" no texto). Checagem tolerante a espaço porque esse PDF às
